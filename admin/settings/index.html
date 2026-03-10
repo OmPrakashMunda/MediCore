@@ -1,0 +1,1114 @@
+<!DOCTYPE html>
+<html lang="en" id="html-root">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Settings — Admin</title>
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+
+  <style>
+    :root {
+      --color-primary:      #2563eb;
+      --color-primary-dark: #1d4ed8;
+      --color-secondary:    #0ea5e9;
+      --color-bg:           #f8fafc;
+      --color-surface:      #ffffff;
+      --color-text:         #0f172a;
+      --color-muted:        #64748b;
+      --color-border:       #e2e8f0;
+      --color-success:      #10b981;
+      --color-error:        #ef4444;
+      --font-family:        'Inter', sans-serif;
+    }
+    [data-theme="dark"] {
+      --color-bg:      #0f172a;
+      --color-surface: #1e293b;
+      --color-text:    #f1f5f9;
+      --color-muted:   #94a3b8;
+      --color-border:  #334155;
+    }
+    * { font-family:var(--font-family); box-sizing:border-box; margin:0; padding:0; }
+    body { background:var(--color-bg); color:var(--color-text); transition:background 0.3s,color 0.3s; }
+
+    .main-content { margin-left:0; padding-top:64px; transition:margin 0.3s; }
+    @media(min-width:1024px) { .main-content { margin-left:240px; } }
+
+    /* Loader */
+    #page-loader {
+      position:fixed; inset:0; z-index:9999;
+      background:var(--color-bg);
+      display:flex; align-items:center; justify-content:center;
+      transition:opacity 0.4s;
+    }
+    #page-loader.hidden { opacity:0; pointer-events:none; }
+    .spinner {
+      width:36px; height:36px;
+      border:3px solid var(--color-border);
+      border-top-color:var(--color-primary);
+      border-radius:50%; animation:spin 0.75s linear infinite;
+    }
+    @keyframes spin { to { transform:rotate(360deg); } }
+
+    /* Card */
+    .card { background:var(--color-surface); border:1px solid var(--color-border); border-radius:1rem; }
+
+    /* Section card */
+    .section-card {
+      background:var(--color-surface);
+      border:1px solid var(--color-border);
+      border-radius:1rem; overflow:hidden;
+      margin-bottom:1.25rem;
+    }
+    .section-header {
+      display:flex; align-items:center; gap:12px;
+      padding:1rem 1.25rem;
+      border-bottom:1px solid var(--color-border);
+      cursor:pointer; user-select:none;
+      transition:background 0.15s;
+    }
+    .section-header:hover {
+      background:color-mix(in srgb,var(--color-primary) 4%,transparent);
+    }
+    .section-body { padding:1.25rem; }
+
+    /* Input */
+    .input-field {
+      width:100%; padding:11px 14px;
+      background:var(--color-bg);
+      border:1.5px solid var(--color-border);
+      border-radius:10px; color:var(--color-text);
+      font-size:0.875rem; outline:none;
+      transition:border-color 0.2s, box-shadow 0.2s;
+    }
+    .input-field:focus {
+      border-color:var(--color-primary);
+      box-shadow:0 0 0 3px color-mix(in srgb,var(--color-primary) 15%,transparent);
+    }
+    .input-field::placeholder { color:var(--color-muted); }
+    select.input-field { cursor:pointer; appearance:none; }
+    .field-label { display:block; font-size:0.8rem; font-weight:500; margin-bottom:6px; }
+    .field-hint  { font-size:0.72rem; color:var(--color-muted); margin-top:4px; }
+
+    /* Color input */
+    .color-wrap {
+      display:flex; align-items:center; gap:10px;
+    }
+    .color-swatch {
+      width:42px; height:42px; border-radius:10px;
+      border:2px solid var(--color-border);
+      cursor:pointer; overflow:hidden; flex-shrink:0;
+      transition:transform 0.15s, box-shadow 0.15s;
+    }
+    .color-swatch:hover { transform:scale(1.08); box-shadow:0 4px 12px rgba(0,0,0,0.12); }
+    .color-swatch input[type="color"] {
+      width:200%; height:200%;
+      border:none; outline:none; cursor:pointer;
+      transform:translate(-25%,-25%);
+    }
+
+    /* Preset palette */
+    .palette-dot {
+      width:28px; height:28px; border-radius:8px;
+      cursor:pointer; border:2px solid transparent;
+      transition:transform 0.15s, border-color 0.15s;
+    }
+    .palette-dot:hover  { transform:scale(1.15); }
+    .palette-dot.active { border-color:var(--color-text); transform:scale(1.1); }
+
+    /* Font option */
+    .font-option {
+      padding:10px 14px; border-radius:10px;
+      border:1.5px solid var(--color-border);
+      cursor:pointer; font-size:0.85rem;
+      transition:border-color 0.2s, background 0.2s;
+      text-align:center;
+    }
+    .font-option:hover { border-color:var(--color-primary); }
+    .font-option.active {
+      border-color:var(--color-primary);
+      background:color-mix(in srgb,var(--color-primary) 8%,transparent);
+      color:var(--color-primary);
+    }
+
+    /* Logo upload */
+    .logo-upload-area {
+      border:2px dashed var(--color-border); border-radius:12px;
+      padding:1.5rem; text-align:center; cursor:pointer;
+      transition:border-color 0.2s, background 0.2s;
+    }
+    .logo-upload-area:hover {
+      border-color:var(--color-primary);
+      background:color-mix(in srgb,var(--color-primary) 4%,transparent);
+    }
+    .logo-upload-area.drag-over {
+      border-color:var(--color-primary);
+      background:color-mix(in srgb,var(--color-primary) 8%,transparent);
+    }
+
+    /* Preview card */
+    #preview-card {
+      border-radius:1rem; overflow:hidden;
+      border:1px solid var(--color-border);
+      transition:all 0.3s;
+    }
+
+    /* Toggle switch */
+    .toggle-wrap { display:flex; align-items:center; justify-content:space-between; }
+    .toggle {
+      position:relative; width:44px; height:24px;
+      display:inline-block;
+    }
+    .toggle input { opacity:0; width:0; height:0; }
+    .toggle-slider {
+      position:absolute; cursor:pointer; inset:0;
+      border-radius:99px; background:var(--color-border);
+      transition:background 0.3s;
+    }
+    .toggle-slider::before {
+      content:''; position:absolute;
+      width:18px; height:18px; border-radius:50%;
+      left:3px; top:3px; background:#fff;
+      transition:transform 0.3s;
+      box-shadow:0 1px 4px rgba(0,0,0,0.2);
+    }
+    input:checked + .toggle-slider { background:var(--color-primary); }
+    input:checked + .toggle-slider::before { transform:translateX(20px); }
+
+    /* Save button */
+    .btn-primary {
+      padding:11px 24px;
+      background:var(--color-primary); color:#fff;
+      font-size:0.875rem; font-weight:600;
+      border:none; border-radius:10px; cursor:pointer;
+      display:inline-flex; align-items:center; gap:8px;
+      transition:background 0.2s, transform 0.15s, box-shadow 0.2s;
+    }
+    .btn-primary:hover { background:var(--color-primary-dark); transform:translateY(-1px); box-shadow:0 6px 20px color-mix(in srgb,var(--color-primary) 35%,transparent); }
+    .btn-primary:disabled { opacity:0.55; cursor:not-allowed; transform:none; box-shadow:none; }
+
+    .btn-ghost {
+      padding:9px 18px;
+      background:transparent; color:var(--color-muted);
+      font-size:0.875rem; font-weight:500;
+      border:1.5px solid var(--color-border);
+      border-radius:10px; cursor:pointer;
+      display:inline-flex; align-items:center; gap:8px;
+      transition:border-color 0.2s, color 0.2s;
+    }
+    .btn-ghost:hover { border-color:var(--color-primary); color:var(--color-primary); }
+
+    /* Progress bar (upload) */
+    #upload-progress-wrap { display:none; }
+    #upload-progress-bar {
+      height:4px; border-radius:2px;
+      background:var(--color-primary);
+      width:0%; transition:width 0.3s;
+    }
+
+    /* Toast */
+    #toast {
+      position:fixed; bottom:28px; left:50%;
+      transform:translateX(-50%) translateY(70px);
+      padding:11px 20px; border-radius:12px;
+      font-size:0.85rem; font-weight:500;
+      display:flex; align-items:center; gap:10px;
+      z-index:9999; opacity:0; white-space:nowrap;
+      transition:transform 0.35s cubic-bezier(0.34,1.56,0.64,1), opacity 0.3s;
+      box-shadow:0 8px 24px rgba(0,0,0,0.15);
+    }
+    #toast.show    { transform:translateX(-50%) translateY(0); opacity:1; }
+    #toast.success { background:var(--color-success); color:#fff; }
+    #toast.error   { background:var(--color-error);   color:#fff; }
+    #toast.info    { background:var(--color-primary);  color:#fff; }
+
+    .fade-up    { animation:fadeUp 0.5s ease forwards; opacity:0; }
+    .fade-up.d1 { animation-delay:0.1s; }
+    .fade-up.d2 { animation-delay:0.2s; }
+    @keyframes fadeUp { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:none} }
+
+    /* Unsaved badge */
+    #unsaved-badge {
+      display:none;
+      align-items:center; gap:6px;
+      font-size:0.75rem; font-weight:600;
+      padding:4px 10px; border-radius:99px;
+      background:color-mix(in srgb,var(--color-warning) 15%,transparent);
+      color:var(--color-warning);
+    }
+    #unsaved-badge.show { display:inline-flex; }
+  </style>
+</head>
+<body>
+
+<div id="page-loader"><div class="spinner"></div></div>
+<div id="toast"><i id="toast-icon" class="fa-solid fa-circle-check"></i><span id="toast-msg"></span></div>
+
+<!-- ══════════════════════════════
+     MAIN
+══════════════════════════════ -->
+<div class="main-content min-h-screen">
+  <div class="p-6 max-w-6xl mx-auto">
+
+    <!-- Header -->
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 fade-up">
+      <div>
+        <h2 class="text-lg font-bold">Hospital Settings</h2>
+        <p class="text-sm mt-0.5" style="color:var(--color-muted)">
+          Customize branding, theme, and system preferences
+        </p>
+      </div>
+      <div class="flex items-center gap-3">
+        <span id="unsaved-badge">
+          <i class="fa-solid fa-circle-dot text-[10px] animate-pulse"></i>
+          Unsaved changes
+        </span>
+        <button id="save-btn" class="btn-primary" onclick="saveSettings()">
+          <i class="fa-solid fa-floppy-disk"></i>
+          <span id="save-btn-text">Save Changes</span>
+          <i id="save-spinner" class="fa-solid fa-circle-notch fa-spin hidden"></i>
+        </button>
+      </div>
+    </div>
+
+    <div class="grid lg:grid-cols-3 gap-6">
+
+      <!-- ── LEFT: Settings panels ── -->
+      <div class="lg:col-span-2 space-y-0 fade-up d1">
+
+        <!-- ─ 1. Hospital Info ─ -->
+        <div class="section-card">
+          <div class="section-header" onclick="toggleSection('info-body','info-chevron')">
+            <div class="w-9 h-9 rounded-xl flex items-center justify-center text-white shrink-0"
+                 style="background:var(--color-primary)">
+              <i class="fa-solid fa-hospital text-sm"></i>
+            </div>
+            <div class="flex-1">
+              <div class="font-semibold text-sm">Hospital Information</div>
+              <div class="text-xs" style="color:var(--color-muted)">Name, tagline, contact details</div>
+            </div>
+            <i id="info-chevron" class="fa-solid fa-chevron-down text-sm transition-transform"
+               style="color:var(--color-muted)"></i>
+          </div>
+          <div id="info-body" class="section-body">
+            <div class="grid sm:grid-cols-2 gap-4">
+              <div>
+                <label class="field-label">Hospital Name <span class="text-red-500">*</span></label>
+                <input id="hospital-name" type="text" class="input-field"
+                       placeholder="e.g. City General Hospital" oninput="markUnsaved()" />
+              </div>
+              <div>
+                <label class="field-label">Short Name / Abbreviation</label>
+                <input id="hospital-short" type="text" class="input-field"
+                       placeholder="e.g. CGH" oninput="markUnsaved()" />
+              </div>
+              <div class="sm:col-span-2">
+                <label class="field-label">Tagline</label>
+                <input id="hospital-tagline" type="text" class="input-field"
+                       placeholder="e.g. Empowering healthcare with intelligent technology"
+                       oninput="markUnsaved()" />
+              </div>
+              <div>
+                <label class="field-label">Contact Email</label>
+                <input id="hospital-email" type="email" class="input-field"
+                       placeholder="contact@hospital.com" oninput="markUnsaved()" />
+              </div>
+              <div>
+                <label class="field-label">Contact Phone</label>
+                <input id="hospital-phone" type="tel" class="input-field"
+                       placeholder="+91 00000 00000" oninput="markUnsaved()" />
+              </div>
+              <div class="sm:col-span-2">
+                <label class="field-label">Address</label>
+                <input id="hospital-address" type="text" class="input-field"
+                       placeholder="123 Medical Street, City, State" oninput="markUnsaved()" />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ─ 2. Logo ─ -->
+        <div class="section-card">
+          <div class="section-header" onclick="toggleSection('logo-body','logo-chevron')">
+            <div class="w-9 h-9 rounded-xl flex items-center justify-center text-white shrink-0"
+                 style="background:var(--color-secondary)">
+              <i class="fa-solid fa-image text-sm"></i>
+            </div>
+            <div class="flex-1">
+              <div class="font-semibold text-sm">Logo</div>
+              <div class="text-xs" style="color:var(--color-muted)">Upload hospital logo (PNG, SVG recommended)</div>
+            </div>
+            <i id="logo-chevron" class="fa-solid fa-chevron-down text-sm transition-transform"
+               style="color:var(--color-muted)"></i>
+          </div>
+          <div id="logo-body" class="section-body">
+            <div class="flex flex-col sm:flex-row gap-5 items-start">
+
+              <!-- Current logo preview -->
+              <div class="shrink-0 text-center">
+                <div id="logo-preview-wrap"
+                     class="w-20 h-20 rounded-2xl flex items-center justify-center text-white text-2xl font-bold mx-auto mb-2 overflow-hidden"
+                     style="background:var(--color-primary)">
+                  <img id="logo-preview-img" src="" alt="" class="w-full h-full object-cover hidden" />
+                  <i id="logo-preview-icon" class="fa-solid fa-hospital"></i>
+                </div>
+                <p class="text-xs" style="color:var(--color-muted)">Current Logo</p>
+              </div>
+
+              <div class="flex-1 w-full">
+                <!-- Drop zone -->
+                <div class="logo-upload-area"
+                     id="logo-drop-zone"
+                     onclick="document.getElementById('logo-file-input').click()"
+                     ondragover="event.preventDefault();this.classList.add('drag-over')"
+                     ondragleave="this.classList.remove('drag-over')"
+                     ondrop="handleLogoDrop(event)">
+                  <i class="fa-solid fa-cloud-arrow-up text-2xl mb-2" style="color:var(--color-primary)"></i>
+                  <p class="text-sm font-medium">Drop logo here or click to browse</p>
+                  <p class="text-xs mt-1" style="color:var(--color-muted)">PNG, JPG, SVG · Max 2MB · Recommended 512×512px</p>
+                  <input id="logo-file-input" type="file" accept="image/*" class="hidden"
+                         onchange="handleLogoSelect(this)" />
+                </div>
+
+                <!-- Upload progress -->
+                <div id="upload-progress-wrap" class="mt-3">
+                  <div class="flex items-center justify-between text-xs mb-1" style="color:var(--color-muted)">
+                    <span id="upload-filename">Uploading…</span>
+                    <span id="upload-pct">0%</span>
+                  </div>
+                  <div class="h-1 rounded-full overflow-hidden" style="background:var(--color-border)">
+                    <div id="upload-progress-bar"></div>
+                  </div>
+                </div>
+
+                <!-- Remove logo -->
+                <button id="remove-logo-btn" class="btn-ghost mt-3 hidden" onclick="removeLogo()">
+                  <i class="fa-solid fa-trash text-xs" style="color:var(--color-error)"></i>
+                  <span style="color:var(--color-error)">Remove Logo</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ─ 3. Theme Colors ─ -->
+        <div class="section-card">
+          <div class="section-header" onclick="toggleSection('theme-body','theme-chevron')">
+            <div class="w-9 h-9 rounded-xl flex items-center justify-center text-white shrink-0"
+                 style="background:#8b5cf6">
+              <i class="fa-solid fa-palette text-sm"></i>
+            </div>
+            <div class="flex-1">
+              <div class="font-semibold text-sm">Theme Colors</div>
+              <div class="text-xs" style="color:var(--color-muted)">Primary, secondary colors and presets</div>
+            </div>
+            <i id="theme-chevron" class="fa-solid fa-chevron-down text-sm transition-transform"
+               style="color:var(--color-muted)"></i>
+          </div>
+          <div id="theme-body" class="section-body">
+
+            <!-- Preset palettes -->
+            <div class="mb-5">
+              <label class="field-label mb-3">Quick Presets</label>
+              <div class="flex flex-wrap gap-3" id="preset-palette"></div>
+            </div>
+
+            <!-- Custom colors -->
+            <div class="grid sm:grid-cols-2 gap-5 mb-5">
+              <div>
+                <label class="field-label">Primary Color</label>
+                <div class="color-wrap">
+                  <div class="color-swatch">
+                    <input type="color" id="color-primary" value="#2563eb"
+                           oninput="onColorChange('primary', this.value)" />
+                  </div>
+                  <input id="hex-primary" type="text" class="input-field"
+                         placeholder="#2563eb" maxlength="7"
+                         oninput="onHexInput('primary', this.value)" />
+                </div>
+              </div>
+              <div>
+                <label class="field-label">Secondary Color</label>
+                <div class="color-wrap">
+                  <div class="color-swatch">
+                    <input type="color" id="color-secondary" value="#0ea5e9"
+                           oninput="onColorChange('secondary', this.value)" />
+                  </div>
+                  <input id="hex-secondary" type="text" class="input-field"
+                         placeholder="#0ea5e9" maxlength="7"
+                         oninput="onHexInput('secondary', this.value)" />
+                </div>
+              </div>
+            </div>
+
+            <!-- Dark mode default -->
+            <div class="toggle-wrap p-4 rounded-xl" style="border:1px solid var(--color-border)">
+              <div>
+                <div class="text-sm font-medium">Default Dark Mode</div>
+                <div class="text-xs mt-0.5" style="color:var(--color-muted)">
+                  New users see dark theme by default
+                </div>
+              </div>
+              <label class="toggle">
+                <input type="checkbox" id="default-dark" onchange="markUnsaved()" />
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- ─ 4. Typography ─ -->
+        <div class="section-card">
+          <div class="section-header" onclick="toggleSection('font-body','font-chevron')">
+            <div class="w-9 h-9 rounded-xl flex items-center justify-center text-white shrink-0"
+                 style="background:#f59e0b">
+              <i class="fa-solid fa-font text-sm"></i>
+            </div>
+            <div class="flex-1">
+              <div class="font-semibold text-sm">Typography</div>
+              <div class="text-xs" style="color:var(--color-muted)">Choose the global font family</div>
+            </div>
+            <i id="font-chevron" class="fa-solid fa-chevron-down text-sm transition-transform"
+               style="color:var(--color-muted)"></i>
+          </div>
+          <div id="font-body" class="section-body">
+            <div class="grid grid-cols-2 sm:grid-cols-3 gap-3" id="font-options"></div>
+          </div>
+        </div>
+
+        <!-- ─ 5. Stats (displayed on landing) ─ -->
+        <div class="section-card">
+          <div class="section-header" onclick="toggleSection('stats-body','stats-chevron')">
+            <div class="w-9 h-9 rounded-xl flex items-center justify-center text-white shrink-0"
+                 style="background:#10b981">
+              <i class="fa-solid fa-chart-bar text-sm"></i>
+            </div>
+            <div class="flex-1">
+              <div class="font-semibold text-sm">Landing Page Stats</div>
+              <div class="text-xs" style="color:var(--color-muted)">Numbers shown on the public homepage</div>
+            </div>
+            <i id="stats-chevron" class="fa-solid fa-chevron-down text-sm transition-transform"
+               style="color:var(--color-muted)"></i>
+          </div>
+          <div id="stats-body" class="section-body">
+            <div class="grid sm:grid-cols-3 gap-4">
+              <div>
+                <label class="field-label">Doctors</label>
+                <input id="stat-doctors" type="text" class="input-field"
+                       placeholder="e.g. 50+" oninput="markUnsaved();updatePreview()" />
+              </div>
+              <div>
+                <label class="field-label">Patients Served</label>
+                <input id="stat-patients" type="text" class="input-field"
+                       placeholder="e.g. 10,000+" oninput="markUnsaved();updatePreview()" />
+              </div>
+              <div>
+                <label class="field-label">Departments</label>
+                <input id="stat-departments" type="text" class="input-field"
+                       placeholder="e.g. 12" oninput="markUnsaved();updatePreview()" />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ─ 6. System Preferences ─ -->
+        <div class="section-card">
+          <div class="section-header" onclick="toggleSection('sys-body','sys-chevron')">
+            <div class="w-9 h-9 rounded-xl flex items-center justify-center text-white shrink-0"
+                 style="background:#ec4899">
+              <i class="fa-solid fa-gear text-sm"></i>
+            </div>
+            <div class="flex-1">
+              <div class="font-semibold text-sm">System Preferences</div>
+              <div class="text-xs" style="color:var(--color-muted)">Feature toggles and system behaviour</div>
+            </div>
+            <i id="sys-chevron" class="fa-solid fa-chevron-down text-sm transition-transform"
+               style="color:var(--color-muted)"></i>
+          </div>
+          <div id="sys-body" class="section-body space-y-3">
+
+            <div class="toggle-wrap p-4 rounded-xl" style="border:1px solid var(--color-border)">
+              <div>
+                <div class="text-sm font-medium">Allow New Patient Registrations</div>
+                <div class="text-xs mt-0.5" style="color:var(--color-muted)">Disable to freeze new signups</div>
+              </div>
+              <label class="toggle">
+                <input type="checkbox" id="pref-allow-register" checked onchange="markUnsaved()" />
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+
+            <div class="toggle-wrap p-4 rounded-xl" style="border:1px solid var(--color-border)">
+              <div>
+                <div class="text-sm font-medium">Allow Appointment Booking</div>
+                <div class="text-xs mt-0.5" style="color:var(--color-muted)">Disable during maintenance</div>
+              </div>
+              <label class="toggle">
+                <input type="checkbox" id="pref-allow-booking" checked onchange="markUnsaved()" />
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+
+            <div class="toggle-wrap p-4 rounded-xl" style="border:1px solid var(--color-border)">
+              <div>
+                <div class="text-sm font-medium">AI Treatment Suggestions</div>
+                <div class="text-xs mt-0.5" style="color:var(--color-muted)">Enable Gemini AI for doctors</div>
+              </div>
+              <label class="toggle">
+                <input type="checkbox" id="pref-ai-suggestions" checked onchange="markUnsaved()" />
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+
+            <div class="toggle-wrap p-4 rounded-xl" style="border:1px solid var(--color-border)">
+              <div>
+                <div class="text-sm font-medium">Maintenance Mode</div>
+                <div class="text-xs mt-0.5" style="color:var(--color-muted)">Shows maintenance page to all non-admins</div>
+              </div>
+              <label class="toggle">
+                <input type="checkbox" id="pref-maintenance" onchange="markUnsaved()" />
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+
+          </div>
+        </div>
+
+      </div>
+
+      <!-- ── RIGHT: Live Preview ── -->
+      <div class="fade-up d2">
+        <div class="sticky top-20">
+          <div class="text-sm font-semibold mb-3 flex items-center gap-2">
+            <i class="fa-solid fa-eye" style="color:var(--color-primary)"></i>
+            Live Preview
+          </div>
+
+          <!-- Preview card -->
+          <div id="preview-card" class="overflow-hidden"
+               style="background:var(--color-bg)">
+
+            <!-- Mock navbar -->
+            <div class="flex items-center justify-between px-4 py-3"
+                 style="background:var(--color-surface);border-bottom:1px solid var(--color-border)">
+              <div class="flex items-center gap-2">
+                <div id="prev-logo-wrap"
+                     class="w-7 h-7 rounded-lg flex items-center justify-center text-white text-xs font-bold overflow-hidden shrink-0"
+                     style="background:var(--color-primary)">
+                  <img id="prev-logo-img" src="" alt="" class="w-full h-full object-cover hidden"/>
+                  <span id="prev-logo-initial">M</span>
+                </div>
+                <span id="prev-name" class="text-xs font-semibold">MediCore</span>
+              </div>
+              <div class="w-14 h-5 rounded-md text-white text-[9px] flex items-center justify-center font-semibold"
+                   style="background:var(--color-primary)">Login</div>
+            </div>
+
+            <!-- Mock hero -->
+            <div class="p-5" style="background:var(--color-bg)">
+              <div class="inline-flex items-center gap-1.5 text-[9px] font-semibold px-2 py-1 rounded-full mb-3"
+                   style="background:color-mix(in srgb,var(--color-primary) 12%,transparent);color:var(--color-primary)">
+                <i class="fa-solid fa-circle-dot text-[7px] animate-pulse"></i>
+                Smart Healthcare Platform
+              </div>
+              <div class="text-sm font-bold mb-1" id="prev-title-main">Modern Care,</div>
+              <div class="text-sm font-bold mb-2" style="color:var(--color-primary)">
+                Intelligently Delivered
+              </div>
+              <p id="prev-tagline" class="text-[10px] mb-3" style="color:var(--color-muted)">
+                Book appointments, get AI-powered diagnostics.
+              </p>
+              <div class="flex gap-2">
+                <div class="px-3 py-1.5 rounded-lg text-white text-[9px] font-semibold"
+                     style="background:var(--color-primary)">Get Started</div>
+                <div class="px-3 py-1.5 rounded-lg text-[9px] font-medium"
+                     style="border:1px solid var(--color-border);color:var(--color-muted)">Learn More</div>
+              </div>
+
+              <!-- Mock stats -->
+              <div class="flex gap-4 mt-4 pt-3" style="border-top:1px solid var(--color-border)">
+                <div>
+                  <div class="text-xs font-bold" id="prev-stat-doctors"
+                       style="color:var(--color-primary)">—</div>
+                  <div class="text-[9px]" style="color:var(--color-muted)">Doctors</div>
+                </div>
+                <div>
+                  <div class="text-xs font-bold" id="prev-stat-patients">—</div>
+                  <div class="text-[9px]" style="color:var(--color-muted)">Patients</div>
+                </div>
+                <div>
+                  <div class="text-xs font-bold" id="prev-stat-depts">—</div>
+                  <div class="text-[9px]" style="color:var(--color-muted)">Departments</div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- Reset to defaults -->
+          <button onclick="resetDefaults()"
+                  class="btn-ghost w-full justify-center mt-3 text-xs">
+            <i class="fa-solid fa-rotate-left"></i> Reset to Defaults
+          </button>
+
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+
+<script type="module">
+  import { auth, db, storage } from "../../assets/js/firebase-config.js";
+  import { renderSidebar }     from "../../assets/js/admin-sidebar.js";
+  import { guardPage }         from "../../assets/js/auth-guard.js";
+  import { logActivity }       from "../../assets/js/activity-logger.js";
+  import {
+    doc, getDoc, setDoc, serverTimestamp
+  } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-firestore.js";
+  import {
+    ref, uploadBytesResumable, getDownloadURL, deleteObject
+  } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-storage.js";
+  import { signOut } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-auth.js";
+
+  // ── Theme presets ──────────────────────────────────────────────────
+  const PRESETS = [
+    { name:"Ocean Blue",   primary:"#2563eb", secondary:"#0ea5e9" },
+    { name:"Emerald",      primary:"#059669", secondary:"#10b981" },
+    { name:"Violet",       primary:"#7c3aed", secondary:"#a78bfa" },
+    { name:"Rose",         primary:"#e11d48", secondary:"#fb7185" },
+    { name:"Amber",        primary:"#d97706", secondary:"#fbbf24" },
+    { name:"Teal",         primary:"#0d9488", secondary:"#2dd4bf" },
+    { name:"Slate",        primary:"#475569", secondary:"#94a3b8" },
+    { name:"Indigo Pink",  primary:"#4f46e5", secondary:"#ec4899" },
+  ];
+
+  // ── Font options ───────────────────────────────────────────────────
+  const FONTS = [
+    { label:"Inter",       value:"'Inter', sans-serif" },
+    { label:"Roboto",      value:"'Roboto', sans-serif" },
+    { label:"Poppins",     value:"'Poppins', sans-serif" },
+    { label:"Nunito",      value:"'Nunito', sans-serif" },
+    { label:"DM Sans",     value:"'DM Sans', sans-serif" },
+    { label:"Plus Jakarta",value:"'Plus Jakarta Sans', sans-serif" },
+  ];
+
+  let selectedFont   = FONTS[0].value;
+  let currentLogoUrl = "";
+  let pendingLogoUrl = "";
+  let isUnsaved      = false;
+
+  // ── Theme ──────────────────────────────────────────────────────────
+  const htmlEl = document.getElementById("html-root");
+  function applyTheme(dark) {
+    htmlEl.setAttribute("data-theme", dark ? "dark" : "light");
+    const icon = document.getElementById("theme-icon");
+    if (icon) icon.className = dark ? "fa-solid fa-sun text-sm" : "fa-solid fa-moon text-sm";
+    localStorage.setItem("theme", dark ? "dark" : "light");
+  }
+  applyTheme(localStorage.getItem("theme") === "dark");
+
+  // ── Unsaved tracker ────────────────────────────────────────────────
+  window.markUnsaved = function() {
+    isUnsaved = true;
+    document.getElementById("unsaved-badge").classList.add("show");
+  };
+
+  // ── Section accordion ──────────────────────────────────────────────
+  window.toggleSection = function(bodyId, chevronId) {
+    const body    = document.getElementById(bodyId);
+    const chevron = document.getElementById(chevronId);
+    const isHidden = body.style.display === "none";
+    body.style.display    = isHidden ? "block" : "none";
+    chevron.style.transform = isHidden ? "rotate(0deg)" : "rotate(-90deg)";
+  };
+
+  // ── Render preset palette ──────────────────────────────────────────
+  function renderPresets() {
+    const container = document.getElementById("preset-palette");
+    container.innerHTML = PRESETS.map((p,i) => `
+      <div class="flex flex-col items-center gap-1.5">
+        <div class="palette-dot" id="preset-dot-${i}"
+             style="background:linear-gradient(135deg,${p.primary},${p.secondary})"
+             onclick="applyPreset(${i})" title="${p.name}"></div>
+        <span style="font-size:0.6rem;color:var(--color-muted)">${p.name.split(" ")[0]}</span>
+      </div>
+    `).join('');
+  }
+
+  window.applyPreset = function(i) {
+    const p = PRESETS[i];
+    setColor("primary",   p.primary);
+    setColor("secondary", p.secondary);
+
+    // Mark active dot
+    document.querySelectorAll(".palette-dot").forEach((d,j) => {
+      d.classList.toggle("active", j === i);
+    });
+    markUnsaved();
+  };
+
+  // ── Color helpers ──────────────────────────────────────────────────
+  function setColor(key, hex) {
+    document.getElementById(`color-${key}`).value   = hex;
+    document.getElementById(`hex-${key}`).value     = hex;
+    const cssVar = key === "primary" ? "--color-primary" : "--color-secondary";
+    document.documentElement.style.setProperty(cssVar, hex);
+    if (key === "primary") {
+      const dark = shadeColor(hex, -15);
+      document.documentElement.style.setProperty("--color-primary-dark", dark);
+    }
+    updatePreview();
+  }
+
+  window.onColorChange = function(key, hex) {
+    document.getElementById(`hex-${key}`).value = hex;
+    const cssVar = key === "primary" ? "--color-primary" : "--color-secondary";
+    document.documentElement.style.setProperty(cssVar, hex);
+    if (key === "primary") {
+      document.documentElement.style.setProperty("--color-primary-dark", shadeColor(hex,-15));
+    }
+    markUnsaved(); updatePreview();
+  };
+
+  window.onHexInput = function(key, val) {
+    if (/^#[0-9A-Fa-f]{6}$/.test(val)) {
+      document.getElementById(`color-${key}`).value = val;
+      const cssVar = key === "primary" ? "--color-primary" : "--color-secondary";
+      document.documentElement.style.setProperty(cssVar, val);
+      if (key === "primary") {
+        document.documentElement.style.setProperty("--color-primary-dark", shadeColor(val,-15));
+      }
+      markUnsaved(); updatePreview();
+    }
+  };
+
+  function shadeColor(hex, pct) {
+    const num = parseInt(hex.replace("#",""), 16);
+    const r   = Math.min(255, Math.max(0, (num >> 16) + pct));
+    const g   = Math.min(255, Math.max(0, ((num >> 8) & 0xff) + pct));
+    const b   = Math.min(255, Math.max(0, (num & 0xff) + pct));
+    return "#" + ((1<<24)|(r<<16)|(g<<8)|b).toString(16).slice(1);
+  }
+
+  // ── Font options ───────────────────────────────────────────────────
+  function renderFonts() {
+    const container = document.getElementById("font-options");
+    container.innerHTML = FONTS.map((f,i) => `
+      <div class="font-option ${i===0?"active":""}"
+           id="font-opt-${i}"
+           style="font-family:${f.value}"
+           onclick="selectFont(${i})">
+        ${f.label}
+      </div>
+    `).join('');
+  }
+
+  window.selectFont = function(i) {
+    selectedFont = FONTS[i].value;
+    document.documentElement.style.setProperty("--font-family", selectedFont);
+    document.querySelectorAll(".font-option").forEach((el,j) => {
+      el.classList.toggle("active", j === i);
+    });
+    markUnsaved();
+  };
+
+  // ── Logo handling ──────────────────────────────────────────────────
+  window.handleLogoSelect = function(input) {
+    const file = input.files[0];
+    if (file) uploadLogo(file);
+  };
+
+  window.handleLogoDrop = function(e) {
+    e.preventDefault();
+    document.getElementById("logo-drop-zone").classList.remove("drag-over");
+    const file = e.dataTransfer.files[0];
+    if (file && file.type.startsWith("image/")) uploadLogo(file);
+    else showToast("Please drop an image file.", "error");
+  };
+
+  function uploadLogo(file) {
+    if (file.size > 2 * 1024 * 1024) {
+      showToast("Logo must be under 2MB.", "error"); return;
+    }
+
+    const wrap = document.getElementById("upload-progress-wrap");
+    const bar  = document.getElementById("upload-progress-bar");
+    const pct  = document.getElementById("upload-pct");
+    const name = document.getElementById("upload-filename");
+
+    wrap.style.display = "block";
+    name.textContent   = file.name;
+
+    const storageRef  = ref(storage, `hospital/logo/${Date.now()}_${file.name}`);
+    const uploadTask  = uploadBytesResumable(storageRef, file);
+
+    uploadTask.on("state_changed",
+      snap => {
+        const progress = Math.round((snap.bytesTransferred / snap.totalBytes) * 100);
+        bar.style.width   = `${progress}%`;
+        pct.textContent   = `${progress}%`;
+      },
+      err => {
+        console.error(err);
+        wrap.style.display = "none";
+        showToast("Logo upload failed.", "error");
+      },
+      async () => {
+        const url = await getDownloadURL(uploadTask.snapshot.ref);
+        pendingLogoUrl = url;
+
+        // Update previews
+        updateLogoPreview(url);
+
+        wrap.style.display = "none";
+        document.getElementById("remove-logo-btn").classList.remove("hidden");
+        markUnsaved();
+        showToast("Logo uploaded. Save to apply.", "success");
+      }
+    );
+  }
+
+  function updateLogoPreview(url) {
+    // Settings page preview
+    const pImg  = document.getElementById("logo-preview-img");
+    const pIcon = document.getElementById("logo-preview-icon");
+    pImg.src = url; pImg.classList.remove("hidden");
+    pIcon.classList.add("hidden");
+
+    // Mini preview card
+    const prevImg  = document.getElementById("prev-logo-img");
+    const prevInit = document.getElementById("prev-logo-initial");
+    prevImg.src = url; prevImg.classList.remove("hidden");
+    prevInit.classList.add("hidden");
+  }
+
+  window.removeLogo = function() {
+    pendingLogoUrl = "";
+    currentLogoUrl = "";
+    document.getElementById("logo-preview-img").classList.add("hidden");
+    document.getElementById("logo-preview-icon").classList.remove("hidden");
+    document.getElementById("prev-logo-img").classList.add("hidden");
+    document.getElementById("prev-logo-initial").classList.remove("hidden");
+    document.getElementById("remove-logo-btn").classList.add("hidden");
+    markUnsaved();
+  };
+
+  // ── Live preview updater ───────────────────────────────────────────
+  window.updatePreview = function() {
+    const name    = document.getElementById("hospital-name").value    || "MediCore";
+    const tagline = document.getElementById("hospital-tagline").value || "Book appointments, get AI-powered diagnostics.";
+
+    document.getElementById("prev-name").textContent      = name;
+    document.getElementById("prev-title-main").textContent= name.split(" ")[0] + " Care,";
+    document.getElementById("prev-tagline").textContent   = tagline.slice(0,60) + (tagline.length>60?"…":"");
+    document.getElementById("prev-logo-initial").textContent = name.charAt(0).toUpperCase();
+
+    document.getElementById("prev-stat-doctors").textContent  = document.getElementById("stat-doctors").value    || "—";
+    document.getElementById("prev-stat-patients").textContent = document.getElementById("stat-patients").value   || "—";
+    document.getElementById("prev-stat-depts").textContent    = document.getElementById("stat-departments").value || "—";
+  };
+
+  // ── Load existing settings ─────────────────────────────────────────
+  async function loadSettings() {
+    try {
+      const snap = await getDoc(doc(db, "settings", "hospital"));
+      if (!snap.exists()) return;
+
+      const s = snap.data();
+      const t = s.theme || {};
+
+      // Info
+      if (s.hospitalName)    document.getElementById("hospital-name").value       = s.hospitalName;
+      if (s.hospitalShort)   document.getElementById("hospital-short").value      = s.hospitalShort;
+      if (s.tagline)         document.getElementById("hospital-tagline").value    = s.tagline;
+      if (s.contactEmail)    document.getElementById("hospital-email").value      = s.contactEmail;
+      if (s.contactPhone)    document.getElementById("hospital-phone").value      = s.contactPhone;
+      if (s.address)         document.getElementById("hospital-address").value    = s.address;
+
+      // Stats
+      if (s.stats?.doctors)     document.getElementById("stat-doctors").value     = s.stats.doctors;
+      if (s.stats?.patients)    document.getElementById("stat-patients").value    = s.stats.patients;
+      if (s.stats?.departments) document.getElementById("stat-departments").value = s.stats.departments;
+
+      // Colors
+      if (t.primary)   setColor("primary",   t.primary);
+      if (t.secondary) setColor("secondary", t.secondary);
+
+      // Font
+      if (t.fontFamily) {
+        selectedFont = t.fontFamily;
+        document.documentElement.style.setProperty("--font-family", t.fontFamily);
+        FONTS.forEach((f,i) => {
+          document.getElementById(`font-opt-${i}`)?.classList.toggle("active", f.value === t.fontFamily);
+        });
+      }
+
+      // Dark mode default
+      if (t.defaultDark) document.getElementById("default-dark").checked = t.defaultDark;
+
+      // Logo
+      if (s.logoUrl) {
+        currentLogoUrl = s.logoUrl;
+        pendingLogoUrl = s.logoUrl;
+        updateLogoPreview(s.logoUrl);
+        document.getElementById("remove-logo-btn").classList.remove("hidden");
+      }
+
+      // Sidebar brand
+      const sbName = document.getElementById("sb-hospital-name");
+      if (sbName) sbName.textContent = s.hospitalName || "MediCore";
+
+      // Apply colors to sidebar
+      const r = document.documentElement;
+      if (t.primary)    r.style.setProperty("--color-primary",      t.primary);
+      if (t.primaryDark)r.style.setProperty("--color-primary-dark", t.primaryDark);
+      if (t.secondary)  r.style.setProperty("--color-secondary",    t.secondary);
+
+      // System prefs
+      const prefs = s.preferences || {};
+      document.getElementById("pref-allow-register").checked  = prefs.allowRegister  !== false;
+      document.getElementById("pref-allow-booking").checked   = prefs.allowBooking   !== false;
+      document.getElementById("pref-ai-suggestions").checked  = prefs.aiSuggestions  !== false;
+      document.getElementById("pref-maintenance").checked     = prefs.maintenance     === true;
+
+      updatePreview();
+
+    } catch(e) { console.error("Settings load error:", e); }
+  }
+
+  // ── Save settings ──────────────────────────────────────────────────
+  window.saveSettings = async function() {
+    const btn = document.getElementById("save-btn");
+    const txt = document.getElementById("save-btn-text");
+    const spn = document.getElementById("save-spinner");
+    btn.disabled = true; txt.textContent = "Saving…"; spn.classList.remove("hidden");
+
+    try {
+      const primary   = document.getElementById("color-primary").value;
+      const secondary = document.getElementById("color-secondary").value;
+
+      const settingsData = {
+        hospitalName:  document.getElementById("hospital-name").value.trim(),
+        hospitalShort: document.getElementById("hospital-short").value.trim(),
+        tagline:       document.getElementById("hospital-tagline").value.trim(),
+        contactEmail:  document.getElementById("hospital-email").value.trim(),
+        contactPhone:  document.getElementById("hospital-phone").value.trim(),
+        address:       document.getElementById("hospital-address").value.trim(),
+        logoUrl:       pendingLogoUrl || currentLogoUrl,
+        theme: {
+          primary,
+          primaryDark:  shadeColor(primary, -15),
+          secondary,
+          fontFamily:   selectedFont,
+          defaultDark:  document.getElementById("default-dark").checked,
+        },
+        stats: {
+          doctors:     document.getElementById("stat-doctors").value.trim(),
+          patients:    document.getElementById("stat-patients").value.trim(),
+          departments: document.getElementById("stat-departments").value.trim(),
+        },
+        preferences: {
+          allowRegister:  document.getElementById("pref-allow-register").checked,
+          allowBooking:   document.getElementById("pref-allow-booking").checked,
+          aiSuggestions:  document.getElementById("pref-ai-suggestions").checked,
+          maintenance:    document.getElementById("pref-maintenance").checked,
+        },
+        updatedAt: serverTimestamp(),
+        updatedBy: auth.currentUser?.uid,
+      };
+
+      await setDoc(doc(db, "settings", "hospital"), settingsData, { merge: true });
+      await logActivity("UPDATE_SETTINGS", { fields: Object.keys(settingsData) });
+
+      currentLogoUrl = pendingLogoUrl;
+      isUnsaved      = false;
+      document.getElementById("unsaved-badge").classList.remove("show");
+
+      showToast("Settings saved successfully!", "success");
+
+    } catch(e) {
+      console.error(e);
+      showToast("Failed to save settings.", "error");
+    } finally {
+      btn.disabled = false; txt.textContent = "Save Changes"; spn.classList.add("hidden");
+    }
+  };
+
+  // ── Reset to defaults ──────────────────────────────────────────────
+  window.resetDefaults = function() {
+    if (!confirm("Reset all theme settings to defaults?")) return;
+    setColor("primary",   "#2563eb");
+    setColor("secondary", "#0ea5e9");
+    selectedFont = FONTS[0].value;
+    document.documentElement.style.setProperty("--font-family", selectedFont);
+    document.querySelectorAll(".font-option").forEach((el,i) => {
+      el.classList.toggle("active", i === 0);
+    });
+    document.getElementById("default-dark").checked = false;
+    document.querySelectorAll(".palette-dot").forEach(d => d.classList.remove("active"));
+    markUnsaved();
+    showToast("Theme reset to defaults.", "info");
+  };
+
+  // ── Toast ──────────────────────────────────────────────────────────
+  window.showToast = function(msg, type="info") {
+    const toast = document.getElementById("toast");
+    const icons = {
+      success:"fa-solid fa-circle-check",
+      error:"fa-solid fa-circle-exclamation",
+      info:"fa-solid fa-circle-info"
+    };
+    document.getElementById("toast-msg").textContent = msg;
+    document.getElementById("toast-icon").className  = icons[type];
+    toast.className = `show ${type}`;
+    clearTimeout(window._tt);
+    window._tt = setTimeout(() => { toast.className = type; }, 3500);
+  };
+
+  // ── Warn on unsaved leave ──────────────────────────────────────────
+  window.addEventListener("beforeunload", e => {
+    if (isUnsaved) {
+      e.preventDefault();
+      e.returnValue = "";
+    }
+  });
+
+  // ── Logout ─────────────────────────────────────────────────────────
+  window.adminLogout = async function() {
+    await signOut(auth);
+    window.location.href = "/auth/staff-login/";
+  };
+
+  // ── Init ───────────────────────────────────────────────────────────
+  guardPage(["admin"], async (user, userData) => {
+    renderSidebar("settings");
+
+    document.getElementById("theme-toggle").addEventListener("click", () => {
+      applyTheme(htmlEl.getAttribute("data-theme") !== "dark");
+    });
+
+    const sbName  = document.getElementById("sb-admin-name");
+    const sbEmail = document.getElementById("sb-admin-email");
+    if (sbName)  sbName.textContent  = userData.name  || "Admin";
+    if (sbEmail) sbEmail.textContent = userData.email || user.email || "—";
+
+    // Render UI components
+    renderPresets();
+    renderFonts();
+
+    // Load from Firestore
+    await loadSettings();
+
+    const loader = document.getElementById("page-loader");
+    loader.classList.add("hidden");
+    setTimeout(() => loader.remove(), 500);
+  });
+</script>
+
+</body>
+</html>

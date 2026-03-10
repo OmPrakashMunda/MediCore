@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="en" id="html-root">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Dashboard — Admin</title>
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+
+  <style>
+    :root {
+      --color-primary:      #2563eb;
+      --color-primary-dark: #1d4ed8;
+      --color-secondary:    #0ea5e9;
+      --color-bg:           #f8fafc;
+      --color-surface:      #ffffff;
+      --color-text:         #0f172a;
+      --color-muted:        #64748b;
+      --color-border:       #e2e8f0;
+      --color-success:      #10b981;
+      --color-warning:      #f59e0b;
+      --color-error:        #ef4444;
+      --font-family:        'Inter', sans-serif;
+    }
+    [data-theme="dark"] {
+      --color-bg:      #0f172a;
+      --color-surface: #1e293b;
+      --color-text:    #f1f5f9;
+      --color-muted:   #94a3b8;
+      --color-border:  #334155;
+    }
+    * { font-family: var(--font-family); box-sizing: border-box; margin:0; padding:0; }
+    body { background: var(--color-bg); color: var(--color-text); transition: background 0.3s, color 0.3s; }
+
+    /* Layout */
+    .main-content {
+      margin-left: 0;
+      padding-top: 64px;
+      transition: margin 0.3s;
+    }
+    @media(min-width:1024px) { .main-content { margin-left: 240px; } }
+
+    /* Loader */
+    #page-loader {
+      position:fixed; inset:0; z-index:9999;
+      background:var(--color-bg);
+      display:flex; align-items:center; justify-content:center;
+      transition:opacity 0.4s;
+    }
+    #page-loader.hidden { opacity:0; pointer-events:none; }
+    .spinner {
+      width:36px; height:36px;
+      border:3px solid var(--color-border);
+      border-top-color:var(--color-primary);
+      border-radius:50%;
+      animation:spin 0.75s linear infinite;
+    }
+    @keyframes spin { to { transform:rotate(360deg); } }
+
+    /* Cards */
+    .card { background:var(--color-surface); border:1px solid var(--color-border); border-radius:1rem; }
+
+    /* Stat card */
+    .stat-card {
+      background:var(--color-surface);
+      border:1px solid var(--color-border);
+      border-radius:1rem;
+      padding:1.25rem;
+      transition:transform 0.2s, box-shadow 0.2s;
+    }
+    .stat-card:hover { transform:translateY(-3px); box-shadow:0 10px 28px rgba(0,0,0,0.07); }
+
+    /* Activity feed */
+    .activity-item {
+      display:flex; align-items:flex-start; gap:12px;
+      padding:12px 0;
+      border-bottom:1px solid var(--color-border);
+    }
+    .activity-item:last-child { border-bottom:none; }
+    .activity-dot {
+      width:34px; height:34px; border-radius:10px;
+      display:flex; align-items:center; justify-content:center;
+      flex-shrink:0; font-size:0.75rem; color:#fff;
+    }
+
+    /* Chart bar (CSS only) */
+    .bar-wrap { display:flex; align-items:flex-end; gap:6px; height:80px; }
+    .bar {
+      flex:1; border-radius:6px 6px 0 0;
+      background:color-mix(in srgb, var(--color-primary) 70%, transparent);
+      transition:height 0.6s ease;
+      min-height:4px;
+      position:relative; cursor:pointer;
+    }
+    .bar:hover { background:var(--color-primary); }
+    .bar-label { font-size:0.65rem; color:var(--color-muted); text-align:center; margin-top:4px; }
+
+    /* Toast */
+    #toast {
+      position:fixed; bottom:28px; left:50%;
+      transform:translateX(-50%) translateY(70px);
+      padding:11px 20px; border-radius:12px;
+      font-size:0.85rem; font-weight:500;
+      display:flex; align-items:center; gap:10px;
+      z-index:9999; opacity:0; white-space:nowrap;
+      transition:transform 0.35s cubic-bezier(0.34,1.56,0.64,1), opacity 0.3s;
+      box-shadow:0 8px 24px rgba(0,0,0,0.15);
+    }
+    #toast.show    { transform:translateX(-50%) translateY(0); opacity:1; }
+    #toast.success { background:var(--color-success); color:#fff; }
+    #toast.error   { background:var(--color-error);   color:#fff; }
+    #toast.info    { background:var(--color-primary);  color:#fff; }
+
+    .fade-up    { animation:fadeUp 0.5s ease forwards; opacity:0; }
+    .fade-up.d1 { animation-delay:0.08s; }
+    .fade-up.d2 { animation-delay:0.16s; }
+    .fade-up.d3 { animation-delay:0.24s; }
+    .fade-up.d4 { animation-delay:0.32s; }
+    @keyframes fadeUp { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:none} }
+  </style>
+</head>
+<body>
+
+<div id="page-loader"><div class="spinner"></div></div>
+<div id="toast"><i id="toast-icon" class="fa-solid fa-circle-check"></i><span id="toast-msg"></span></div>
+
+<!-- Main -->
+<div class="main-content min-h-screen">
+  <div class="p-6 max-w-7xl mx-auto">
+
+    <!-- ── Stat Cards ── -->
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6 fade-up">
+
+      <div class="stat-card">
+        <div class="flex items-center justify-between mb-3">
+          <div class="w-10 h-10 rounded-xl flex items-center justify-center text-white"
+               style="background:var(--color-primary)">
+            <i class="fa-solid fa-user-injured text-sm"></i>
+          </div>
+          <span id="patient-change" class="text-xs font-medium text-green-500">
+            <i class="fa-solid fa-arrow-up text-[10px]"></i> —
+          </span>
+        </div>
+        <div id="stat-patients" class="text-2xl font-bold mb-0.5">—</div>
+        <div class="text-xs" style="color:var(--color-muted)">Total Patients</div>
+      </div>
+
+      <div class="stat-card">
+        <div class="flex items-center justify-between mb-3">
+          <div class="w-10 h-10 rounded-xl flex items-center justify-center text-white"
+               style="background:var(--color-secondary)">
+            <i class="fa-solid fa-user-doctor text-sm"></i>
+          </div>
+          <span class="text-xs font-medium" style="color:var(--color-muted)">Active</span>
+        </div>
+        <div id="stat-doctors" class="text-2xl font-bold mb-0.5">—</div>
+        <div class="text-xs" style="color:var(--color-muted)">Doctors</div>
+      </div>
+
+      <div class="stat-card">
+        <div class="flex items-center justify-between mb-3">
+          <div class="w-10 h-10 rounded-xl flex items-center justify-center text-white"
+               style="background:#8b5cf6">
+            <i class="fa-solid fa-calendar-check text-sm"></i>
+          </div>
+          <span id="appt-today" class="text-xs font-medium" style="color:var(--color-muted)">Today: —</span>
+        </div>
+        <div id="stat-appointments" class="text-2xl font-bold mb-0.5">—</div>
+        <div class="text-xs" style="color:var(--color-muted)">Appointments</div>
+      </div>
+
+      <div class="stat-card">
+        <div class="flex items-center justify-between mb-3">
+          <div class="w-10 h-10 rounded-xl flex items-center justify-center text-white"
+               style="background:#f59e0b">
+            <i class="fa-solid fa-flask text-sm"></i>
+          </div>
+          <span id="tests-pending-badge" class="text-xs font-medium text-yellow-500">Pending: —</span>
+        </div>
+        <div id="stat-tests" class="text-2xl font-bold mb-0.5">—</div>
+        <div class="text-xs" style="color:var(--color-muted)">Tests Uploaded</div>
+      </div>
+
+    </div>
+
+    <!-- ── Row 2: Chart + Quick Actions ── -->
+    <div class="grid lg:grid-cols-3 gap-4 mb-6">
+
+      <!-- Appointments chart (last 7 days) -->
+      <div class="card p-5 lg:col-span-2 fade-up d1">
+        <div class="flex items-center justify-between mb-5">
+          <div>
+            <h3 class="font-semibold text-sm">Appointments — Last 7 Days</h3>
+            <p class="text-xs mt-0.5" style="color:var(--color-muted)">Daily booking trend</p>
+          </div>
+          <div class="w-8 h-8 rounded-lg flex items-center justify-center"
+               style="background:color-mix(in srgb,var(--color-primary) 10%,transparent)">
+            <i class="fa-solid fa-chart-column text-sm text-primary"></i>
+          </div>
+        </div>
+        <div class="bar-wrap" id="bar-chart"></div>
+        <div class="flex gap-1 mt-1" id="bar-labels"></div>
+      </div>
+
+      <!-- Quick Actions -->
+      <div class="card p-5 fade-up d2">
+        <h3 class="font-semibold text-sm mb-4">Quick Actions</h3>
+        <div class="space-y-2.5">
+          <a href="/admin/staff/"
+             class="flex items-center gap-3 p-3 rounded-xl text-sm transition-colors"
+             style="border:1px solid var(--color-border)"
+             onmouseover="this.style.borderColor='var(--color-primary)';this.style.color='var(--color-primary)'"
+             onmouseout="this.style.borderColor='var(--color-border)';this.style.color='var(--color-text)'">
+            <i class="fa-solid fa-user-plus w-4 text-center" style="color:var(--color-primary)"></i>
+            Add Staff Account
+          </a>
+          <a href="/admin/doctors/"
+             class="flex items-center gap-3 p-3 rounded-xl text-sm transition-colors"
+             style="border:1px solid var(--color-border)"
+             onmouseover="this.style.borderColor='var(--color-secondary)';this.style.color='var(--color-secondary)'"
+             onmouseout="this.style.borderColor='var(--color-border)';this.style.color='var(--color-text)'">
+            <i class="fa-solid fa-clock w-4 text-center" style="color:var(--color-secondary)"></i>
+            Set Doctor Availability
+          </a>
+          <a href="/admin/analytics/"
+             class="flex items-center gap-3 p-3 rounded-xl text-sm transition-colors"
+             style="border:1px solid var(--color-border)"
+             onmouseover="this.style.borderColor='#8b5cf6';this.style.color='#8b5cf6'"
+             onmouseout="this.style.borderColor='var(--color-border)';this.style.color='var(--color-text)'">
+            <i class="fa-solid fa-chart-line w-4 text-center" style="color:#8b5cf6"></i>
+            View Analytics
+          </a>
+          <a href="/admin/settings/"
+             class="flex items-center gap-3 p-3 rounded-xl text-sm transition-colors"
+             style="border:1px solid var(--color-border)"
+             onmouseover="this.style.borderColor='#10b981';this.style.color='#10b981'"
+             onmouseout="this.style.borderColor='var(--color-border)';this.style.color='var(--color-text)'">
+            <i class="fa-solid fa-sliders w-4 text-center" style="color:#10b981"></i>
+            Hospital Settings
+          </a>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ── Row 3: Recent Activity + Staff Overview ── -->
+    <div class="grid lg:grid-cols-3 gap-4 fade-up d3">
+
+      <!-- Activity feed -->
+      <div class="card p-5 lg:col-span-2">
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="font-semibold text-sm">Recent Activity</h3>
+          <a href="/admin/analytics/"
+             class="text-xs font-medium hover:underline" style="color:var(--color-primary)">
+            View all <i class="fa-solid fa-arrow-right text-[10px] ml-1"></i>
+          </a>
+        </div>
+        <div id="activity-feed">
+          <!-- Populated by JS -->
+          <div class="text-sm text-center py-6" style="color:var(--color-muted)">
+            <i class="fa-solid fa-circle-notch fa-spin mr-2"></i> Loading activity…
+          </div>
+        </div>
+      </div>
+
+      <!-- Staff overview -->
+      <div class="card p-5">
+        <h3 class="font-semibold text-sm mb-4">Staff Overview</h3>
+        <div class="space-y-3" id="staff-overview">
+          <div class="text-sm text-center py-6" style="color:var(--color-muted)">
+            <i class="fa-solid fa-circle-notch fa-spin mr-2"></i> Loading…
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+</div>
+
+
+<script type="module">
+  import { auth, db }        from "../../assets/js/firebase-config.js";
+  import { renderSidebar }   from "../../assets/js/admin-sidebar.js";
+  import { guardPage }       from "../../assets/js/auth-guard.js";
+  import {
+    collection, query, orderBy, limit,
+    getDocs, getCountFromServer, where,
+    doc, getDoc, serverTimestamp
+  } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-firestore.js";
+  import { signOut } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-auth.js";
+
+  // ── Theme ──────────────────────────────────────────────────────────
+  const htmlEl = document.getElementById("html-root");
+  function applyTheme(dark) {
+    htmlEl.setAttribute("data-theme", dark ? "dark" : "light");
+    const icon = document.getElementById("theme-icon");
+    if (icon) icon.className = dark ? "fa-solid fa-sun text-sm" : "fa-solid fa-moon text-sm";
+    localStorage.setItem("theme", dark ? "dark" : "light");
+  }
+  applyTheme(localStorage.getItem("theme") === "dark");
+
+  // ── Load settings ──────────────────────────────────────────────────
+  async function loadSettings() {
+    try {
+      const snap = await getDoc(doc(db, "settings", "hospital"));
+      if (!snap.exists()) return;
+      const s = snap.data(); const t = s.theme || {};
+      const r = document.documentElement;
+      if (t.primary)     r.style.setProperty("--color-primary",      t.primary);
+      if (t.primaryDark) r.style.setProperty("--color-primary-dark", t.primaryDark);
+      if (t.secondary)   r.style.setProperty("--color-secondary",    t.secondary);
+      if (t.fontFamily)  r.style.setProperty("--font-family",        t.fontFamily);
+
+      const name = s.hospitalName || "MediCore";
+      const sbName = document.getElementById("sb-hospital-name");
+      if (sbName) sbName.textContent = name;
+
+      if (s.logoUrl) {
+        const img  = document.getElementById("sb-logo-img");
+        const icon = document.getElementById("sb-logo-icon");
+        if (img)  { img.src = s.logoUrl; img.classList.remove("hidden"); }
+        if (icon) icon.classList.add("hidden");
+      }
+    } catch(e) { console.error(e); }
+  }
+
+  // ── Load stats ─────────────────────────────────────────────────────
+  async function loadStats() {
+    try {
+      const [pSnap, dSnap, aSnap, tSnap] = await Promise.all([
+        getCountFromServer(query(collection(db, "users"), where("role","==","patient"))),
+        getCountFromServer(query(collection(db, "users"), where("role","==","doctor"))),
+        getCountFromServer(collection(db, "appointments")),
+        getCountFromServer(collection(db, "tests")),
+      ]);
+
+      document.getElementById("stat-patients").textContent     = pSnap.data().count;
+      document.getElementById("stat-doctors").textContent      = dSnap.data().count;
+      document.getElementById("stat-appointments").textContent = aSnap.data().count;
+      document.getElementById("stat-tests").textContent        = tSnap.data().count;
+
+      // Today's appointments
+      const todayStart = new Date(); todayStart.setHours(0,0,0,0);
+      const todaySnap  = await getCountFromServer(
+        query(collection(db,"appointments"), where("createdAt",">=",todayStart))
+      );
+      document.getElementById("appt-today").textContent = `Today: ${todaySnap.data().count}`;
+
+      // Pending tests
+      const pendingSnap = await getCountFromServer(
+        query(collection(db,"tests"), where("doctorVerified","==",false))
+      );
+      document.getElementById("tests-pending-badge").textContent = `Pending: ${pendingSnap.data().count}`;
+
+    } catch(e) { console.error("Stats error:", e); }
+  }
+
+  // ── Load activity feed ─────────────────────────────────────────────
+  async function loadActivity() {
+    try {
+      const q    = query(collection(db,"activityLogs"), orderBy("timestamp","desc"), limit(8));
+      const snap = await getDocs(q);
+      const feed = document.getElementById("activity-feed");
+
+      if (snap.empty) {
+        feed.innerHTML = `<p class="text-sm text-center py-4" style="color:var(--color-muted)">No activity yet.</p>`;
+        return;
+      }
+
+      const colorMap = {
+        LOGIN:            { bg:"var(--color-primary)",  icon:"fa-right-to-bracket" },
+        REGISTER:         { bg:"var(--color-success)",  icon:"fa-user-plus" },
+        PHONE_VERIFIED:   { bg:"var(--color-secondary)",icon:"fa-mobile-screen-button" },
+        BOOK_APPOINTMENT: { bg:"#8b5cf6",               icon:"fa-calendar-plus" },
+        UPLOAD_REPORT:    { bg:"#f59e0b",               icon:"fa-file-arrow-up" },
+        CREATE_STAFF:     { bg:"#ec4899",               icon:"fa-id-badge" },
+        DEFAULT:          { bg:"var(--color-muted)",    icon:"fa-circle-dot" },
+      };
+
+      feed.innerHTML = snap.docs.map(d => {
+        const data = d.data();
+        const c    = colorMap[data.action] || colorMap.DEFAULT;
+        const time = data.timestamp?.toDate
+          ? timeAgo(data.timestamp.toDate()) : "—";
+
+        return `
+          <div class="activity-item">
+            <div class="activity-dot shrink-0" style="background:${c.bg}">
+              <i class="fa-solid ${c.icon}"></i>
+            </div>
+            <div class="flex-1 min-w-0">
+              <div class="text-sm font-medium">${formatAction(data.action)}</div>
+              <div class="text-xs truncate" style="color:var(--color-muted)">${data.uid || "—"}</div>
+            </div>
+            <div class="text-xs shrink-0" style="color:var(--color-muted)">${time}</div>
+          </div>
+        `;
+      }).join('');
+
+    } catch(e) { console.error("Activity error:", e); }
+  }
+
+  // ── Load staff overview ────────────────────────────────────────────
+  async function loadStaffOverview() {
+    try {
+      const roles = [
+        { role:"doctor",  label:"Doctors",       color:"var(--color-secondary)", icon:"fa-user-doctor" },
+        { role:"lab",     label:"Lab Engineers", color:"#8b5cf6",               icon:"fa-microscope" },
+        { role:"admin",   label:"Admins",        color:"#f59e0b",               icon:"fa-user-shield" },
+      ];
+
+      const counts = await Promise.all(
+        roles.map(r => getCountFromServer(query(collection(db,"users"), where("role","==",r.role))))
+      );
+
+      document.getElementById("staff-overview").innerHTML = roles.map((r,i) => `
+        <div class="flex items-center gap-3 p-3 rounded-xl"
+             style="background:color-mix(in srgb,${r.color} 8%,transparent)">
+          <div class="w-9 h-9 rounded-lg flex items-center justify-center text-white shrink-0"
+               style="background:${r.color}">
+            <i class="fa-solid ${r.icon} text-sm"></i>
+          </div>
+          <div class="flex-1">
+            <div class="text-sm font-medium">${r.label}</div>
+          </div>
+          <div class="text-xl font-bold" style="color:${r.color}">${counts[i].data().count}</div>
+        </div>
+      `).join('');
+
+    } catch(e) { console.error("Staff overview error:", e); }
+  }
+
+  // ── Bar chart (last 7 days) ────────────────────────────────────────
+  async function loadChart() {
+    try {
+      const days   = [];
+      const labels = [];
+      const counts = [];
+
+      for (let i = 6; i >= 0; i--) {
+        const d = new Date();
+        d.setDate(d.getDate() - i);
+        d.setHours(0,0,0,0);
+        const end = new Date(d); end.setHours(23,59,59,999);
+        days.push({ start: d, end });
+        labels.push(d.toLocaleDateString("en", { weekday: "short" }));
+      }
+
+      const results = await Promise.all(
+        days.map(({ start, end }) =>
+          getCountFromServer(
+            query(collection(db,"appointments"),
+              where("createdAt",">=",start),
+              where("createdAt","<=",end)
+            )
+          )
+        )
+      );
+
+      results.forEach(s => counts.push(s.data().count));
+      const maxVal = Math.max(...counts, 1);
+
+      const chart  = document.getElementById("bar-chart");
+      const lblEl  = document.getElementById("bar-labels");
+
+      chart.innerHTML = counts.map((c,i) => `
+        <div class="flex-1 flex flex-col items-center">
+          <div class="bar w-full" style="height:${Math.round((c/maxVal)*80)}px" title="${c} appointments"></div>
+        </div>
+      `).join('');
+
+      lblEl.innerHTML = labels.map(l => `
+        <div class="bar-label flex-1 text-center">${l}</div>
+      `).join('');
+
+    } catch(e) { console.error("Chart error:", e); }
+  }
+
+  // ── Helpers ────────────────────────────────────────────────────────
+  function timeAgo(date) {
+    const diff = Math.floor((Date.now() - date) / 1000);
+    if (diff < 60)   return `${diff}s ago`;
+    if (diff < 3600) return `${Math.floor(diff/60)}m ago`;
+    if (diff < 86400)return `${Math.floor(diff/3600)}h ago`;
+    return `${Math.floor(diff/86400)}d ago`;
+  }
+
+  function formatAction(action) {
+    const map = {
+      LOGIN:            "User logged in",
+      REGISTER:         "New patient registered",
+      PHONE_VERIFIED:   "Phone number verified",
+      BOOK_APPOINTMENT: "Appointment booked",
+      UPLOAD_REPORT:    "Lab report uploaded",
+      CREATE_STAFF:     "Staff account created",
+    };
+    return map[action] || action;
+  }
+
+  // ── Logout ─────────────────────────────────────────────────────────
+  window.adminLogout = async function () {
+    await signOut(auth);
+    window.location.href = "/auth/staff-login/";
+  };
+
+  // ── Toast ──────────────────────────────────────────────────────────
+  window.showToast = function(msg, type="info") {
+    const toast = document.getElementById("toast");
+    const icons = { success:"fa-solid fa-circle-check", error:"fa-solid fa-circle-exclamation", info:"fa-solid fa-circle-info" };
+    document.getElementById("toast-msg").textContent = msg;
+    document.getElementById("toast-icon").className  = icons[type];
+    toast.className = `show ${type}`;
+    clearTimeout(window._tt);
+    window._tt = setTimeout(() => { toast.className = type; }, 3500);
+  };
+
+  // ── Init ───────────────────────────────────────────────────────────
+  guardPage(["admin"], async (user, userData) => {
+
+    // Render sidebar
+    renderSidebar("dashboard");
+
+    // Apply theme toggle listener (after sidebar renders)
+    document.getElementById("theme-toggle").addEventListener("click", () => {
+      applyTheme(htmlEl.getAttribute("data-theme") !== "dark");
+    });
+
+    // Fill admin info in sidebar
+    const adminName  = document.getElementById("sb-admin-name");
+    const adminEmail = document.getElementById("sb-admin-email");
+    if (adminName)  adminName.textContent  = userData.name  || "Admin";
+    if (adminEmail) adminEmail.textContent = userData.email || user.email || "—";
+
+    // Topbar
+    const topSub = document.getElementById("topbar-sub");
+    if (topSub) topSub.textContent = `Welcome back, ${userData.name || "Admin"}`;
+
+    await loadSettings();
+
+    // Load all data in parallel
+    await Promise.all([
+      loadStats(),
+      loadActivity(),
+      loadStaffOverview(),
+      loadChart(),
+    ]);
+
+    // Hide loader
+    const loader = document.getElementById("page-loader");
+    loader.classList.add("hidden");
+    setTimeout(() => loader.remove(), 500);
+  });
+</script>
+
+</body>
+</html>
+

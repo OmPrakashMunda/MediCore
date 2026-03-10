@@ -1,0 +1,736 @@
+<!DOCTYPE html>
+<html lang="en" id="html-root">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Manage Staff — Admin</title>
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+
+  <style>
+    :root {
+      --color-primary:      #2563eb;
+      --color-primary-dark: #1d4ed8;
+      --color-secondary:    #0ea5e9;
+      --color-bg:           #f8fafc;
+      --color-surface:      #ffffff;
+      --color-text:         #0f172a;
+      --color-muted:        #64748b;
+      --color-border:       #e2e8f0;
+      --color-success:      #10b981;
+      --color-error:        #ef4444;
+      --font-family:        'Inter', sans-serif;
+    }
+    [data-theme="dark"] {
+      --color-bg:      #0f172a;
+      --color-surface: #1e293b;
+      --color-text:    #f1f5f9;
+      --color-muted:   #94a3b8;
+      --color-border:  #334155;
+    }
+    * { font-family:var(--font-family); box-sizing:border-box; margin:0; padding:0; }
+    body { background:var(--color-bg); color:var(--color-text); transition:background 0.3s,color 0.3s; }
+
+    .main-content { margin-left:0; padding-top:64px; transition:margin 0.3s; }
+    @media(min-width:1024px) { .main-content { margin-left:240px; } }
+
+    #page-loader {
+      position:fixed; inset:0; z-index:9999;
+      background:var(--color-bg);
+      display:flex; align-items:center; justify-content:center;
+      transition:opacity 0.4s;
+    }
+    #page-loader.hidden { opacity:0; pointer-events:none; }
+    .spinner {
+      width:36px; height:36px;
+      border:3px solid var(--color-border);
+      border-top-color:var(--color-primary);
+      border-radius:50%;
+      animation:spin 0.75s linear infinite;
+    }
+    @keyframes spin { to { transform:rotate(360deg); } }
+
+    .card { background:var(--color-surface); border:1px solid var(--color-border); border-radius:1rem; }
+
+    /* Input */
+    .input-field {
+      width:100%; padding:11px 14px;
+      background:var(--color-bg);
+      border:1.5px solid var(--color-border);
+      border-radius:10px;
+      color:var(--color-text); font-size:0.875rem;
+      outline:none;
+      transition:border-color 0.2s, box-shadow 0.2s;
+    }
+    .input-field:focus {
+      border-color:var(--color-primary);
+      box-shadow:0 0 0 3px color-mix(in srgb,var(--color-primary) 15%,transparent);
+    }
+    .input-field::placeholder { color:var(--color-muted); }
+
+    /* Select */
+    select.input-field { cursor:pointer; appearance:none; }
+
+    /* Label */
+    .field-label { display:block; font-size:0.8rem; font-weight:500; margin-bottom:6px; }
+
+    /* Primary button */
+    .btn-primary {
+      padding:11px 20px;
+      background:var(--color-primary); color:#fff;
+      font-size:0.875rem; font-weight:600;
+      border:none; border-radius:10px; cursor:pointer;
+      display:inline-flex; align-items:center; gap:8px;
+      transition:background 0.2s, transform 0.15s, box-shadow 0.2s;
+    }
+    .btn-primary:hover { background:var(--color-primary-dark); transform:translateY(-1px); }
+    .btn-primary:disabled { opacity:0.55; cursor:not-allowed; transform:none; }
+
+    /* Danger button */
+    .btn-danger {
+      padding:7px 14px;
+      background:transparent; color:var(--color-error);
+      font-size:0.8rem; font-weight:500;
+      border:1.5px solid var(--color-error);
+      border-radius:8px; cursor:pointer;
+      display:inline-flex; align-items:center; gap:6px;
+      transition:background 0.2s, color 0.2s;
+    }
+    .btn-danger:hover { background:var(--color-error); color:#fff; }
+
+    /* Role badge */
+    .role-badge {
+      display:inline-flex; align-items:center; gap:5px;
+      padding:3px 10px; border-radius:99px;
+      font-size:0.72rem; font-weight:600;
+    }
+
+    /* Staff table row */
+    .staff-row {
+      display:grid;
+      grid-template-columns: 2fr 2fr 1fr 1fr auto;
+      align-items:center; gap:12px;
+      padding:12px 16px;
+      border-bottom:1px solid var(--color-border);
+      transition:background 0.15s;
+    }
+    .staff-row:hover { background:color-mix(in srgb,var(--color-primary) 3%,transparent); }
+    .staff-row:last-child { border-bottom:none; }
+
+    /* Modal */
+    #modal-overlay {
+      position:fixed; inset:0; z-index:100;
+      background:rgba(0,0,0,0.45); backdrop-filter:blur(4px);
+      display:flex; align-items:center; justify-content:center;
+      padding:16px; opacity:0; pointer-events:none;
+      transition:opacity 0.25s;
+    }
+    #modal-overlay.show { opacity:1; pointer-events:all; }
+    #modal-box {
+      background:var(--color-surface); border:1px solid var(--color-border);
+      border-radius:1.25rem; padding:1.75rem;
+      width:100%; max-width:480px;
+      transform:translateY(20px); transition:transform 0.25s;
+    }
+    #modal-overlay.show #modal-box { transform:translateY(0); }
+
+    /* Password strength */
+    .strength-bar { height:4px; border-radius:2px; transition:width 0.3s, background 0.3s; }
+
+    /* Toast */
+    #toast {
+      position:fixed; bottom:28px; left:50%;
+      transform:translateX(-50%) translateY(70px);
+      padding:11px 20px; border-radius:12px;
+      font-size:0.85rem; font-weight:500;
+      display:flex; align-items:center; gap:10px;
+      z-index:9999; opacity:0; white-space:nowrap;
+      transition:transform 0.35s cubic-bezier(0.34,1.56,0.64,1), opacity 0.3s;
+      box-shadow:0 8px 24px rgba(0,0,0,0.15);
+    }
+    #toast.show    { transform:translateX(-50%) translateY(0); opacity:1; }
+    #toast.success { background:var(--color-success); color:#fff; }
+    #toast.error   { background:var(--color-error);   color:#fff; }
+    #toast.info    { background:var(--color-primary);  color:#fff; }
+
+    .fade-up    { animation:fadeUp 0.5s ease forwards; opacity:0; }
+    .fade-up.d1 { animation-delay:0.1s; }
+    .fade-up.d2 { animation-delay:0.2s; }
+    @keyframes fadeUp { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:none} }
+  </style>
+</head>
+<body>
+
+<div id="page-loader"><div class="spinner"></div></div>
+<div id="toast"><i id="toast-icon" class="fa-solid fa-circle-check"></i><span id="toast-msg"></span></div>
+
+<!-- ── Create Staff Modal ── -->
+<div id="modal-overlay">
+  <div id="modal-box">
+    <div class="flex items-center justify-between mb-6">
+      <div>
+        <h2 class="font-bold text-base">Create Staff Account</h2>
+        <p class="text-xs mt-0.5" style="color:var(--color-muted)">Account credentials will be set here</p>
+      </div>
+      <button onclick="closeModal()"
+              class="w-8 h-8 rounded-lg flex items-center justify-center text-muted hover:text-primary transition-colors"
+              style="border:1px solid var(--color-border)">
+        <i class="fa-solid fa-xmark text-sm"></i>
+      </button>
+    </div>
+
+    <div class="space-y-4">
+
+      <!-- Role select -->
+      <div>
+        <label class="field-label">Role <span class="text-red-500">*</span></label>
+        <div class="relative">
+          <select id="new-role" class="input-field pr-10" onchange="onRoleChange()">
+            <option value="">Select role…</option>
+            <option value="doctor">Doctor</option>
+            <option value="lab">Lab Engineer</option>
+            <option value="admin">Admin</option>
+          </select>
+          <i class="fa-solid fa-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-xs"
+             style="color:var(--color-muted); pointer-events:none"></i>
+        </div>
+      </div>
+
+      <!-- Full name -->
+      <div>
+        <label class="field-label">Full Name <span class="text-red-500">*</span></label>
+        <input id="new-name" type="text" class="input-field" placeholder="Dr. John Smith" />
+      </div>
+
+      <!-- Email -->
+      <div>
+        <label class="field-label">Email <span class="text-red-500">*</span></label>
+        <input id="new-email" type="email" class="input-field" placeholder="staff@hospital.com" />
+      </div>
+
+      <!-- Doctor-specific fields -->
+      <div id="doctor-fields" class="hidden space-y-4">
+        <div>
+          <label class="field-label">Specialization</label>
+          <input id="new-specialization" type="text" class="input-field" placeholder="e.g. Cardiologist" />
+        </div>
+        <div>
+          <label class="field-label">Department</label>
+          <input id="new-department" type="text" class="input-field" placeholder="e.g. Cardiology" />
+        </div>
+      </div>
+
+      <!-- Lab-specific fields -->
+      <div id="lab-fields" class="hidden space-y-4">
+        <div>
+          <label class="field-label">Department</label>
+          <input id="new-lab-department" type="text" class="input-field" placeholder="e.g. Radiology" />
+        </div>
+      </div>
+
+      <!-- Password -->
+      <div>
+        <label class="field-label">Temporary Password <span class="text-red-500">*</span></label>
+        <div class="relative">
+          <input id="new-password" type="password" class="input-field pr-10"
+                 placeholder="Min. 8 characters" oninput="checkStrength(this.value)" />
+          <button type="button" onclick="togglePassword('new-password', 'pwd-eye')"
+                  class="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-primary transition-colors">
+            <i id="pwd-eye" class="fa-solid fa-eye text-sm"></i>
+          </button>
+        </div>
+        <!-- Strength bar -->
+        <div class="mt-2 h-1 rounded-full overflow-hidden" style="background:var(--color-border)">
+          <div id="strength-bar" class="strength-bar" style="width:0%;background:var(--color-error)"></div>
+        </div>
+        <p id="strength-label" class="text-xs mt-1" style="color:var(--color-muted)"></p>
+      </div>
+
+      <!-- Confirm password -->
+      <div>
+        <label class="field-label">Confirm Password <span class="text-red-500">*</span></label>
+        <div class="relative">
+          <input id="new-password-confirm" type="password" class="input-field pr-10"
+                 placeholder="Repeat password" />
+          <button type="button" onclick="togglePassword('new-password-confirm','cpwd-eye')"
+                  class="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-primary transition-colors">
+            <i id="cpwd-eye" class="fa-solid fa-eye text-sm"></i>
+          </button>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Actions -->
+    <div class="flex gap-3 mt-6">
+      <button onclick="closeModal()"
+              class="flex-1 py-2.5 rounded-xl text-sm font-medium transition-colors"
+              style="border:1.5px solid var(--color-border);color:var(--color-muted)"
+              onmouseover="this.style.borderColor='var(--color-primary)';this.style.color='var(--color-primary)'"
+              onmouseout="this.style.borderColor='var(--color-border)';this.style.color='var(--color-muted)'">
+        Cancel
+      </button>
+      <button id="create-btn" class="btn-primary flex-1 justify-center" onclick="createStaff()">
+        <i class="fa-solid fa-user-plus"></i>
+        <span id="create-btn-text">Create Account</span>
+        <i id="create-spinner" class="fa-solid fa-circle-notch fa-spin hidden"></i>
+      </button>
+    </div>
+  </div>
+</div>
+
+
+<!-- Main -->
+<div class="main-content min-h-screen">
+  <div class="p-6 max-w-7xl mx-auto">
+
+    <!-- Header -->
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 fade-up">
+      <div>
+        <h2 class="text-lg font-bold">Staff Accounts</h2>
+        <p class="text-sm mt-0.5" style="color:var(--color-muted)">Manage doctors, lab engineers, and admins</p>
+      </div>
+      <button class="btn-primary" onclick="openModal()">
+        <i class="fa-solid fa-user-plus"></i> Create Staff Account
+      </button>
+    </div>
+
+    <!-- Filter tabs -->
+    <div class="flex gap-2 mb-5 flex-wrap fade-up d1">
+      <button class="filter-tab active-tab px-4 py-2 rounded-xl text-sm font-medium transition-colors"
+              onclick="filterStaff('all', this)">
+        <i class="fa-solid fa-users mr-1.5"></i> All
+      </button>
+      <button class="filter-tab px-4 py-2 rounded-xl text-sm font-medium transition-colors"
+              onclick="filterStaff('doctor', this)">
+        <i class="fa-solid fa-user-doctor mr-1.5"></i> Doctors
+      </button>
+      <button class="filter-tab px-4 py-2 rounded-xl text-sm font-medium transition-colors"
+              onclick="filterStaff('lab', this)">
+        <i class="fa-solid fa-microscope mr-1.5"></i> Lab Engineers
+      </button>
+      <button class="filter-tab px-4 py-2 rounded-xl text-sm font-medium transition-colors"
+              onclick="filterStaff('admin', this)">
+        <i class="fa-solid fa-user-shield mr-1.5"></i> Admins
+      </button>
+    </div>
+
+    <!-- Search -->
+    <div class="relative mb-5 fade-up d1">
+      <i class="fa-solid fa-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-sm"
+         style="color:var(--color-muted)"></i>
+      <input id="search-input" type="text" placeholder="Search by name or email…"
+             class="input-field pl-10" oninput="searchStaff(this.value)" />
+    </div>
+
+    <!-- Staff table -->
+    <div class="card fade-up d2">
+
+      <!-- Table header -->
+      <div class="staff-row" style="border-bottom:2px solid var(--color-border)">
+        <div class="text-xs font-semibold" style="color:var(--color-muted)">NAME</div>
+        <div class="text-xs font-semibold" style="color:var(--color-muted)">EMAIL</div>
+        <div class="text-xs font-semibold" style="color:var(--color-muted)">ROLE</div>
+        <div class="text-xs font-semibold" style="color:var(--color-muted)">STATUS</div>
+        <div class="text-xs font-semibold" style="color:var(--color-muted)">ACTIONS</div>
+      </div>
+
+      <!-- Rows populated by JS -->
+      <div id="staff-list">
+        <div class="p-8 text-center text-sm" style="color:var(--color-muted)">
+          <i class="fa-solid fa-circle-notch fa-spin mr-2"></i> Loading staff…
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+
+<script type="module">
+  import { auth, db }      from "../../assets/js/firebase-config.js";
+  import { renderSidebar } from "../../assets/js/admin-sidebar.js";
+  import { guardPage }     from "../../assets/js/auth-guard.js";
+  import { logActivity }   from "../../assets/js/activity-logger.js";
+  import {
+    collection, query, where, getDocs,
+    doc, getDoc, setDoc, updateDoc, deleteDoc,
+    serverTimestamp, orderBy
+  } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-firestore.js";
+  import {
+    signOut,
+    createUserWithEmailAndPassword,
+    getAuth
+  } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-auth.js";
+
+  let allStaff        = [];
+  let activeFilter    = "all";
+  let activeSearch    = "";
+
+  // ── Theme ──────────────────────────────────────────────────────────
+  const htmlEl = document.getElementById("html-root");
+  function applyTheme(dark) {
+    htmlEl.setAttribute("data-theme", dark ? "dark" : "light");
+    const icon = document.getElementById("theme-icon");
+    if (icon) icon.className = dark ? "fa-solid fa-sun text-sm" : "fa-solid fa-moon text-sm";
+    localStorage.setItem("theme", dark ? "dark" : "light");
+  }
+  applyTheme(localStorage.getItem("theme") === "dark");
+
+  // ── Load settings ──────────────────────────────────────────────────
+  async function loadSettings() {
+    try {
+      const snap = await getDoc(doc(db, "settings", "hospital"));
+      if (!snap.exists()) return;
+      const s = snap.data(); const t = s.theme || {};
+      const r = document.documentElement;
+      if (t.primary)    r.style.setProperty("--color-primary",      t.primary);
+      if (t.primaryDark)r.style.setProperty("--color-primary-dark", t.primaryDark);
+      if (t.secondary)  r.style.setProperty("--color-secondary",    t.secondary);
+      if (t.fontFamily) r.style.setProperty("--font-family",        t.fontFamily);
+      const sbName = document.getElementById("sb-hospital-name");
+      if (sbName) sbName.textContent = s.hospitalName || "MediCore";
+      if (s.logoUrl) {
+        const img  = document.getElementById("sb-logo-img");
+        const icon = document.getElementById("sb-logo-icon");
+        if (img)  { img.src = s.logoUrl; img.classList.remove("hidden"); }
+        if (icon) icon.classList.add("hidden");
+      }
+    } catch(e) { console.error(e); }
+  }
+
+  // ── Load staff list ────────────────────────────────────────────────
+  async function loadStaff() {
+    try {
+      const q    = query(
+        collection(db, "users"),
+        where("role", "in", ["doctor","lab","admin"]),
+        orderBy("createdAt", "desc")
+      );
+      const snap = await getDocs(q);
+      allStaff   = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      renderStaff();
+    } catch(e) {
+      console.error(e);
+      document.getElementById("staff-list").innerHTML =
+        `<div class="p-6 text-center text-sm" style="color:var(--color-error)">
+          <i class="fa-solid fa-circle-exclamation mr-2"></i> Failed to load staff.
+        </div>`;
+    }
+  }
+
+  // ── Render staff rows ──────────────────────────────────────────────
+  function renderStaff() {
+    let list = allStaff;
+
+    if (activeFilter !== "all") {
+      list = list.filter(s => s.role === activeFilter);
+    }
+    if (activeSearch) {
+      const q = activeSearch.toLowerCase();
+      list = list.filter(s =>
+        (s.name  || "").toLowerCase().includes(q) ||
+        (s.email || "").toLowerCase().includes(q)
+      );
+    }
+
+    if (list.length === 0) {
+      document.getElementById("staff-list").innerHTML =
+        `<div class="p-8 text-center text-sm" style="color:var(--color-muted)">
+          <i class="fa-solid fa-user-slash mr-2"></i> No staff found.
+        </div>`;
+      return;
+    }
+
+    const roleConfig = {
+      doctor: { bg:"color-mix(in srgb,var(--color-secondary) 12%,transparent)", color:"var(--color-secondary)", icon:"fa-user-doctor",  label:"Doctor"       },
+      lab:    { bg:"color-mix(in srgb,#8b5cf6 12%,transparent)",                color:"#8b5cf6",               icon:"fa-microscope",   label:"Lab Engineer" },
+      admin:  { bg:"color-mix(in srgb,#f59e0b 12%,transparent)",                color:"#f59e0b",               icon:"fa-user-shield",  label:"Admin"        },
+    };
+
+    document.getElementById("staff-list").innerHTML = list.map(s => {
+      const rc = roleConfig[s.role] || roleConfig.admin;
+      return `
+        <div class="staff-row">
+          <!-- Name -->
+          <div class="flex items-center gap-3 min-w-0">
+            <div class="w-9 h-9 rounded-xl flex items-center justify-center text-white text-xs shrink-0"
+                 style="background:${rc.color}">
+              <i class="fa-solid ${rc.icon}"></i>
+            </div>
+            <div class="min-w-0">
+              <div class="text-sm font-semibold truncate">${s.name || "—"}</div>
+              <div class="text-xs truncate" style="color:var(--color-muted)">${s.department || s.specialization || ""}</div>
+            </div>
+          </div>
+
+          <!-- Email -->
+          <div class="text-sm truncate" style="color:var(--color-muted)">${s.email || "—"}</div>
+
+          <!-- Role badge -->
+          <div>
+            <span class="role-badge" style="background:${rc.bg};color:${rc.color}">
+              <i class="fa-solid ${rc.icon} text-[10px]"></i> ${rc.label}
+            </span>
+          </div>
+
+          <!-- Status -->
+          <div>
+            <span class="role-badge ${s.isActive !== false ? '' : ''}"
+                  style="background:${s.isActive !== false ? 'color-mix(in srgb,#10b981 12%,transparent)' : 'color-mix(in srgb,#ef4444 12%,transparent)'};
+                         color:${s.isActive !== false ? '#10b981' : '#ef4444'}">
+              <i class="fa-solid ${s.isActive !== false ? 'fa-circle-check' : 'fa-circle-xmark'} text-[10px]"></i>
+              ${s.isActive !== false ? "Active" : "Disabled"}
+            </span>
+          </div>
+
+          <!-- Actions -->
+          <div class="flex items-center gap-2">
+            <button onclick="toggleStaffStatus('${s.id}', ${s.isActive !== false})"
+                    class="w-8 h-8 rounded-lg border flex items-center justify-center transition-colors hover:text-yellow-500"
+                    style="border-color:var(--color-border);color:var(--color-muted)"
+                    title="${s.isActive !== false ? 'Disable' : 'Enable'} account">
+              <i class="fa-solid ${s.isActive !== false ? 'fa-ban' : 'fa-circle-check'} text-xs"></i>
+            </button>
+            <button onclick="deleteStaff('${s.id}', '${s.name || ''}')"
+                    class="w-8 h-8 rounded-lg border flex items-center justify-center transition-colors hover:text-red-500"
+                    style="border-color:var(--color-border);color:var(--color-muted)"
+                    title="Delete account">
+              <i class="fa-solid fa-trash text-xs"></i>
+            </button>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  // ── Filter & search ────────────────────────────────────────────────
+  window.filterStaff = function(role, btn) {
+    activeFilter = role;
+    document.querySelectorAll(".filter-tab").forEach(t => t.classList.remove("active-tab"));
+    btn.classList.add("active-tab");
+    renderStaff();
+  };
+
+  window.searchStaff = function(val) {
+    activeSearch = val;
+    renderStaff();
+  };
+
+  // ── Modal ──────────────────────────────────────────────────────────
+  window.openModal  = () => document.getElementById("modal-overlay").classList.add("show");
+  window.closeModal = () => {
+    document.getElementById("modal-overlay").classList.remove("show");
+    resetForm();
+  };
+
+  window.onRoleChange = function () {
+    const role = document.getElementById("new-role").value;
+    document.getElementById("doctor-fields").classList.toggle("hidden", role !== "doctor");
+    document.getElementById("lab-fields").classList.toggle("hidden",    role !== "lab");
+  };
+
+  function resetForm() {
+    ["new-role","new-name","new-email","new-specialization",
+     "new-department","new-lab-department","new-password","new-password-confirm"]
+      .forEach(id => { const el = document.getElementById(id); if(el) el.value = ""; });
+    document.getElementById("doctor-fields").classList.add("hidden");
+    document.getElementById("lab-fields").classList.add("hidden");
+    document.getElementById("strength-bar").style.width = "0%";
+    document.getElementById("strength-label").textContent = "";
+  }
+
+  // ── Password helpers ───────────────────────────────────────────────
+  window.togglePassword = function(inputId, iconId) {
+    const input = document.getElementById(inputId);
+    const icon  = document.getElementById(iconId);
+    const isHidden = input.type === "password";
+    input.type  = isHidden ? "text" : "password";
+    icon.className = isHidden ? "fa-solid fa-eye-slash text-sm" : "fa-solid fa-eye text-sm";
+  };
+
+  window.checkStrength = function(val) {
+    const bar   = document.getElementById("strength-bar");
+    const label = document.getElementById("strength-label");
+    let score   = 0;
+    if (val.length >= 8)          score++;
+    if (/[A-Z]/.test(val))        score++;
+    if (/[0-9]/.test(val))        score++;
+    if (/[^A-Za-z0-9]/.test(val)) score++;
+
+    const levels = [
+      { w:"20%",  bg:"#ef4444", text:"Weak" },
+      { w:"50%",  bg:"#f59e0b", text:"Fair" },
+      { w:"75%",  bg:"#3b82f6", text:"Good" },
+      { w:"100%", bg:"#10b981", text:"Strong" },
+    ];
+    const l = levels[score - 1] || levels[0];
+    bar.style.width      = val ? l.w   : "0%";
+    bar.style.background = val ? l.bg  : "";
+    label.textContent    = val ? l.text : "";
+    label.style.color    = val ? l.bg  : "";
+  };
+
+  // ── Create staff ───────────────────────────────────────────────────
+  window.createStaff = async function () {
+    const role     = document.getElementById("new-role").value.trim();
+    const name     = document.getElementById("new-name").value.trim();
+    const email    = document.getElementById("new-email").value.trim();
+    const password = document.getElementById("new-password").value;
+    const confirm  = document.getElementById("new-password-confirm").value;
+
+    if (!role || !name || !email || !password) {
+      showToast("Please fill all required fields.", "error"); return;
+    }
+    if (password !== confirm) {
+      showToast("Passwords do not match.", "error"); return;
+    }
+    if (password.length < 8) {
+      showToast("Password must be at least 8 characters.", "error"); return;
+    }
+
+    const btn = document.getElementById("create-btn");
+    const txt = document.getElementById("create-btn-text");
+    const spn = document.getElementById("create-spinner");
+    btn.disabled = true; txt.textContent = "Creating…"; spn.classList.remove("hidden");
+
+    try {
+      // Create Firebase Auth user
+      // Note: Use Firebase Admin SDK (Cloud Function) in production
+      // For now using client SDK — admin stays signed in after this
+      const adminAuth = getAuth();
+      const cred = await createUserWithEmailAndPassword(adminAuth, email, password);
+      const uid  = cred.user.uid;
+
+      // Base user doc
+      const userData = {
+        role, name, email,
+        isActive:  true,
+        createdAt: serverTimestamp(),
+        createdBy: auth.currentUser.uid,
+      };
+
+      // Role-specific extras
+      if (role === "doctor") {
+        userData.specialization = document.getElementById("new-specialization").value.trim();
+        userData.department     = document.getElementById("new-department").value.trim();
+      }
+      if (role === "lab") {
+        userData.department = document.getElementById("new-lab-department").value.trim();
+      }
+
+      await setDoc(doc(db, "users", uid), userData);
+
+      // Doctor profile doc
+      if (role === "doctor") {
+        await setDoc(doc(db, "doctors", uid), {
+          specialization: userData.specialization,
+          department:     userData.department,
+          availability:   [],
+          isActive:       true,
+          createdAt:      serverTimestamp(),
+        });
+      }
+
+      await logActivity("CREATE_STAFF", { role, name, email });
+
+      showToast(`${name}'s account created successfully.`, "success");
+      closeModal();
+      await loadStaff();
+
+    } catch(err) {
+      console.error(err);
+      const messages = {
+        "auth/email-already-in-use": "This email is already registered.",
+        "auth/invalid-email":        "Invalid email address.",
+        "auth/weak-password":        "Password is too weak.",
+      };
+      showToast(messages[err.code] || "Failed to create account.", "error");
+    } finally {
+      btn.disabled = false; txt.textContent = "Create Account"; spn.classList.add("hidden");
+    }
+  };
+
+  // ── Toggle active status ───────────────────────────────────────────
+  window.toggleStaffStatus = async function (uid, currentlyActive) {
+    try {
+      await updateDoc(doc(db, "users", uid), { isActive: !currentlyActive });
+      showToast(`Account ${currentlyActive ? "disabled" : "enabled"}.`, "success");
+      await loadStaff();
+    } catch(e) {
+      showToast("Failed to update status.", "error");
+    }
+  };
+
+  // ── Delete staff ───────────────────────────────────────────────────
+  window.deleteStaff = async function (uid, name) {
+    if (!confirm(`Delete account for "${name}"? This cannot be undone.`)) return;
+    try {
+      await deleteDoc(doc(db, "users", uid));
+      showToast(`${name}'s account deleted.`, "success");
+      await loadStaff();
+    } catch(e) {
+      showToast("Failed to delete account.", "error");
+    }
+  };
+
+  // ── Toast ──────────────────────────────────────────────────────────
+  window.showToast = function(msg, type="info") {
+    const toast = document.getElementById("toast");
+    const icons = { success:"fa-solid fa-circle-check", error:"fa-solid fa-circle-exclamation", info:"fa-solid fa-circle-info" };
+    document.getElementById("toast-msg").textContent = msg;
+    document.getElementById("toast-icon").className  = icons[type];
+    toast.className = `show ${type}`;
+    clearTimeout(window._tt);
+    window._tt = setTimeout(() => { toast.className = type; }, 3500);
+  };
+
+  // ── Filter tab style injection ─────────────────────────────────────
+  const tabStyle = document.createElement("style");
+  tabStyle.textContent = `
+    .filter-tab {
+      background: var(--color-surface);
+      border: 1.5px solid var(--color-border);
+      color: var(--color-muted);
+    }
+    .filter-tab:hover { border-color: var(--color-primary); color: var(--color-primary); }
+    .active-tab {
+      background: color-mix(in srgb, var(--color-primary) 10%, transparent) !important;
+      border-color: var(--color-primary) !important;
+      color: var(--color-primary) !important;
+    }
+  `;
+  document.head.appendChild(tabStyle);
+
+  // ── Logout ─────────────────────────────────────────────────────────
+  window.adminLogout = async function () {
+    await signOut(auth);
+    window.location.href = "/auth/staff-login/";
+  };
+
+  // ── Init ───────────────────────────────────────────────────────────
+  guardPage(["admin"], async (user, userData) => {
+    renderSidebar("staff");
+
+    document.getElementById("theme-toggle").addEventListener("click", () => {
+      applyTheme(htmlEl.getAttribute("data-theme") !== "dark");
+    });
+
+    const sbName  = document.getElementById("sb-admin-name");
+    const sbEmail = document.getElementById("sb-admin-email");
+    if (sbName)  sbName.textContent  = userData.name  || "Admin";
+    if (sbEmail) sbEmail.textContent = userData.email || user.email || "—";
+
+    await loadSettings();
+    await loadStaff();
+
+    const loader = document.getElementById("page-loader");
+    loader.classList.add("hidden");
+    setTimeout(() => loader.remove(), 500);
+  });
+</script>
+
+</body>
+</html>

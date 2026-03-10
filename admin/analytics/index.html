@@ -1,0 +1,888 @@
+<!DOCTYPE html>
+<html lang="en" id="html-root">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Analytics — Admin</title>
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+
+  <style>
+    :root {
+      --color-primary:      #2563eb;
+      --color-primary-dark: #1d4ed8;
+      --color-secondary:    #0ea5e9;
+      --color-bg:           #f8fafc;
+      --color-surface:      #ffffff;
+      --color-text:         #0f172a;
+      --color-muted:        #64748b;
+      --color-border:       #e2e8f0;
+      --color-success:      #10b981;
+      --color-warning:      #f59e0b;
+      --color-error:        #ef4444;
+      --font-family:        'Inter', sans-serif;
+    }
+    [data-theme="dark"] {
+      --color-bg:      #0f172a;
+      --color-surface: #1e293b;
+      --color-text:    #f1f5f9;
+      --color-muted:   #94a3b8;
+      --color-border:  #334155;
+    }
+    * { font-family:var(--font-family); box-sizing:border-box; margin:0; padding:0; }
+    body { background:var(--color-bg); color:var(--color-text); transition:background 0.3s,color 0.3s; }
+
+    .main-content { margin-left:0; padding-top:64px; transition:margin 0.3s; }
+    @media(min-width:1024px) { .main-content { margin-left:240px; } }
+
+    /* Loader */
+    #page-loader {
+      position:fixed; inset:0; z-index:9999;
+      background:var(--color-bg);
+      display:flex; align-items:center; justify-content:center;
+      transition:opacity 0.4s;
+    }
+    #page-loader.hidden { opacity:0; pointer-events:none; }
+    .spinner {
+      width:36px; height:36px;
+      border:3px solid var(--color-border);
+      border-top-color:var(--color-primary);
+      border-radius:50%; animation:spin 0.75s linear infinite;
+    }
+    @keyframes spin { to { transform:rotate(360deg); } }
+
+    .card { background:var(--color-surface); border:1px solid var(--color-border); border-radius:1rem; }
+
+    /* Stat card */
+    .stat-card {
+      background:var(--color-surface);
+      border:1px solid var(--color-border);
+      border-radius:1rem; padding:1.25rem;
+      transition:transform 0.2s, box-shadow 0.2s;
+    }
+    .stat-card:hover { transform:translateY(-3px); box-shadow:0 10px 28px rgba(0,0,0,0.07); }
+
+    /* Input */
+    .input-field {
+      padding:9px 14px;
+      background:var(--color-bg);
+      border:1.5px solid var(--color-border);
+      border-radius:10px; color:var(--color-text);
+      font-size:0.8rem; outline:none;
+      transition:border-color 0.2s, box-shadow 0.2s;
+    }
+    .input-field:focus {
+      border-color:var(--color-primary);
+      box-shadow:0 0 0 3px color-mix(in srgb,var(--color-primary) 15%,transparent);
+    }
+    .input-field::placeholder { color:var(--color-muted); }
+    select.input-field { cursor:pointer; appearance:none; }
+
+    /* Filter tab */
+    .filter-tab {
+      padding:7px 16px; border-radius:10px;
+      font-size:0.8rem; font-weight:500; cursor:pointer;
+      border:1.5px solid var(--color-border);
+      background:var(--color-surface); color:var(--color-muted);
+      transition:all 0.15s; white-space:nowrap;
+    }
+    .filter-tab:hover { border-color:var(--color-primary); color:var(--color-primary); }
+    .filter-tab.active {
+      background:color-mix(in srgb,var(--color-primary) 10%,transparent);
+      border-color:var(--color-primary); color:var(--color-primary);
+    }
+
+    /* Log table */
+    .log-row {
+      display:grid;
+      grid-template-columns: 1fr 1.5fr 1.2fr 1fr auto;
+      align-items:center; gap:12px;
+      padding:11px 16px;
+      border-bottom:1px solid var(--color-border);
+      font-size:0.82rem;
+      transition:background 0.15s;
+    }
+    .log-row:hover { background:color-mix(in srgb,var(--color-primary) 3%,transparent); }
+    .log-row:last-child { border-bottom:none; }
+    .log-header {
+      font-size:0.72rem; font-weight:700;
+      color:var(--color-muted); letter-spacing:0.03em;
+    }
+
+    /* Action badge */
+    .action-badge {
+      display:inline-flex; align-items:center; gap:5px;
+      padding:3px 9px; border-radius:99px;
+      font-size:0.7rem; font-weight:600;
+    }
+
+    /* Bar chart */
+    .bar-wrap { display:flex; align-items:flex-end; gap:5px; height:100px; }
+    .bar {
+      flex:1; border-radius:5px 5px 0 0;
+      background:color-mix(in srgb,var(--color-primary) 65%,transparent);
+      transition:height 0.6s ease, background 0.2s;
+      min-height:3px; cursor:pointer; position:relative;
+    }
+    .bar:hover { background:var(--color-primary); }
+    .bar-tooltip {
+      position:absolute; bottom:calc(100% + 6px); left:50%;
+      transform:translateX(-50%);
+      background:var(--color-text); color:var(--color-bg);
+      font-size:0.65rem; padding:3px 7px; border-radius:6px;
+      white-space:nowrap; pointer-events:none;
+      opacity:0; transition:opacity 0.15s;
+    }
+    .bar:hover .bar-tooltip { opacity:1; }
+
+    /* Donut chart (CSS) */
+    .donut {
+      width:100px; height:100px; border-radius:50%;
+      display:flex; align-items:center; justify-content:center;
+      font-size:0.75rem; font-weight:700;
+      position:relative;
+    }
+
+    /* Pagination */
+    .page-btn {
+      width:32px; height:32px; border-radius:8px;
+      display:flex; align-items:center; justify-content:center;
+      font-size:0.8rem; cursor:pointer;
+      border:1.5px solid var(--color-border);
+      background:var(--color-surface); color:var(--color-muted);
+      transition:all 0.15s;
+    }
+    .page-btn:hover { border-color:var(--color-primary); color:var(--color-primary); }
+    .page-btn.active {
+      background:var(--color-primary); border-color:var(--color-primary); color:#fff;
+    }
+    .page-btn:disabled { opacity:0.4; cursor:not-allowed; }
+
+    /* Toast */
+    #toast {
+      position:fixed; bottom:28px; left:50%;
+      transform:translateX(-50%) translateY(70px);
+      padding:11px 20px; border-radius:12px;
+      font-size:0.85rem; font-weight:500;
+      display:flex; align-items:center; gap:10px;
+      z-index:9999; opacity:0; white-space:nowrap;
+      transition:transform 0.35s cubic-bezier(0.34,1.56,0.64,1), opacity 0.3s;
+      box-shadow:0 8px 24px rgba(0,0,0,0.15);
+    }
+    #toast.show    { transform:translateX(-50%) translateY(0); opacity:1; }
+    #toast.success { background:var(--color-success); color:#fff; }
+    #toast.error   { background:var(--color-error);   color:#fff; }
+    #toast.info    { background:var(--color-primary);  color:#fff; }
+
+    /* Detail modal */
+    #detail-modal {
+      position:fixed; inset:0; z-index:100;
+      background:rgba(0,0,0,0.45); backdrop-filter:blur(4px);
+      display:flex; align-items:center; justify-content:center;
+      padding:16px; opacity:0; pointer-events:none;
+      transition:opacity 0.25s;
+    }
+    #detail-modal.show { opacity:1; pointer-events:all; }
+    #detail-box {
+      background:var(--color-surface); border:1px solid var(--color-border);
+      border-radius:1.25rem; padding:1.75rem;
+      width:100%; max-width:440px;
+      transform:translateY(20px); transition:transform 0.25s;
+    }
+    #detail-modal.show #detail-box { transform:translateY(0); }
+
+    .fade-up    { animation:fadeUp 0.5s ease forwards; opacity:0; }
+    .fade-up.d1 { animation-delay:0.1s; }
+    .fade-up.d2 { animation-delay:0.2s; }
+    .fade-up.d3 { animation-delay:0.3s; }
+    @keyframes fadeUp { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:none} }
+  </style>
+</head>
+<body>
+
+<div id="page-loader"><div class="spinner"></div></div>
+<div id="toast"><i id="toast-icon" class="fa-solid fa-circle-check"></i><span id="toast-msg"></span></div>
+
+<!-- ── Log Detail Modal ── -->
+<div id="detail-modal">
+  <div id="detail-box">
+    <div class="flex items-center justify-between mb-5">
+      <h3 class="font-bold text-sm">Activity Detail</h3>
+      <button onclick="closeDetail()"
+              class="w-8 h-8 rounded-lg border flex items-center justify-center text-muted hover:text-primary transition-colors"
+              style="border-color:var(--color-border)">
+        <i class="fa-solid fa-xmark text-sm"></i>
+      </button>
+    </div>
+    <div id="detail-content"></div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════
+     MAIN
+══════════════════════════════ -->
+<div class="main-content min-h-screen">
+  <div class="p-6 max-w-7xl mx-auto">
+
+    <!-- ── Header ── -->
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 fade-up">
+      <div>
+        <h2 class="text-lg font-bold">Analytics & Logs</h2>
+        <p class="text-sm mt-0.5" style="color:var(--color-muted)">
+          Full activity tracking across all users and roles
+        </p>
+      </div>
+      <button onclick="exportCSV()"
+              class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-colors"
+              style="border:1.5px solid var(--color-border);background:var(--color-surface);color:var(--color-muted)"
+              onmouseover="this.style.borderColor='var(--color-primary)';this.style.color='var(--color-primary)'"
+              onmouseout="this.style.borderColor='var(--color-border)';this.style.color='var(--color-muted)'">
+        <i class="fa-solid fa-file-csv"></i> Export CSV
+      </button>
+    </div>
+
+    <!-- ── Stat cards ── -->
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6 fade-up">
+
+      <div class="stat-card">
+        <div class="flex items-center justify-between mb-3">
+          <div class="w-10 h-10 rounded-xl flex items-center justify-center text-white"
+               style="background:var(--color-primary)">
+            <i class="fa-solid fa-list-check text-sm"></i>
+          </div>
+          <span class="text-xs" style="color:var(--color-muted)">All time</span>
+        </div>
+        <div id="stat-total-logs" class="text-2xl font-bold mb-0.5">—</div>
+        <div class="text-xs" style="color:var(--color-muted)">Total Events</div>
+      </div>
+
+      <div class="stat-card">
+        <div class="flex items-center justify-between mb-3">
+          <div class="w-10 h-10 rounded-xl flex items-center justify-center text-white"
+               style="background:var(--color-success)">
+            <i class="fa-solid fa-user-plus text-sm"></i>
+          </div>
+          <span class="text-xs" style="color:var(--color-muted)">All time</span>
+        </div>
+        <div id="stat-registrations" class="text-2xl font-bold mb-0.5">—</div>
+        <div class="text-xs" style="color:var(--color-muted)">Registrations</div>
+      </div>
+
+      <div class="stat-card">
+        <div class="flex items-center justify-between mb-3">
+          <div class="w-10 h-10 rounded-xl flex items-center justify-center text-white"
+               style="background:#8b5cf6">
+            <i class="fa-solid fa-calendar-plus text-sm"></i>
+          </div>
+          <span class="text-xs" style="color:var(--color-muted)">All time</span>
+        </div>
+        <div id="stat-appointments" class="text-2xl font-bold mb-0.5">—</div>
+        <div class="text-xs" style="color:var(--color-muted)">Appointments</div>
+      </div>
+
+      <div class="stat-card">
+        <div class="flex items-center justify-between mb-3">
+          <div class="w-10 h-10 rounded-xl flex items-center justify-center text-white"
+               style="background:var(--color-warning)">
+            <i class="fa-solid fa-file-arrow-up text-sm"></i>
+          </div>
+          <span class="text-xs" style="color:var(--color-muted)">All time</span>
+        </div>
+        <div id="stat-uploads" class="text-2xl font-bold mb-0.5">—</div>
+        <div class="text-xs" style="color:var(--color-muted)">Report Uploads</div>
+      </div>
+
+    </div>
+
+    <!-- ── Charts row ── -->
+    <div class="grid lg:grid-cols-3 gap-4 mb-6 fade-up d1">
+
+      <!-- Activity trend (14 days) -->
+      <div class="card p-5 lg:col-span-2">
+        <div class="flex items-center justify-between mb-4">
+          <div>
+            <h3 class="font-semibold text-sm">Activity Trend</h3>
+            <p class="text-xs mt-0.5" style="color:var(--color-muted)">Total events — last 14 days</p>
+          </div>
+          <div class="w-8 h-8 rounded-lg flex items-center justify-center"
+               style="background:color-mix(in srgb,var(--color-primary) 10%,transparent)">
+            <i class="fa-solid fa-chart-area text-sm" style="color:var(--color-primary)"></i>
+          </div>
+        </div>
+        <div class="bar-wrap" id="trend-chart"></div>
+        <div class="flex gap-1 mt-1.5" id="trend-labels"></div>
+      </div>
+
+      <!-- Action breakdown -->
+      <div class="card p-5">
+        <h3 class="font-semibold text-sm mb-4">Event Breakdown</h3>
+        <div id="breakdown-list" class="space-y-2.5"></div>
+      </div>
+
+    </div>
+
+    <!-- ── Filters ── -->
+    <div class="card p-4 mb-4 fade-up d2">
+      <div class="flex flex-wrap gap-3 items-center">
+
+        <!-- Search -->
+        <div class="relative flex-1 min-w-[200px]">
+          <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-xs"
+             style="color:var(--color-muted)"></i>
+          <input id="log-search" type="text" placeholder="Search by UID or action…"
+                 class="input-field pl-8 w-full"
+                 oninput="applyFilters()" />
+        </div>
+
+        <!-- Action filter -->
+        <div class="relative">
+          <select id="action-filter" class="input-field pr-8" onchange="applyFilters()">
+            <option value="">All Actions</option>
+            <option value="LOGIN">Login</option>
+            <option value="REGISTER">Register</option>
+            <option value="PHONE_VERIFIED">Phone Verified</option>
+            <option value="BOOK_APPOINTMENT">Book Appointment</option>
+            <option value="UPLOAD_REPORT">Upload Report</option>
+            <option value="CREATE_STAFF">Create Staff</option>
+            <option value="UPDATE_AVAILABILITY">Update Availability</option>
+            <option value="VERIFY_REPORT">Verify Report</option>
+          </select>
+          <i class="fa-solid fa-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-xs"
+             style="color:var(--color-muted);pointer-events:none"></i>
+        </div>
+
+        <!-- Date from -->
+        <input id="date-from" type="date" class="input-field" onchange="applyFilters()"
+               title="From date" />
+
+        <!-- Date to -->
+        <input id="date-to" type="date" class="input-field" onchange="applyFilters()"
+               title="To date" />
+
+        <!-- Clear filters -->
+        <button onclick="clearFilters()"
+                class="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium transition-colors"
+                style="border:1.5px solid var(--color-border);color:var(--color-muted);background:var(--color-surface)"
+                onmouseover="this.style.color='var(--color-error)';this.style.borderColor='var(--color-error)'"
+                onmouseout="this.style.color='var(--color-muted)';this.style.borderColor='var(--color-border)'">
+          <i class="fa-solid fa-filter-circle-xmark"></i> Clear
+        </button>
+
+      </div>
+    </div>
+
+    <!-- ── Action filter tabs ── -->
+    <div class="flex gap-2 flex-wrap mb-4 fade-up d2">
+      <button class="filter-tab active" onclick="setRoleFilter('all',this)">
+        <i class="fa-solid fa-users mr-1"></i> All Roles
+      </button>
+      <button class="filter-tab" onclick="setRoleFilter('patient',this)">
+        <i class="fa-solid fa-user-injured mr-1"></i> Patients
+      </button>
+      <button class="filter-tab" onclick="setRoleFilter('doctor',this)">
+        <i class="fa-solid fa-user-doctor mr-1"></i> Doctors
+      </button>
+      <button class="filter-tab" onclick="setRoleFilter('lab',this)">
+        <i class="fa-solid fa-microscope mr-1"></i> Lab
+      </button>
+      <button class="filter-tab" onclick="setRoleFilter('admin',this)">
+        <i class="fa-solid fa-user-shield mr-1"></i> Admin
+      </button>
+    </div>
+
+    <!-- ── Logs table ── -->
+    <div class="card fade-up d3">
+
+      <!-- Table header -->
+      <div class="log-row log-header" style="border-bottom:2px solid var(--color-border)">
+        <div>TIME</div>
+        <div>USER ID</div>
+        <div>ACTION</div>
+        <div>ROLE</div>
+        <div>DETAILS</div>
+      </div>
+
+      <div id="log-table-body">
+        <div class="p-10 text-center text-sm" style="color:var(--color-muted)">
+          <i class="fa-solid fa-circle-notch fa-spin mr-2"></i> Loading logs…
+        </div>
+      </div>
+
+      <!-- Pagination -->
+      <div class="flex items-center justify-between px-4 py-3"
+           style="border-top:1px solid var(--color-border)">
+        <span id="pagination-info" class="text-xs" style="color:var(--color-muted)">—</span>
+        <div id="pagination-btns" class="flex gap-1.5"></div>
+      </div>
+
+    </div>
+
+  </div>
+</div>
+
+
+<script type="module">
+  import { auth, db }      from "../../assets/js/firebase-config.js";
+  import { renderSidebar } from "../../assets/js/admin-sidebar.js";
+  import { guardPage }     from "../../assets/js/auth-guard.js";
+  import {
+    collection, query, orderBy, limit,
+    getDocs, getCountFromServer, where, doc, getDoc
+  } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-firestore.js";
+  import { signOut } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-auth.js";
+
+  const PAGE_SIZE = 20;
+  let allLogs     = [];
+  let filtered    = [];
+  let currentPage = 1;
+  let roleFilter  = "all";
+  let userRoleMap = {}; // uid → role cache
+
+  // ── Action config ──────────────────────────────────────────────────
+  const ACTION_CONFIG = {
+    LOGIN:               { label:"Login",               bg:"color-mix(in srgb,var(--color-primary) 12%,transparent)",   color:"var(--color-primary)",  icon:"fa-right-to-bracket" },
+    REGISTER:            { label:"Register",            bg:"color-mix(in srgb,var(--color-success) 12%,transparent)",   color:"var(--color-success)",  icon:"fa-user-plus" },
+    PHONE_VERIFIED:      { label:"Phone Verified",      bg:"color-mix(in srgb,var(--color-secondary) 12%,transparent)", color:"var(--color-secondary)",icon:"fa-mobile-screen-button" },
+    BOOK_APPOINTMENT:    { label:"Booked Appt",         bg:"color-mix(in srgb,#8b5cf6 12%,transparent)",               color:"#8b5cf6",               icon:"fa-calendar-plus" },
+    UPLOAD_REPORT:       { label:"Upload Report",       bg:"color-mix(in srgb,var(--color-warning) 12%,transparent)",   color:"var(--color-warning)",  icon:"fa-file-arrow-up" },
+    CREATE_STAFF:        { label:"Create Staff",        bg:"color-mix(in srgb,#ec4899 12%,transparent)",               color:"#ec4899",               icon:"fa-id-badge" },
+    UPDATE_AVAILABILITY: { label:"Update Availability", bg:"color-mix(in srgb,#14b8a6 12%,transparent)",               color:"#14b8a6",               icon:"fa-clock" },
+    VERIFY_REPORT:       { label:"Verify Report",       bg:"color-mix(in srgb,var(--color-success) 12%,transparent)",   color:"var(--color-success)",  icon:"fa-circle-check" },
+  };
+
+  const DEFAULT_ACTION = { label:"Event", bg:"color-mix(in srgb,var(--color-muted) 12%,transparent)", color:"var(--color-muted)", icon:"fa-circle-dot" };
+
+  // ── Theme ──────────────────────────────────────────────────────────
+  const htmlEl = document.getElementById("html-root");
+  function applyTheme(dark) {
+    htmlEl.setAttribute("data-theme", dark ? "dark" : "light");
+    const icon = document.getElementById("theme-icon");
+    if (icon) icon.className = dark ? "fa-solid fa-sun text-sm" : "fa-solid fa-moon text-sm";
+    localStorage.setItem("theme", dark ? "dark" : "light");
+  }
+  applyTheme(localStorage.getItem("theme") === "dark");
+
+  // ── Load settings ──────────────────────────────────────────────────
+  async function loadSettings() {
+    try {
+      const snap = await getDoc(doc(db, "settings", "hospital"));
+      if (!snap.exists()) return;
+      const s = snap.data(); const t = s.theme || {};
+      const r = document.documentElement;
+      if (t.primary)    r.style.setProperty("--color-primary",      t.primary);
+      if (t.primaryDark)r.style.setProperty("--color-primary-dark", t.primaryDark);
+      if (t.secondary)  r.style.setProperty("--color-secondary",    t.secondary);
+      if (t.fontFamily) r.style.setProperty("--font-family",        t.fontFamily);
+      const sbName = document.getElementById("sb-hospital-name");
+      if (sbName) sbName.textContent = s.hospitalName || "MediCore";
+      if (s.logoUrl) {
+        const img = document.getElementById("sb-logo-img");
+        const ico = document.getElementById("sb-logo-icon");
+        if (img) { img.src = s.logoUrl; img.classList.remove("hidden"); }
+        if (ico) ico.classList.add("hidden");
+      }
+    } catch(e) { console.error(e); }
+  }
+
+  // ── Build uid → role cache ─────────────────────────────────────────
+  async function buildRoleCache() {
+    try {
+      const snap = await getDocs(collection(db, "users"));
+      snap.forEach(d => { userRoleMap[d.id] = d.data().role || "unknown"; });
+    } catch(e) { console.error(e); }
+  }
+
+  // ── Load all logs ──────────────────────────────────────────────────
+  async function loadLogs() {
+    try {
+      const q    = query(collection(db,"activityLogs"), orderBy("timestamp","desc"), limit(500));
+      const snap = await getDocs(q);
+      allLogs = snap.docs.map(d => ({
+        id: d.id,
+        ...d.data(),
+        role: userRoleMap[d.data().uid] || "unknown"
+      }));
+      filtered = [...allLogs];
+      renderStats();
+      renderCharts();
+      renderBreakdown();
+      renderTable();
+    } catch(e) {
+      console.error(e);
+      document.getElementById("log-table-body").innerHTML =
+        `<div class="p-8 text-center text-sm" style="color:var(--color-error)">
+          <i class="fa-solid fa-circle-exclamation mr-2"></i> Failed to load logs.
+        </div>`;
+    }
+  }
+
+  // ── Render stat cards ──────────────────────────────────────────────
+  function renderStats() {
+    document.getElementById("stat-total-logs").textContent =
+      allLogs.length;
+    document.getElementById("stat-registrations").textContent =
+      allLogs.filter(l => l.action === "REGISTER").length;
+    document.getElementById("stat-appointments").textContent =
+      allLogs.filter(l => l.action === "BOOK_APPOINTMENT").length;
+    document.getElementById("stat-uploads").textContent =
+      allLogs.filter(l => l.action === "UPLOAD_REPORT").length;
+  }
+
+  // ── Render 14-day trend chart ──────────────────────────────────────
+  function renderCharts() {
+    const days   = [];
+    const labels = [];
+    const counts = new Array(14).fill(0);
+
+    for (let i = 13; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      d.setHours(0,0,0,0);
+      days.push(d);
+      labels.push(i === 0 ? "Today" : d.toLocaleDateString("en",{weekday:"short"}));
+    }
+
+    allLogs.forEach(log => {
+      const ts = log.timestamp?.toDate ? log.timestamp.toDate() : null;
+      if (!ts) return;
+      const logDay = new Date(ts); logDay.setHours(0,0,0,0);
+      const idx = days.findIndex(d => d.getTime() === logDay.getTime());
+      if (idx !== -1) counts[idx]++;
+    });
+
+    const maxVal = Math.max(...counts, 1);
+    const chart  = document.getElementById("trend-chart");
+    const lblEl  = document.getElementById("trend-labels");
+
+    chart.innerHTML = counts.map((c,i) => `
+      <div class="flex-1 flex flex-col items-center" style="position:relative">
+        <div class="bar w-full" style="height:${Math.round((c/maxVal)*100)}px">
+          <div class="bar-tooltip">${c} event${c!==1?"s":""}</div>
+        </div>
+      </div>
+    `).join('');
+
+    lblEl.innerHTML = labels.map((l,i) => `
+      <div style="flex:1;text-align:center;font-size:0.6rem;color:var(--color-muted)">
+        ${i % 2 === 0 ? l : ""}
+      </div>
+    `).join('');
+  }
+
+  // ── Event breakdown list ───────────────────────────────────────────
+  function renderBreakdown() {
+    const counts = {};
+    allLogs.forEach(l => { counts[l.action] = (counts[l.action] || 0) + 1; });
+    const sorted = Object.entries(counts).sort((a,b) => b[1]-a[1]).slice(0,6);
+    const total  = allLogs.length || 1;
+
+    document.getElementById("breakdown-list").innerHTML = sorted.map(([action, count]) => {
+      const cfg = ACTION_CONFIG[action] || DEFAULT_ACTION;
+      const pct = Math.round((count/total)*100);
+      return `
+        <div>
+          <div class="flex items-center justify-between mb-1">
+            <div class="flex items-center gap-2 text-xs font-medium">
+              <i class="fa-solid ${cfg.icon} text-[11px]" style="color:${cfg.color}"></i>
+              ${cfg.label}
+            </div>
+            <span class="text-xs font-semibold" style="color:${cfg.color}">${count}</span>
+          </div>
+          <div class="h-1.5 rounded-full overflow-hidden" style="background:var(--color-border)">
+            <div class="h-full rounded-full transition-all duration-700"
+                 style="width:${pct}%;background:${cfg.color}"></div>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  // ── Apply all filters ──────────────────────────────────────────────
+  window.applyFilters = function() {
+    const search     = document.getElementById("log-search").value.toLowerCase();
+    const action     = document.getElementById("action-filter").value;
+    const dateFrom   = document.getElementById("date-from").value;
+    const dateTo     = document.getElementById("date-to").value;
+
+    filtered = allLogs.filter(log => {
+      // Role filter
+      if (roleFilter !== "all" && log.role !== roleFilter) return false;
+
+      // Search
+      if (search) {
+        const uid    = (log.uid    || "").toLowerCase();
+        const act    = (log.action || "").toLowerCase();
+        const meta   = JSON.stringify(log.metadata || {}).toLowerCase();
+        if (!uid.includes(search) && !act.includes(search) && !meta.includes(search)) return false;
+      }
+
+      // Action filter
+      if (action && log.action !== action) return false;
+
+      // Date range
+      if (dateFrom || dateTo) {
+        const ts = log.timestamp?.toDate ? log.timestamp.toDate() : null;
+        if (!ts) return false;
+        if (dateFrom && ts < new Date(dateFrom)) return false;
+        if (dateTo)   {
+          const end = new Date(dateTo); end.setHours(23,59,59,999);
+          if (ts > end) return false;
+        }
+      }
+
+      return true;
+    });
+
+    currentPage = 1;
+    renderTable();
+  };
+
+  window.setRoleFilter = function(role, btn) {
+    roleFilter = role;
+    document.querySelectorAll(".filter-tab").forEach(t => t.classList.remove("active"));
+    btn.classList.add("active");
+    applyFilters();
+  };
+
+  window.clearFilters = function() {
+    document.getElementById("log-search").value      = "";
+    document.getElementById("action-filter").value   = "";
+    document.getElementById("date-from").value       = "";
+    document.getElementById("date-to").value         = "";
+    roleFilter = "all";
+    document.querySelectorAll(".filter-tab").forEach((t,i) => {
+      t.classList.toggle("active", i === 0);
+    });
+    filtered = [...allLogs];
+    currentPage = 1;
+    renderTable();
+  };
+
+  // ── Render log table ───────────────────────────────────────────────
+  function renderTable() {
+    const total     = filtered.length;
+    const totalPages= Math.ceil(total / PAGE_SIZE) || 1;
+    currentPage     = Math.min(currentPage, totalPages);
+
+    const start  = (currentPage - 1) * PAGE_SIZE;
+    const end    = Math.min(start + PAGE_SIZE, total);
+    const page   = filtered.slice(start, end);
+
+    // Pagination info
+    document.getElementById("pagination-info").textContent =
+      total === 0 ? "No results" : `Showing ${start+1}–${end} of ${total}`;
+
+    // Table body
+    if (page.length === 0) {
+      document.getElementById("log-table-body").innerHTML =
+        `<div class="p-10 text-center text-sm" style="color:var(--color-muted)">
+          <i class="fa-solid fa-magnifying-glass mr-2"></i> No logs match your filters.
+        </div>`;
+    } else {
+      document.getElementById("log-table-body").innerHTML = page.map(log => {
+        const cfg  = ACTION_CONFIG[log.action] || DEFAULT_ACTION;
+        const ts   = log.timestamp?.toDate ? log.timestamp.toDate() : null;
+        const time = ts ? ts.toLocaleString("en-IN",{
+          day:"2-digit", month:"short", hour:"2-digit", minute:"2-digit"
+        }) : "—";
+
+        const roleConfig = {
+          patient: { color:"var(--color-primary)",  icon:"fa-user-injured" },
+          doctor:  { color:"var(--color-secondary)", icon:"fa-user-doctor" },
+          lab:     { color:"#8b5cf6",               icon:"fa-microscope" },
+          admin:   { color:"#f59e0b",               icon:"fa-user-shield" },
+        };
+        const rc = roleConfig[log.role] || { color:"var(--color-muted)", icon:"fa-user" };
+
+        return `
+          <div class="log-row">
+            <div>
+              <div class="font-medium" style="font-size:0.78rem">${time}</div>
+            </div>
+            <div class="font-mono truncate" style="font-size:0.72rem;color:var(--color-muted)"
+                 title="${log.uid}">${log.uid ? log.uid.slice(0,16)+"…" : "—"}</div>
+            <div>
+              <span class="action-badge"
+                    style="background:${cfg.bg};color:${cfg.color}">
+                <i class="fa-solid ${cfg.icon} text-[10px]"></i>
+                ${cfg.label}
+              </span>
+            </div>
+            <div>
+              <span class="action-badge"
+                    style="background:color-mix(in srgb,${rc.color} 10%,transparent);color:${rc.color}">
+                <i class="fa-solid ${rc.icon} text-[10px]"></i>
+                ${log.role || "—"}
+              </span>
+            </div>
+            <div>
+              <button onclick='showDetail(${JSON.stringify(log).replace(/'/g,"&apos;")})'
+                      class="w-7 h-7 rounded-lg border flex items-center justify-center transition-colors hover:text-primary"
+                      style="border-color:var(--color-border);color:var(--color-muted)">
+                <i class="fa-solid fa-eye text-xs"></i>
+              </button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // Pagination buttons
+    renderPagination(totalPages);
+  }
+
+  function renderPagination(totalPages) {
+    const container = document.getElementById("pagination-btns");
+    if (totalPages <= 1) { container.innerHTML = ""; return; }
+
+    let pages = [];
+    if (totalPages <= 7) {
+      pages = Array.from({length: totalPages}, (_,i) => i+1);
+    } else {
+      pages = [1];
+      if (currentPage > 3)            pages.push("…");
+      for (let i = Math.max(2,currentPage-1); i <= Math.min(totalPages-1,currentPage+1); i++) pages.push(i);
+      if (currentPage < totalPages-2) pages.push("…");
+      pages.push(totalPages);
+    }
+
+    container.innerHTML = `
+      <button class="page-btn" onclick="goPage(${currentPage-1})" ${currentPage===1?"disabled":""}>
+        <i class="fa-solid fa-chevron-left text-xs"></i>
+      </button>
+      ${pages.map(p => p === "…"
+        ? `<div class="page-btn" style="cursor:default">…</div>`
+        : `<button class="page-btn ${p===currentPage?"active":""}" onclick="goPage(${p})">${p}</button>`
+      ).join('')}
+      <button class="page-btn" onclick="goPage(${currentPage+1})" ${currentPage===totalPages?"disabled":""}>
+        <i class="fa-solid fa-chevron-right text-xs"></i>
+      </button>
+    `;
+  }
+
+  window.goPage = function(p) {
+    const total = Math.ceil(filtered.length / PAGE_SIZE) || 1;
+    if (p < 1 || p > total) return;
+    currentPage = p;
+    renderTable();
+    document.querySelector(".main-content").scrollTo({ top:0, behavior:"smooth" });
+  };
+
+  // ── Detail modal ───────────────────────────────────────────────────
+  window.showDetail = function(log) {
+    const cfg  = ACTION_CONFIG[log.action] || DEFAULT_ACTION;
+    const ts   = log.timestamp?.seconds
+      ? new Date(log.timestamp.seconds * 1000).toLocaleString("en-IN")
+      : "—";
+
+    document.getElementById("detail-content").innerHTML = `
+      <div class="flex items-center gap-3 mb-5 p-3 rounded-xl"
+           style="background:${cfg.bg}">
+        <div class="w-10 h-10 rounded-xl flex items-center justify-center text-white"
+             style="background:${cfg.color}">
+          <i class="fa-solid ${cfg.icon}"></i>
+        </div>
+        <div>
+          <div class="font-semibold text-sm">${cfg.label}</div>
+          <div class="text-xs" style="color:var(--color-muted)">${ts}</div>
+        </div>
+      </div>
+
+      <div class="space-y-3">
+        <div class="flex justify-between text-sm py-2" style="border-bottom:1px solid var(--color-border)">
+          <span style="color:var(--color-muted)">User ID</span>
+          <span class="font-mono text-xs font-medium">${log.uid || "—"}</span>
+        </div>
+        <div class="flex justify-between text-sm py-2" style="border-bottom:1px solid var(--color-border)">
+          <span style="color:var(--color-muted)">Role</span>
+          <span class="font-medium">${log.role || "—"}</span>
+        </div>
+        <div class="flex justify-between text-sm py-2" style="border-bottom:1px solid var(--color-border)">
+          <span style="color:var(--color-muted)">Action</span>
+          <span class="font-medium">${log.action || "—"}</span>
+        </div>
+        ${Object.keys(log.metadata || {}).length > 0 ? `
+          <div class="pt-1">
+            <div class="text-xs font-semibold mb-2" style="color:var(--color-muted)">METADATA</div>
+            <pre class="text-xs rounded-xl p-3 overflow-x-auto"
+                 style="background:var(--color-bg);border:1px solid var(--color-border);color:var(--color-text)">${JSON.stringify(log.metadata, null, 2)}</pre>
+          </div>
+        ` : ""}
+      </div>
+    `;
+    document.getElementById("detail-modal").classList.add("show");
+  };
+
+  window.closeDetail = () => document.getElementById("detail-modal").classList.remove("show");
+
+  // ── Export CSV ─────────────────────────────────────────────────────
+  window.exportCSV = function() {
+    if (filtered.length === 0) { showToast("No data to export.", "info"); return; }
+
+    const headers = ["Timestamp","UID","Role","Action","Metadata"];
+    const rows    = filtered.map(l => {
+      const ts = l.timestamp?.seconds
+        ? new Date(l.timestamp.seconds * 1000).toISOString() : "";
+      return [
+        ts,
+        l.uid    || "",
+        l.role   || "",
+        l.action || "",
+        JSON.stringify(l.metadata || {})
+      ].map(v => `"${String(v).replace(/"/g,'""')}"`).join(",");
+    });
+
+    const csv  = [headers.join(","), ...rows].join("\n");
+    const blob = new Blob([csv], { type:"text/csv" });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement("a");
+    a.href     = url;
+    a.download = `medicore-logs-${new Date().toISOString().slice(0,10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    showToast(`Exported ${filtered.length} records.`, "success");
+  };
+
+  // ── Toast ──────────────────────────────────────────────────────────
+  window.showToast = function(msg, type="info") {
+    const toast = document.getElementById("toast");
+    const icons = { success:"fa-solid fa-circle-check", error:"fa-solid fa-circle-exclamation", info:"fa-solid fa-circle-info" };
+    document.getElementById("toast-msg").textContent = msg;
+    document.getElementById("toast-icon").className  = icons[type];
+    toast.className = `show ${type}`;
+    clearTimeout(window._tt);
+    window._tt = setTimeout(() => { toast.className = type; }, 3500);
+  };
+
+  // ── Logout ─────────────────────────────────────────────────────────
+  window.adminLogout = async function() {
+    await signOut(auth);
+    window.location.href = "/auth/staff-login/";
+  };
+
+  // ── Init ───────────────────────────────────────────────────────────
+  guardPage(["admin"], async (user, userData) => {
+    renderSidebar("analytics");
+
+    document.getElementById("theme-toggle").addEventListener("click", () => {
+      applyTheme(htmlEl.getAttribute("data-theme") !== "dark");
+    });
+
+    const sbName  = document.getElementById("sb-admin-name");
+    const sbEmail = document.getElementById("sb-admin-email");
+    if (sbName)  sbName.textContent  = userData.name  || "Admin";
+    if (sbEmail) sbEmail.textContent = userData.email || user.email || "—";
+
+    await Promise.all([loadSettings(), buildRoleCache()]);
+    await loadLogs();
+
+    const loader = document.getElementById("page-loader");
+    loader.classList.add("hidden");
+    setTimeout(() => loader.remove(), 500);
+  });
+</script>
+
+</body>
+</html>
