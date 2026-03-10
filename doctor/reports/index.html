@@ -1,0 +1,1107 @@
+<!DOCTYPE html>
+<html lang="en" id="html-root">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Lab Reports — Doctor</title>
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+
+  <style>
+    :root {
+      --color-primary:      #2563eb;
+      --color-primary-dark: #1d4ed8;
+      --color-secondary:    #0ea5e9;
+      --color-bg:           #f8fafc;
+      --color-surface:      #ffffff;
+      --color-text:         #0f172a;
+      --color-muted:        #64748b;
+      --color-border:       #e2e8f0;
+      --color-success:      #10b981;
+      --color-warning:      #f59e0b;
+      --color-error:        #ef4444;
+      --font-family:        'Inter', sans-serif;
+    }
+    [data-theme="dark"] {
+      --color-bg:      #0f172a;
+      --color-surface: #1e293b;
+      --color-text:    #f1f5f9;
+      --color-muted:   #94a3b8;
+      --color-border:  #334155;
+    }
+    * { font-family:var(--font-family); box-sizing:border-box; margin:0; padding:0; }
+    body { background:var(--color-bg); color:var(--color-text); transition:background 0.3s,color 0.3s; }
+
+    .main-content { margin-left:0; padding-top:64px; transition:margin 0.3s; }
+    @media(min-width:1024px) { .main-content { margin-left:260px; } }
+
+    #page-loader {
+      position:fixed; inset:0; z-index:9999;
+      background:var(--color-bg);
+      display:flex; align-items:center; justify-content:center;
+      transition:opacity 0.4s;
+    }
+    #page-loader.hidden { opacity:0; pointer-events:none; }
+    .spinner {
+      width:36px; height:36px;
+      border:3px solid var(--color-border);
+      border-top-color:var(--color-primary);
+      border-radius:50%; animation:spin 0.75s linear infinite;
+    }
+    @keyframes spin { to { transform:rotate(360deg); } }
+
+    .card { background:var(--color-surface); border:1px solid var(--color-border); border-radius:1rem; }
+
+    /* Sidebar */
+    #sidebar {
+      position:fixed; top:0; left:0; height:100%; width:260px; z-index:40;
+      background:var(--color-surface); border-right:1px solid var(--color-border);
+      display:flex; flex-direction:column;
+      transform:translateX(-100%); transition:transform 0.3s;
+    }
+    #sidebar.open { transform:translateX(0); }
+    @media(min-width:1024px) { #sidebar { transform:translateX(0); } }
+    #sidebar-overlay {
+      position:fixed; inset:0; z-index:30;
+      background:rgba(0,0,0,0.4); backdrop-filter:blur(3px); display:none;
+    }
+    #sidebar-overlay.show { display:block; }
+    .nav-link {
+      display:flex; align-items:center; gap:12px;
+      padding:10px 14px; border-radius:12px;
+      font-size:0.85rem; font-weight:500;
+      color:var(--color-muted); cursor:pointer; transition:all 0.15s; text-decoration:none;
+    }
+    .nav-link:hover { background:color-mix(in srgb,var(--color-primary) 8%,transparent); color:var(--color-primary); }
+    .nav-link.active { background:color-mix(in srgb,var(--color-primary) 12%,transparent); color:var(--color-primary); font-weight:600; }
+    .nav-link i { width:18px; text-align:center; font-size:0.9rem; }
+
+    /* Topbar */
+    #topbar {
+      position:fixed; top:0; right:0; left:0; z-index:20; height:64px;
+      background:var(--color-surface); border-bottom:1px solid var(--color-border);
+      display:flex; align-items:center; justify-content:space-between; padding:0 20px;
+    }
+    @media(min-width:1024px) { #topbar { left:260px; } }
+
+    /* Filter tabs */
+    .filter-tab {
+      padding:7px 16px; border-radius:10px; font-size:0.8rem; font-weight:500;
+      cursor:pointer; border:1.5px solid var(--color-border);
+      color:var(--color-muted); background:var(--color-surface);
+      transition:all 0.15s; white-space:nowrap;
+    }
+    .filter-tab:hover { border-color:var(--color-primary); color:var(--color-primary); }
+    .filter-tab.active {
+      background:color-mix(in srgb,var(--color-primary) 10%,transparent);
+      border-color:var(--color-primary); color:var(--color-primary);
+    }
+
+    /* Report card */
+    .report-card {
+      background:var(--color-surface); border:1.5px solid var(--color-border);
+      border-radius:14px; padding:16px; cursor:pointer;
+      transition:border-color 0.2s, box-shadow 0.2s, transform 0.15s;
+    }
+    .report-card:hover {
+      border-color:var(--color-primary);
+      box-shadow:0 6px 20px rgba(0,0,0,0.07);
+      transform:translateY(-2px);
+    }
+    .report-card.selected {
+      border-color:var(--color-primary);
+      box-shadow:0 0 0 3px color-mix(in srgb,var(--color-primary) 15%,transparent);
+    }
+
+    /* Status badge */
+    .status-badge {
+      display:inline-flex; align-items:center; gap:5px;
+      padding:3px 10px; border-radius:99px;
+      font-size:0.7rem; font-weight:600;
+    }
+
+    /* Avatar */
+    .avatar {
+      width:38px; height:38px; border-radius:12px;
+      display:flex; align-items:center; justify-content:center;
+      font-size:0.85rem; font-weight:700; color:#fff; flex-shrink:0;
+    }
+
+    /* Detail panel */
+    #detail-panel {
+      position:fixed; top:64px; right:0; bottom:0;
+      width:420px; z-index:30;
+      background:var(--color-surface); border-left:1px solid var(--color-border);
+      overflow-y:auto;
+      transform:translateX(100%); transition:transform 0.3s;
+    }
+    #detail-panel.open { transform:translateX(0); }
+    @media(max-width:1280px) {
+      #detail-panel {
+        width:100%; top:0; z-index:50;
+        border-left:none;
+      }
+    }
+
+    /* AI suggestion box */
+    .ai-box {
+      border-radius:14px; padding:16px;
+      border:1.5px solid color-mix(in srgb,var(--color-primary) 25%,transparent);
+      background:color-mix(in srgb,var(--color-primary) 5%,transparent);
+    }
+    .ai-thinking {
+      display:flex; align-items:center; gap:10px;
+      font-size:0.82rem; color:var(--color-muted);
+    }
+    .ai-dot {
+      width:6px; height:6px; border-radius:50%;
+      background:var(--color-primary); display:inline-block;
+      animation:aiPulse 1.2s ease-in-out infinite;
+    }
+    .ai-dot:nth-child(2) { animation-delay:0.2s; }
+    .ai-dot:nth-child(3) { animation-delay:0.4s; }
+    @keyframes aiPulse { 0%,100%{opacity:0.3;transform:scale(0.8)} 50%{opacity:1;transform:scale(1.2)} }
+
+    /* Input */
+    .input-field {
+      width:100%; padding:9px 14px;
+      background:var(--color-bg); border:1.5px solid var(--color-border);
+      border-radius:10px; color:var(--color-text);
+      font-size:0.85rem; outline:none;
+      transition:border-color 0.2s, box-shadow 0.2s;
+    }
+    .input-field:focus {
+      border-color:var(--color-primary);
+      box-shadow:0 0 0 3px color-mix(in srgb,var(--color-primary) 15%,transparent);
+    }
+    textarea.input-field { resize:vertical; min-height:80px; }
+
+    /* Btn */
+    .btn-primary {
+      padding:10px 18px; background:var(--color-primary); color:#fff;
+      font-size:0.85rem; font-weight:600; border:none; border-radius:10px;
+      cursor:pointer; display:inline-flex; align-items:center; gap:8px;
+      transition:background 0.2s, transform 0.15s;
+    }
+    .btn-primary:hover { background:var(--color-primary-dark); transform:translateY(-1px); }
+    .btn-primary:disabled { opacity:0.55; cursor:not-allowed; transform:none; }
+    .btn-danger {
+      padding:10px 18px; background:var(--color-error); color:#fff;
+      font-size:0.85rem; font-weight:600; border:none; border-radius:10px;
+      cursor:pointer; display:inline-flex; align-items:center; gap:8px;
+      transition:background 0.2s;
+    }
+    .btn-danger:hover { background:#dc2626; }
+
+    /* Toast */
+    #toast {
+      position:fixed; bottom:28px; left:50%;
+      transform:translateX(-50%) translateY(70px);
+      padding:11px 20px; border-radius:12px;
+      font-size:0.85rem; font-weight:500;
+      display:flex; align-items:center; gap:10px;
+      z-index:9999; opacity:0; white-space:nowrap;
+      transition:transform 0.35s cubic-bezier(0.34,1.56,0.64,1), opacity 0.3s;
+      box-shadow:0 8px 24px rgba(0,0,0,0.15);
+    }
+    #toast.show    { transform:translateX(-50%) translateY(0); opacity:1; }
+    #toast.success { background:var(--color-success); color:#fff; }
+    #toast.error   { background:var(--color-error);   color:#fff; }
+    #toast.info    { background:var(--color-primary);  color:#fff; }
+
+    .fade-up    { animation:fadeUp 0.5s ease forwards; opacity:0; }
+    .fade-up.d1 { animation-delay:0.1s; }
+    .fade-up.d2 { animation-delay:0.2s; }
+    @keyframes fadeUp { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:none} }
+  </style>
+</head>
+<body>
+
+<div id="page-loader"><div class="spinner"></div></div>
+<div id="toast"><i id="toast-icon"></i><span id="toast-msg"></span></div>
+<div id="sidebar-overlay" onclick="toggleSidebar()"></div>
+
+<!-- ══════════════════════════════
+     SIDEBAR
+══════════════════════════════ -->
+<aside id="sidebar">
+  <div class="flex items-center gap-3 px-5 py-5"
+       style="border-bottom:1px solid var(--color-border)">
+    <div id="sb-logo-wrap"
+         class="w-9 h-9 rounded-xl flex items-center justify-center
+                text-white text-sm font-bold shrink-0 overflow-hidden"
+         style="background:var(--color-primary)">
+      <img id="sb-logo-img" src="" alt="" class="w-full h-full object-cover hidden"/>
+      <i id="sb-logo-icon" class="fa-solid fa-hospital text-sm"></i>
+    </div>
+    <div>
+      <div id="sb-hospital-name" class="text-sm font-semibold leading-tight">MediCore</div>
+      <div class="text-xs" style="color:var(--color-muted)">Doctor Portal</div>
+    </div>
+  </div>
+
+  <nav class="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
+    <a href="/doctor/dashboard/"    class="nav-link"><i class="fa-solid fa-gauge-high"></i> Dashboard</a>
+    <a href="/doctor/appointments/" class="nav-link"><i class="fa-solid fa-calendar-check"></i> Appointments</a>
+    <a href="/doctor/reports/"      class="nav-link active"><i class="fa-solid fa-file-waveform"></i> Lab Reports</a>
+    <a href="/doctor/patients/"     class="nav-link"><i class="fa-solid fa-users"></i> My Patients</a>
+    <div class="pt-3 pb-1 px-3">
+      <p class="text-[10px] font-semibold uppercase tracking-wider"
+         style="color:var(--color-muted)">Account</p>
+    </div>
+    <a href="/doctor/profile/"      class="nav-link"><i class="fa-solid fa-circle-user"></i> My Profile</a>
+    <a href="/doctor/availability/" class="nav-link"><i class="fa-solid fa-clock"></i> My Availability</a>
+  </nav>
+
+  <div class="px-3 py-4" style="border-top:1px solid var(--color-border)">
+    <div class="flex items-center gap-3 px-3 py-2.5 rounded-xl mb-1"
+         style="background:color-mix(in srgb,var(--color-primary) 6%,transparent)">
+      <div class="w-8 h-8 rounded-full flex items-center justify-center
+                  text-white text-xs shrink-0"
+           style="background:var(--color-primary)">
+        <i class="fa-solid fa-user-doctor text-xs"></i>
+      </div>
+      <div class="overflow-hidden">
+        <div id="sb-doctor-name" class="text-xs font-semibold truncate">Doctor</div>
+        <div id="sb-doctor-spec" class="text-xs truncate" style="color:var(--color-muted)">—</div>
+      </div>
+    </div>
+    <button onclick="doctorLogout()"
+            class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl
+                   text-sm transition-colors hover:text-red-500"
+            style="color:var(--color-muted)">
+      <i class="fa-solid fa-right-from-bracket w-4 text-center"></i> Logout
+    </button>
+  </div>
+</aside>
+
+<!-- ══════════════════════════════
+     TOPBAR
+══════════════════════════════ -->
+<header id="topbar">
+  <div class="flex items-center gap-3">
+    <button class="lg:hidden w-9 h-9 rounded-xl border flex items-center
+                   justify-center" style="border-color:var(--color-border)"
+            onclick="toggleSidebar()">
+      <i class="fa-solid fa-bars text-sm" style="color:var(--color-muted)"></i>
+    </button>
+    <div>
+      <h1 class="text-sm font-semibold">Lab Reports</h1>
+      <p class="text-xs" style="color:var(--color-muted)">Review and verify patient lab reports</p>
+    </div>
+  </div>
+  <div class="flex items-center gap-2">
+    <button id="theme-toggle"
+            class="w-9 h-9 rounded-xl border flex items-center justify-center"
+            style="border-color:var(--color-border);color:var(--color-muted)">
+      <i id="theme-icon" class="fa-solid fa-moon text-sm"></i>
+    </button>
+  </div>
+</header>
+
+<!-- ══════════════════════════════
+     REPORT DETAIL PANEL
+══════════════════════════════ -->
+<div id="detail-panel">
+  <div class="sticky top-0 z-10 flex items-center justify-between px-5 py-4"
+       style="background:var(--color-surface);border-bottom:1px solid var(--color-border)">
+    <h3 class="font-semibold text-sm">Report Details</h3>
+    <button onclick="closeDetail()"
+            class="w-8 h-8 rounded-lg border flex items-center justify-center
+                   transition-colors hover:text-red-500"
+            style="border-color:var(--color-border);color:var(--color-muted)">
+      <i class="fa-solid fa-xmark text-sm"></i>
+    </button>
+  </div>
+  <div id="detail-content" class="p-5 space-y-5"></div>
+</div>
+
+
+<!-- ══════════════════════════════
+     MAIN
+══════════════════════════════ -->
+<div class="main-content min-h-screen" id="main-wrap">
+  <div class="p-6 max-w-6xl mx-auto">
+
+    <!-- Stats -->
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6 fade-up">
+      <div class="card p-4 flex items-center gap-3">
+        <div class="w-9 h-9 rounded-xl flex items-center justify-center text-white shrink-0"
+             style="background:var(--color-warning)">
+          <i class="fa-solid fa-clock text-sm"></i>
+        </div>
+        <div>
+          <div id="count-pending" class="font-bold text-lg">—</div>
+          <div class="text-xs" style="color:var(--color-muted)">Pending Review</div>
+        </div>
+      </div>
+      <div class="card p-4 flex items-center gap-3">
+        <div class="w-9 h-9 rounded-xl flex items-center justify-center text-white shrink-0"
+             style="background:var(--color-success)">
+          <i class="fa-solid fa-circle-check text-sm"></i>
+        </div>
+        <div>
+          <div id="count-verified" class="font-bold text-lg">—</div>
+          <div class="text-xs" style="color:var(--color-muted)">Verified</div>
+        </div>
+      </div>
+      <div class="card p-4 flex items-center gap-3">
+        <div class="w-9 h-9 rounded-xl flex items-center justify-center text-white shrink-0"
+             style="background:var(--color-error)">
+          <i class="fa-solid fa-circle-xmark text-sm"></i>
+        </div>
+        <div>
+          <div id="count-rejected" class="font-bold text-lg">—</div>
+          <div class="text-xs" style="color:var(--color-muted)">Rejected</div>
+        </div>
+      </div>
+      <div class="card p-4 flex items-center gap-3">
+        <div class="w-9 h-9 rounded-xl flex items-center justify-center text-white shrink-0"
+             style="background:var(--color-primary)">
+          <i class="fa-solid fa-file-waveform text-sm"></i>
+        </div>
+        <div>
+          <div id="count-total" class="font-bold text-lg">—</div>
+          <div class="text-xs" style="color:var(--color-muted)">Total Reports</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Filter + Search -->
+    <div class="flex flex-col sm:flex-row gap-3 mb-5 fade-up d1">
+      <div class="flex gap-2 flex-wrap">
+        <button class="filter-tab active" onclick="filterReports('all',this)">
+          All
+        </button>
+        <button class="filter-tab" onclick="filterReports('pending_review',this)">
+          <i class="fa-solid fa-clock mr-1"></i>Pending
+        </button>
+        <button class="filter-tab" onclick="filterReports('verified',this)">
+          <i class="fa-solid fa-circle-check mr-1"></i>Verified
+        </button>
+        <button class="filter-tab" onclick="filterReports('rejected',this)">
+          <i class="fa-solid fa-circle-xmark mr-1"></i>Rejected
+        </button>
+      </div>
+      <div class="relative flex-1 sm:max-w-xs ml-auto">
+        <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-xs"
+           style="color:var(--color-muted)"></i>
+        <input type="text" placeholder="Search by patient or test…"
+               class="input-field pl-9" oninput="searchReports(this.value)" />
+      </div>
+    </div>
+
+    <!-- Reports grid -->
+    <div id="reports-grid" class="grid sm:grid-cols-2 gap-4 fade-up d2"></div>
+
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════
+     SCRIPTS
+══════════════════════════════ -->
+<script type="module">
+  import { auth, db }  from "../../assets/js/firebase-config.js";
+  import { guardPage } from "../../assets/js/auth-guard.js";
+  import {
+    collection, query, where, getDocs,
+    doc, getDoc, updateDoc, serverTimestamp
+  } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-firestore.js";
+  import { signOut } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-auth.js";
+
+  // ── Gemini API key ─────────────────────────────────────────────────
+  // Replace with your key or load from settings
+  const GEMINI_API_KEY = "YOUR_GEMINI_API_KEY";
+  const GEMINI_URL     =
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`;
+
+  let allReports   = [];
+  let activeFilter = "all";
+  let activeSearch = "";
+  let patientCache = {};
+  let selectedId   = null;
+  let doctorUid    = "";
+  let doctorData   = {};
+
+  // ── Theme ──────────────────────────────────────────────────────────
+  const htmlEl = document.getElementById("html-root");
+  function applyTheme(dark) {
+    htmlEl.setAttribute("data-theme", dark ? "dark" : "light");
+    document.getElementById("theme-icon").className =
+      dark ? "fa-solid fa-sun text-sm" : "fa-solid fa-moon text-sm";
+    localStorage.setItem("theme", dark ? "dark" : "light");
+  }
+  applyTheme(localStorage.getItem("theme") === "dark");
+  document.getElementById("theme-toggle").addEventListener("click", () => {
+    applyTheme(htmlEl.getAttribute("data-theme") !== "dark");
+  });
+
+  // ── Sidebar ────────────────────────────────────────────────────────
+  window.toggleSidebar = function() {
+    document.getElementById("sidebar").classList.toggle("open");
+    document.getElementById("sidebar-overlay").classList.toggle("show");
+  };
+
+  // ── Settings ───────────────────────────────────────────────────────
+  async function loadSettings() {
+    try {
+      const snap = await getDoc(doc(db, "settings", "hospital"));
+      if (!snap.exists()) return;
+      const s = snap.data(); const t = s.theme || {};
+      const r = document.documentElement;
+      if (t.primary)    r.style.setProperty("--color-primary",      t.primary);
+      if (t.primaryDark)r.style.setProperty("--color-primary-dark", t.primaryDark);
+      if (t.secondary)  r.style.setProperty("--color-secondary",    t.secondary);
+      if (t.fontFamily) r.style.setProperty("--font-family",        t.fontFamily);
+      const sbName = document.getElementById("sb-hospital-name");
+      if (sbName) sbName.textContent = s.hospitalName || "MediCore";
+      if (s.logoUrl) {
+        const img  = document.getElementById("sb-logo-img");
+        const icon = document.getElementById("sb-logo-icon");
+        if (img)  { img.src = s.logoUrl; img.classList.remove("hidden"); }
+        if (icon) icon.classList.add("hidden");
+      }
+    } catch(e) { console.error(e); }
+  }
+
+  // ── Load reports ───────────────────────────────────────────────────
+  async function loadReports() {
+    try {
+      const snap = await getDocs(query(
+        collection(db, "reports"),
+        where("doctorId", "==", doctorUid)
+      ));
+
+      allReports = snap.docs.map(d => ({ id:d.id, ...d.data() }));
+
+      // Sort: pending first, then by date desc
+      allReports.sort((a,b) => {
+        if (a.status === "pending_review" && b.status !== "pending_review") return -1;
+        if (b.status === "pending_review" && a.status !== "pending_review") return 1;
+        const ta = a.uploadedAt?.seconds || 0;
+        const tb = b.uploadedAt?.seconds || 0;
+        return tb - ta;
+      });
+
+      // Pre-fetch patient names
+      const pids = [...new Set(allReports.map(r => r.patientId).filter(Boolean))];
+      await Promise.all(pids.map(async pid => {
+        try {
+          const s = await getDoc(doc(db, "users", pid));
+          if (s.exists()) patientCache[pid] = s.data();
+        } catch(_) {}
+      }));
+
+      updateCounts();
+      renderReports();
+
+      // Auto-open if ?id= param exists
+      const urlId = new URLSearchParams(location.search).get("id");
+      if (urlId) {
+        const report = allReports.find(r => r.id === urlId);
+        if (report) openDetail(report);
+      }
+
+    } catch(e) {
+      console.error(e);
+      document.getElementById("reports-grid").innerHTML =
+        `<div class="col-span-2 p-8 text-center text-sm" style="color:var(--color-error)">
+          <i class="fa-solid fa-circle-exclamation mr-2"></i> Failed to load reports.
+        </div>`;
+    }
+  }
+
+  // ── Update counts ──────────────────────────────────────────────────
+  function updateCounts() {
+    document.getElementById("count-total").textContent    = allReports.length;
+    document.getElementById("count-pending").textContent  = allReports.filter(r => r.status === "pending_review").length;
+    document.getElementById("count-verified").textContent = allReports.filter(r => r.status === "verified").length;
+    document.getElementById("count-rejected").textContent = allReports.filter(r => r.status === "rejected").length;
+  }
+
+  // ── Render reports grid ────────────────────────────────────────────
+  function renderReports() {
+    let list = [...allReports];
+    if (activeFilter !== "all") list = list.filter(r => r.status === activeFilter);
+    if (activeSearch) {
+      const q = activeSearch.toLowerCase();
+      list = list.filter(r => {
+        const pName = (patientCache[r.patientId]?.name || "").toLowerCase();
+        return pName.includes(q) || (r.testName || "").toLowerCase().includes(q);
+      });
+    }
+
+    if (list.length === 0) {
+      document.getElementById("reports-grid").innerHTML = `
+        <div class="col-span-2 p-10 text-center card">
+          <div class="w-14 h-14 rounded-2xl mx-auto mb-3 flex items-center justify-center"
+               style="background:color-mix(in srgb,var(--color-primary) 8%,transparent)">
+            <i class="fa-solid fa-file-circle-check text-xl" style="color:var(--color-primary)"></i>
+          </div>
+          <p class="font-semibold text-sm">No reports found</p>
+          <p class="text-xs mt-1" style="color:var(--color-muted)">
+            ${activeFilter === "pending_review" ? "All reports reviewed!" : "Try a different filter"}
+          </p>
+        </div>`;
+      return;
+    }
+
+    const statusConfig = {
+      pending_review: { bg:"color-mix(in srgb,var(--color-warning) 12%,transparent)", color:"var(--color-warning)", icon:"fa-clock",        label:"Pending Review" },
+      verified:       { bg:"color-mix(in srgb,var(--color-success) 12%,transparent)", color:"var(--color-success)", icon:"fa-circle-check",  label:"Verified"       },
+      rejected:       { bg:"color-mix(in srgb,var(--color-error)   12%,transparent)", color:"var(--color-error)",   icon:"fa-circle-xmark",  label:"Rejected"       },
+    };
+
+    document.getElementById("reports-grid").innerHTML = list.map(r => {
+      const sc      = statusConfig[r.status] || statusConfig.pending_review;
+      const patient = patientCache[r.patientId];
+      const pName   = patient?.name || "Unknown Patient";
+      const ini     = pName.charAt(0).toUpperCase();
+      const colors  = ["#2563eb","#0ea5e9","#8b5cf6","#10b981","#f59e0b","#ec4899"];
+      const bg      = colors[pName.charCodeAt(0) % colors.length];
+      const date    = r.uploadedAt?.toDate
+        ? r.uploadedAt.toDate().toLocaleDateString("en-IN",{day:"2-digit",month:"short",year:"numeric"})
+        : "—";
+
+      return `
+        <div class="report-card ${selectedId === r.id ? 'selected' : ''}"
+             onclick="openDetailById('${r.id}')">
+
+          <div class="flex items-start justify-between mb-3">
+            <div class="flex items-center gap-3">
+              <div class="avatar" style="background:${bg}">${ini}</div>
+              <div>
+                <div class="text-sm font-semibold">${pName}</div>
+                <div class="text-xs" style="color:var(--color-muted)">
+                  ${patient?.email || "—"}
+                </div>
+              </div>
+            </div>
+            <span class="status-badge" style="background:${sc.bg};color:${sc.color}">
+              <i class="fa-solid ${sc.icon} text-[9px]"></i> ${sc.label}
+            </span>
+          </div>
+
+          <div class="p-3 rounded-xl mb-3"
+               style="background:var(--color-bg)">
+            <div class="flex items-center gap-2 mb-1">
+              <i class="fa-solid fa-flask text-xs" style="color:var(--color-primary)"></i>
+              <span class="text-sm font-semibold">
+                ${r.testName || r.type || "Lab Report"}
+              </span>
+            </div>
+            ${r.summary
+              ? `<p class="text-xs leading-relaxed line-clamp-2" style="color:var(--color-muted)">${r.summary}</p>`
+              : `<p class="text-xs" style="color:var(--color-muted)">No summary provided</p>`
+            }
+          </div>
+
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-1.5 text-xs" style="color:var(--color-muted)">
+              <i class="fa-regular fa-calendar text-[10px]"></i> ${date}
+            </div>
+            <div class="flex items-center gap-2">
+              ${r.fileUrl
+                ? `<a href="${r.fileUrl}" target="_blank"
+                      onclick="event.stopPropagation()"
+                      class="text-xs flex items-center gap-1 font-medium hover:underline"
+                      style="color:var(--color-primary)">
+                     <i class="fa-solid fa-file-pdf text-[10px]"></i> View File
+                   </a>`
+                : ``
+              }
+              <span class="text-xs font-medium" style="color:var(--color-primary)">
+                Review <i class="fa-solid fa-arrow-right text-[9px]"></i>
+              </span>
+            </div>
+          </div>
+
+        </div>
+      `;
+    }).join('');
+  }
+
+  // ── Filter + Search ────────────────────────────────────────────────
+  window.filterReports = function(status, btn) {
+    activeFilter = status;
+    document.querySelectorAll(".filter-tab").forEach(t => t.classList.remove("active"));
+    btn.classList.add("active");
+    renderReports();
+  };
+
+  window.searchReports = function(val) {
+    activeSearch = val;
+    renderReports();
+  };
+
+  // ── Open detail panel ──────────────────────────────────────────────
+  window.openDetailById = function(id) {
+    const report = allReports.find(r => r.id === id);
+    if (report) openDetail(report);
+  };
+
+  async function openDetail(report) {
+    selectedId = report.id;
+    renderReports(); // re-render to show selected border
+
+    const panel   = document.getElementById("detail-panel");
+    const content = document.getElementById("detail-content");
+    panel.classList.add("open");
+
+    // Shift main content on large screens
+    document.getElementById("main-wrap").style.paddingRight = "440px";
+
+    const patient = patientCache[report.patientId];
+    const pName   = patient?.name || "Unknown Patient";
+    const ini     = pName.charAt(0).toUpperCase();
+    const colors  = ["#2563eb","#0ea5e9","#8b5cf6","#10b981","#f59e0b","#ec4899"];
+    const bg      = colors[pName.charCodeAt(0) % colors.length];
+    const date    = report.uploadedAt?.toDate
+      ? report.uploadedAt.toDate().toLocaleDateString("en-IN",{
+          weekday:"long", day:"numeric", month:"long", year:"numeric"
+        })
+      : "—";
+
+    const statusConfig = {
+      pending_review: { color:"var(--color-warning)", label:"Pending Review" },
+      verified:       { color:"var(--color-success)", label:"Verified"       },
+      rejected:       { color:"var(--color-error)",   label:"Rejected"       },
+    };
+    const sc = statusConfig[report.status] || statusConfig.pending_review;
+
+    content.innerHTML = `
+
+      <!-- Patient info -->
+      <div class="flex items-center gap-4 p-4 rounded-2xl"
+           style="background:color-mix(in srgb,var(--color-primary) 6%,transparent)">
+        <div class="avatar w-14 h-14 rounded-2xl text-lg" style="background:${bg}">${ini}</div>
+        <div>
+          <div class="font-bold">${pName}</div>
+          <div class="text-xs mt-0.5" style="color:var(--color-muted)">${patient?.email || "—"}</div>
+          <span class="status-badge mt-1.5 inline-flex"
+                style="background:color-mix(in srgb,${sc.color} 12%,transparent);color:${sc.color}">
+            ${sc.label}
+          </span>
+        </div>
+      </div>
+
+      <!-- Report info -->
+      <div class="card p-4 space-y-2.5">
+        <h4 class="text-xs font-semibold uppercase tracking-wider mb-3"
+            style="color:var(--color-muted)">Report Info</h4>
+        ${infoRow("Test Name",    report.testName || report.type || "Lab Report")}
+        ${infoRow("Uploaded",     date)}
+        ${infoRow("Report ID",    `<span class="font-mono text-xs">${report.id}</span>`)}
+        ${report.labTechName ? infoRow("Lab Technician", report.labTechName) : ""}
+      </div>
+
+      <!-- Test results -->
+      ${report.results ? `
+        <div class="card p-4">
+          <h4 class="text-xs font-semibold uppercase tracking-wider mb-3"
+              style="color:var(--color-muted)">Test Results</h4>
+          <div id="results-table"></div>
+        </div>
+      ` : ""}
+
+      <!-- File -->
+      ${report.fileUrl ? `
+        <a href="${report.fileUrl}" target="_blank"
+           class="flex items-center gap-3 p-4 rounded-xl border transition-colors
+                  hover:border-primary"
+           style="border-color:var(--color-border);text-decoration:none;color:inherit">
+          <div class="w-10 h-10 rounded-xl flex items-center justify-center text-white shrink-0"
+               style="background:#ef4444">
+            <i class="fa-solid fa-file-pdf"></i>
+          </div>
+          <div>
+            <div class="text-sm font-semibold">View Report File</div>
+            <div class="text-xs" style="color:var(--color-muted)">Click to open in new tab</div>
+          </div>
+          <i class="fa-solid fa-arrow-up-right-from-square ml-auto text-xs"
+             style="color:var(--color-muted)"></i>
+        </a>
+      ` : ""}
+
+      <!-- Summary -->
+      ${report.summary ? `
+        <div class="card p-4">
+          <h4 class="text-xs font-semibold uppercase tracking-wider mb-2"
+              style="color:var(--color-muted)">Lab Summary</h4>
+          <p class="text-sm leading-relaxed">${report.summary}</p>
+        </div>
+      ` : ""}
+
+      <!-- ── AI Suggestion Panel ── -->
+      <div class="ai-box">
+        <div class="flex items-center gap-2 mb-3">
+          <div class="w-7 h-7 rounded-lg flex items-center justify-center text-white text-xs"
+               style="background:linear-gradient(135deg,var(--color-primary),#8b5cf6)">
+            <i class="fa-solid fa-wand-magic-sparkles text-[10px]"></i>
+          </div>
+          <span class="text-sm font-semibold">AI Clinical Suggestion</span>
+          <span class="text-xs px-2 py-0.5 rounded-full ml-auto"
+                style="background:color-mix(in srgb,var(--color-primary) 10%,transparent);
+                       color:var(--color-primary)">Gemini</span>
+        </div>
+
+        <div id="ai-output-${report.id}">
+          <div class="ai-thinking">
+            <div class="ai-dot"></div>
+            <div class="ai-dot"></div>
+            <div class="ai-dot"></div>
+            <span class="ml-1">Analyzing report…</span>
+          </div>
+        </div>
+
+        <p class="text-xs mt-3 pt-3"
+           style="color:var(--color-muted);border-top:1px solid var(--color-border)">
+          <i class="fa-solid fa-triangle-exclamation mr-1" style="color:var(--color-warning)"></i>
+          AI suggestions are for reference only. Clinical judgment takes precedence.
+        </p>
+      </div>
+
+      <!-- Doctor notes -->
+      <div>
+        <label class="text-xs font-semibold uppercase tracking-wider block mb-2"
+               style="color:var(--color-muted)">
+          Your Notes / Remarks
+        </label>
+        <textarea id="doctor-notes" class="input-field" rows="3"
+                  placeholder="Add your clinical notes or remarks…"
+        >${report.doctorNotes || ""}</textarea>
+      </div>
+
+      <!-- Action buttons -->
+      ${report.status === "pending_review" ? `
+        <div class="flex gap-3 pb-4">
+          <button onclick="verifyReport('${report.id}')"
+                  class="btn-primary flex-1 justify-center">
+            <i class="fa-solid fa-circle-check"></i>
+            <span id="verify-btn-text">Verify Report</span>
+          </button>
+          <button onclick="rejectReport('${report.id}')"
+                  class="btn-danger flex-1 justify-center">
+            <i class="fa-solid fa-circle-xmark"></i> Reject
+          </button>
+        </div>
+      ` : `
+        <div class="p-3 rounded-xl text-sm text-center"
+             style="background:color-mix(in srgb,${sc.color} 8%,transparent);
+                    color:${sc.color}">
+          <i class="fa-solid fa-${report.status === "verified" ? "circle-check" : "circle-xmark"} mr-2"></i>
+          Report ${sc.label} on
+          ${report.reviewedAt?.toDate
+            ? report.reviewedAt.toDate().toLocaleDateString("en-IN")
+            : "—"}
+          <button onclick="saveNotes('${report.id}')"
+                  class="block w-full mt-2 py-2 rounded-lg text-xs font-medium
+                         transition-colors hover:opacity-80"
+                  style="background:color-mix(in srgb,${sc.color} 15%,transparent)">
+            <i class="fa-solid fa-floppy-disk mr-1"></i> Update Notes
+          </button>
+        </div>
+      `}
+
+    `;
+
+    // Render results table if available
+    if (report.results) renderResultsTable(report.results);
+
+    // Trigger AI analysis
+    getAISuggestion(report);
+  }
+
+  // ── Info row helper ────────────────────────────────────────────────
+  function infoRow(label, value) {
+    return `
+      <div class="flex justify-between items-start py-2"
+           style="border-bottom:1px solid var(--color-border)">
+        <span class="text-xs" style="color:var(--color-muted)">${label}</span>
+        <span class="text-xs font-medium text-right max-w-[60%]">${value}</span>
+      </div>`;
+  }
+
+  // ── Render results table ───────────────────────────────────────────
+  function renderResultsTable(results) {
+    const container = document.getElementById("results-table");
+    if (!container) return;
+
+    // results can be array of { name, value, unit, range, flag }
+    // or a plain object
+    let rows = [];
+    if (Array.isArray(results)) {
+      rows = results;
+    } else if (typeof results === "object") {
+      rows = Object.entries(results).map(([k,v]) => ({
+        name: k, value: typeof v === "object" ? v.value : v,
+        unit: v.unit || "", range: v.range || "", flag: v.flag || ""
+      }));
+    }
+
+    if (rows.length === 0) {
+      container.innerHTML = `<p class="text-xs" style="color:var(--color-muted)">No structured results</p>`;
+      return;
+    }
+
+    container.innerHTML = `
+      <div class="overflow-x-auto">
+        <table style="width:100%;border-collapse:collapse;font-size:0.78rem">
+          <thead>
+            <tr style="border-bottom:1.5px solid var(--color-border)">
+              <th class="text-left pb-2 font-semibold" style="color:var(--color-muted)">Test</th>
+              <th class="text-right pb-2 font-semibold" style="color:var(--color-muted)">Value</th>
+              <th class="text-right pb-2 font-semibold" style="color:var(--color-muted)">Unit</th>
+              <th class="text-right pb-2 font-semibold" style="color:var(--color-muted)">Range</th>
+              <th class="text-center pb-2 font-semibold" style="color:var(--color-muted)">Flag</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rows.map(r => {
+              const flagColors = {
+                H:    { bg:"color-mix(in srgb,#ef4444 10%,transparent)", color:"#ef4444" },
+                L:    { bg:"color-mix(in srgb,#3b82f6 10%,transparent)", color:"#3b82f6" },
+                HIGH: { bg:"color-mix(in srgb,#ef4444 10%,transparent)", color:"#ef4444" },
+                LOW:  { bg:"color-mix(in srgb,#3b82f6 10%,transparent)", color:"#3b82f6" },
+              };
+              const fc = r.flag ? (flagColors[r.flag.toUpperCase()] || {}) : {};
+              return `
+                <tr style="border-bottom:1px solid var(--color-border)">
+                  <td class="py-2 font-medium">${r.name}</td>
+                  <td class="py-2 text-right font-bold">${r.value ?? "—"}</td>
+                  <td class="py-2 text-right" style="color:var(--color-muted)">${r.unit || "—"}</td>
+                  <td class="py-2 text-right" style="color:var(--color-muted)">${r.range || "—"}</td>
+                  <td class="py-2 text-center">
+                    ${r.flag
+                      ? `<span style="padding:2px 8px;border-radius:99px;font-size:0.65rem;
+                                      font-weight:700;background:${fc.bg};color:${fc.color}">
+                           ${r.flag}
+                         </span>`
+                      : `<span style="color:var(--color-muted)">—</span>`
+                    }
+                  </td>
+                </tr>
+              `;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>
+    `;
+  }
+
+  // ── AI suggestion via Gemini ───────────────────────────────────────
+  async function getAISuggestion(report) {
+    const outputEl = document.getElementById(`ai-output-${report.id}`);
+    if (!outputEl) return;
+
+    // Build prompt
+    const patient = patientCache[report.patientId];
+    const prompt  = `
+You are a clinical decision support AI assisting a doctor.
+
+Patient: ${patient?.name || "Unknown"}, Age: ${patient?.age || "N/A"}, Gender: ${patient?.gender || "N/A"}
+Test: ${report.testName || report.type || "Lab Report"}
+Summary: ${report.summary || "No summary"}
+Results: ${JSON.stringify(report.results || {})}
+
+Provide a concise clinical suggestion in 3 sections:
+1. **Key Findings** – what stands out (2-3 bullet points)
+2. **Clinical Interpretation** – brief plain-English interpretation
+3. **Suggested Next Steps** – 2-3 actionable recommendations
+
+Be concise, factual, and clinically relevant. Plain text only, no markdown headers.
+    `.trim();
+
+    try {
+      const res  = await fetch(GEMINI_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: { temperature:0.3, maxOutputTokens:400 }
+        })
+      });
+
+      if (!res.ok) throw new Error(`Gemini error ${res.status}`);
+
+      const data = await res.json();
+      const text = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+
+      // Format output
+      outputEl.innerHTML = formatAIResponse(text);
+
+    } catch(err) {
+      console.error("AI error:", err);
+      outputEl.innerHTML = `
+        <div class="text-xs flex items-center gap-2" style="color:var(--color-muted)">
+          <i class="fa-solid fa-circle-exclamation" style="color:var(--color-warning)"></i>
+          AI suggestion unavailable. Check your Gemini API key.
+        </div>`;
+    }
+  }
+
+  // ── Format AI response into clean HTML ────────────────────────────
+  function formatAIResponse(text) {
+    const sections = text.split(/\d+\.\s+\*\*(.+?)\*\*/g).filter(Boolean);
+
+    if (sections.length < 2) {
+      // Plain text fallback
+      return `<p class="text-sm leading-relaxed">${text}</p>`;
+    }
+
+    let html = "";
+    for (let i = 0; i < sections.length; i += 2) {
+      const title   = sections[i]?.trim();
+      const content = sections[i+1]?.trim() || "";
+      if (!title) continue;
+
+      // Convert bullet-like lines
+      const lines = content.split('\n')
+        .map(l => l.trim())
+        .filter(Boolean)
+        .map(l => l.startsWith('-') || l.startsWith('•')
+          ? `<li class="mb-1">${l.replace(/^[-•]\s*/,'')}</li>`
+          : `<p class="text-xs leading-relaxed mb-1">${l}</p>`
+        ).join('');
+
+      html += `
+        <div class="mb-3">
+          <div class="text-xs font-bold mb-1.5" style="color:var(--color-primary)">${title}</div>
+          <ul class="text-xs leading-relaxed list-none space-y-0.5"
+              style="color:var(--color-text)">${lines}</ul>
+        </div>`;
+    }
+    return html || `<p class="text-sm leading-relaxed">${text}</p>`;
+  }
+
+  // ── Verify report ──────────────────────────────────────────────────
+  window.verifyReport = async function(id) {
+    const notes = document.getElementById("doctor-notes")?.value || "";
+    const btn   = document.getElementById("verify-btn-text");
+    if (btn) { btn.textContent = "Verifying…"; }
+
+    try {
+      await updateDoc(doc(db, "reports", id), {
+        status:      "verified",
+        doctorNotes: notes,
+        reviewedBy:  doctorUid,
+        reviewedAt:  serverTimestamp(),
+      });
+
+      // Update local
+      const idx = allReports.findIndex(r => r.id === id);
+      if (idx !== -1) {
+        allReports[idx].status      = "verified";
+        allReports[idx].doctorNotes = notes;
+      }
+
+      showToast("Report verified successfully!", "success");
+      updateCounts();
+      renderReports();
+      closeDetail();
+    } catch(e) {
+      console.error(e);
+      showToast("Failed to verify report.", "error");
+      if (btn) btn.textContent = "Verify Report";
+    }
+  };
+
+  // ── Reject report ──────────────────────────────────────────────────
+  window.rejectReport = async function(id) {
+    const notes = document.getElementById("doctor-notes")?.value || "";
+    if (!notes.trim()) {
+      showToast("Please add a rejection reason in the notes field.", "error");
+      document.getElementById("doctor-notes")?.focus();
+      return;
+    }
+
+    try {
+      await updateDoc(doc(db, "reports", id), {
+        status:      "rejected",
+        doctorNotes: notes,
+        reviewedBy:  doctorUid,
+        reviewedAt:  serverTimestamp(),
+      });
+
+      const idx = allReports.findIndex(r => r.id === id);
+      if (idx !== -1) {
+        allReports[idx].status      = "rejected";
+        allReports[idx].doctorNotes = notes;
+      }
+
+      showToast("Report rejected. Patient will be notified.", "info");
+      updateCounts();
+      renderReports();
+      closeDetail();
+    } catch(e) {
+      console.error(e);
+      showToast("Failed to reject report.", "error");
+    }
+  };
+
+  // ── Save notes only ────────────────────────────────────────────────
+  window.saveNotes = async function(id) {
+    const notes = document.getElementById("doctor-notes")?.value || "";
+    try {
+      await updateDoc(doc(db, "reports", id), { doctorNotes: notes });
+      const idx = allReports.findIndex(r => r.id === id);
+      if (idx !== -1) allReports[idx].doctorNotes = notes;
+      showToast("Notes saved.", "success");
+    } catch(e) {
+      showToast("Failed to save notes.", "error");
+    }
+  };
+
+  // ── Close detail ───────────────────────────────────────────────────
+  window.closeDetail = function() {
+    document.getElementById("detail-panel").classList.remove("open");
+    document.getElementById("main-wrap").style.paddingRight = "";
+    selectedId = null;
+    renderReports();
+  };
+
+  // ── Toast ──────────────────────────────────────────────────────────
+  window.showToast = function(msg, type = "info") {
+    const toast = document.getElementById("toast");
+    const icons = {
+      success:"fa-solid fa-circle-check",
+      error:"fa-solid fa-circle-exclamation",
+      info:"fa-solid fa-circle-info"
+    };
+    document.getElementById("toast-msg").textContent = msg;
+    document.getElementById("toast-icon").className  = icons[type];
+    toast.className = `show ${type}`;
+    clearTimeout(window._tt);
+    window._tt = setTimeout(() => { toast.className = type; }, 3500);
+  };
+
+  // ── Logout ─────────────────────────────────────────────────────────
+  window.doctorLogout = async function() {
+    await signOut(auth);
+    window.location.href = "/auth/staff-login/?role=doctor";
+  };
+
+  // ── Init ───────────────────────────────────────────────────────────
+  guardPage(["doctor"], async (user, userData) => {
+    doctorUid  = user.uid;
+    doctorData = userData;
+
+    document.getElementById("sb-doctor-name").textContent =
+      `Dr. ${userData.name || "Doctor"}`;
+    document.getElementById("sb-doctor-spec").textContent =
+      userData.specialization || "Doctor";
+
+    await loadSettings();
+    await loadReports();
+
+    const loader = document.getElementById("page-loader");
+    loader.classList.add("hidden");
+    setTimeout(() => loader.remove(), 500);
+  });
+
+</script>
+</body>
+</html>

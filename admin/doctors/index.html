@@ -1,341 +1,495 @@
 <!DOCTYPE html>
 <html lang="en" id="html-root">
+
 <head>
-  <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Doctor Availability — Admin</title>
 
   <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
 
   <style>
     :root {
-      --color-primary:      #2563eb;
+      --color-primary: #2563eb;
       --color-primary-dark: #1d4ed8;
-      --color-secondary:    #0ea5e9;
-      --color-bg:           #f8fafc;
-      --color-surface:      #ffffff;
-      --color-text:         #0f172a;
-      --color-muted:        #64748b;
-      --color-border:       #e2e8f0;
-      --color-success:      #10b981;
-      --color-error:        #ef4444;
-      --font-family:        'Inter', sans-serif;
+      --color-secondary: #0ea5e9;
+      --color-bg: #f8fafc;
+      --color-surface: #ffffff;
+      --color-text: #0f172a;
+      --color-muted: #64748b;
+      --color-border: #e2e8f0;
+      --color-success: #10b981;
+      --color-error: #ef4444;
+      --font-family: 'Inter', sans-serif;
     }
-    [data-theme="dark"] {
-      --color-bg:      #0f172a;
-      --color-surface: #1e293b;
-      --color-text:    #f1f5f9;
-      --color-muted:   #94a3b8;
-      --color-border:  #334155;
-    }
-    * { font-family:var(--font-family); box-sizing:border-box; margin:0; padding:0; }
-    body { background:var(--color-bg); color:var(--color-text); transition:background 0.3s,color 0.3s; }
 
-    .main-content { margin-left:0; padding-top:64px; transition:margin 0.3s; }
-    @media(min-width:1024px) { .main-content { margin-left:240px; } }
+    [data-theme="dark"] {
+      --color-bg: #0f172a;
+      --color-surface: #1e293b;
+      --color-text: #f1f5f9;
+      --color-muted: #94a3b8;
+      --color-border: #334155;
+    }
+
+    * {
+      font-family: var(--font-family);
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background: var(--color-bg);
+      color: var(--color-text);
+      transition: background 0.3s, color 0.3s;
+    }
+
+    .main-content {
+      margin-left: 0;
+      padding-top: 64px;
+      transition: margin 0.3s;
+    }
+
+    @media(min-width:1024px) {
+      .main-content {
+        margin-left: 240px;
+      }
+    }
 
     /* Loader */
     #page-loader {
-      position:fixed; inset:0; z-index:9999;
-      background:var(--color-bg);
-      display:flex; align-items:center; justify-content:center;
-      transition:opacity 0.4s;
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+      background: var(--color-bg);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: opacity 0.4s;
     }
-    #page-loader.hidden { opacity:0; pointer-events:none; }
-    .spinner {
-      width:36px; height:36px;
-      border:3px solid var(--color-border);
-      border-top-color:var(--color-primary);
-      border-radius:50%; animation:spin 0.75s linear infinite;
-    }
-    @keyframes spin { to { transform:rotate(360deg); } }
 
-    .card { background:var(--color-surface); border:1px solid var(--color-border); border-radius:1rem; }
+    #page-loader.hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .spinner {
+      width: 36px;
+      height: 36px;
+      border: 3px solid var(--color-border);
+      border-top-color: var(--color-primary);
+      border-radius: 50%;
+      animation: spin 0.75s linear infinite;
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    .card {
+      background: var(--color-surface);
+      border: 1px solid var(--color-border);
+      border-radius: 1rem;
+    }
 
     /* Input */
     .input-field {
-      width:100%; padding:10px 14px;
-      background:var(--color-bg);
-      border:1.5px solid var(--color-border);
-      border-radius:10px; color:var(--color-text);
-      font-size:0.875rem; outline:none;
-      transition:border-color 0.2s, box-shadow 0.2s;
+      width: 100%;
+      padding: 10px 14px;
+      background: var(--color-bg);
+      border: 1.5px solid var(--color-border);
+      border-radius: 10px;
+      color: var(--color-text);
+      font-size: 0.875rem;
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
     }
+
     .input-field:focus {
-      border-color:var(--color-primary);
-      box-shadow:0 0 0 3px color-mix(in srgb,var(--color-primary) 15%,transparent);
+      border-color: var(--color-primary);
+      box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 15%, transparent);
     }
-    .input-field::placeholder { color:var(--color-muted); }
-    select.input-field { cursor:pointer; appearance:none; }
-    .field-label { display:block; font-size:0.8rem; font-weight:500; margin-bottom:5px; }
+
+    .input-field::placeholder {
+      color: var(--color-muted);
+    }
+
+    select.input-field {
+      cursor: pointer;
+      appearance: none;
+    }
+
+    .field-label {
+      display: block;
+      font-size: 0.8rem;
+      font-weight: 500;
+      margin-bottom: 5px;
+    }
 
     /* Buttons */
     .btn-primary {
-      padding:10px 20px;
-      background:var(--color-primary); color:#fff;
-      font-size:0.875rem; font-weight:600;
-      border:none; border-radius:10px; cursor:pointer;
-      display:inline-flex; align-items:center; gap:8px;
-      transition:background 0.2s, transform 0.15s;
+      padding: 10px 20px;
+      background: var(--color-primary);
+      color: #fff;
+      font-size: 0.875rem;
+      font-weight: 600;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      transition: background 0.2s, transform 0.15s;
     }
-    .btn-primary:hover { background:var(--color-primary-dark); transform:translateY(-1px); }
-    .btn-primary:disabled { opacity:0.55; cursor:not-allowed; transform:none; }
+
+    .btn-primary:hover {
+      background: var(--color-primary-dark);
+      transform: translateY(-1px);
+    }
+
+    .btn-primary:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+      transform: none;
+    }
 
     .btn-ghost {
-      padding:8px 16px;
-      background:transparent; color:var(--color-muted);
-      font-size:0.8rem; font-weight:500;
-      border:1.5px solid var(--color-border);
-      border-radius:10px; cursor:pointer;
-      display:inline-flex; align-items:center; gap:6px;
-      transition:border-color 0.2s, color 0.2s;
+      padding: 8px 16px;
+      background: transparent;
+      color: var(--color-muted);
+      font-size: 0.8rem;
+      font-weight: 500;
+      border: 1.5px solid var(--color-border);
+      border-radius: 10px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: border-color 0.2s, color 0.2s;
     }
-    .btn-ghost:hover { border-color:var(--color-primary); color:var(--color-primary); }
+
+    .btn-ghost:hover {
+      border-color: var(--color-primary);
+      color: var(--color-primary);
+    }
 
     /* Doctor card */
     .doctor-card {
-      background:var(--color-surface);
-      border:1px solid var(--color-border);
-      border-radius:1rem; padding:1.25rem;
-      cursor:pointer;
-      transition:border-color 0.2s, box-shadow 0.2s, transform 0.2s;
+      background: var(--color-surface);
+      border: 1px solid var(--color-border);
+      border-radius: 1rem;
+      padding: 1.25rem;
+      cursor: pointer;
+      transition: border-color 0.2s, box-shadow 0.2s, transform 0.2s;
     }
+
     .doctor-card:hover {
-      border-color:var(--color-primary);
-      box-shadow:0 8px 24px rgba(0,0,0,0.07);
-      transform:translateY(-2px);
+      border-color: var(--color-primary);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.07);
+      transform: translateY(-2px);
     }
+
     .doctor-card.selected {
-      border-color:var(--color-primary);
-      box-shadow:0 0 0 3px color-mix(in srgb,var(--color-primary) 15%,transparent);
+      border-color: var(--color-primary);
+      box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 15%, transparent);
     }
 
     /* Day toggle buttons */
     .day-btn {
-      width:40px; height:40px; border-radius:10px;
-      display:flex; align-items:center; justify-content:center;
-      font-size:0.7rem; font-weight:700;
-      border:1.5px solid var(--color-border);
-      color:var(--color-muted); cursor:pointer;
-      transition:all 0.15s; user-select:none;
-      background:var(--color-bg);
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.7rem;
+      font-weight: 700;
+      border: 1.5px solid var(--color-border);
+      color: var(--color-muted);
+      cursor: pointer;
+      transition: all 0.15s;
+      user-select: none;
+      background: var(--color-bg);
     }
-    .day-btn:hover { border-color:var(--color-primary); color:var(--color-primary); }
+
+    .day-btn:hover {
+      border-color: var(--color-primary);
+      color: var(--color-primary);
+    }
+
     .day-btn.active {
-      background:var(--color-primary);
-      border-color:var(--color-primary);
-      color:#fff;
+      background: var(--color-primary);
+      border-color: var(--color-primary);
+      color: #fff;
     }
 
     /* Slot pill */
     .slot-pill {
-      display:inline-flex; align-items:center; gap:6px;
-      padding:5px 12px; border-radius:99px;
-      font-size:0.75rem; font-weight:500;
-      background:color-mix(in srgb,var(--color-primary) 10%,transparent);
-      color:var(--color-primary);
-      border:1px solid color-mix(in srgb,var(--color-primary) 25%,transparent);
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 12px;
+      border-radius: 99px;
+      font-size: 0.75rem;
+      font-weight: 500;
+      background: color-mix(in srgb, var(--color-primary) 10%, transparent);
+      color: var(--color-primary);
+      border: 1px solid color-mix(in srgb, var(--color-primary) 25%, transparent);
     }
+
     .slot-pill button {
-      background:none; border:none; cursor:pointer;
-      color:var(--color-primary); padding:0; line-height:1;
-      transition:color 0.15s;
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: var(--color-primary);
+      padding: 0;
+      line-height: 1;
+      transition: color 0.15s;
     }
-    .slot-pill button:hover { color:var(--color-error); }
+
+    .slot-pill button:hover {
+      color: var(--color-error);
+    }
 
     /* Day availability row */
     .day-row {
-      border:1px solid var(--color-border);
-      border-radius:12px; padding:14px;
-      transition:border-color 0.2s;
+      border: 1px solid var(--color-border);
+      border-radius: 12px;
+      padding: 14px;
+      transition: border-color 0.2s;
     }
-    .day-row.has-slots { border-color:color-mix(in srgb,var(--color-primary) 30%,transparent); }
+
+    .day-row.has-slots {
+      border-color: color-mix(in srgb, var(--color-primary) 30%, transparent);
+    }
 
     /* Modal */
     #modal-overlay {
-      position:fixed; inset:0; z-index:100;
-      background:rgba(0,0,0,0.45); backdrop-filter:blur(4px);
-      display:flex; align-items:center; justify-content:center;
-      padding:16px; opacity:0; pointer-events:none;
-      transition:opacity 0.25s;
+      position: fixed;
+      inset: 0;
+      z-index: 100;
+      background: rgba(0, 0, 0, 0.45);
+      backdrop-filter: blur(4px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.25s;
     }
-    #modal-overlay.show { opacity:1; pointer-events:all; }
+
+    #modal-overlay.show {
+      opacity: 1;
+      pointer-events: all;
+    }
+
     #modal-box {
-      background:var(--color-surface); border:1px solid var(--color-border);
-      border-radius:1.25rem; padding:1.75rem;
-      width:100%; max-width:560px; max-height:90vh; overflow-y:auto;
-      transform:translateY(20px); transition:transform 0.25s;
+      background: var(--color-surface);
+      border: 1px solid var(--color-border);
+      border-radius: 1.25rem;
+      padding: 1.75rem;
+      width: 100%;
+      max-width: 560px;
+      max-height: 90vh;
+      overflow-y: auto;
+      transform: translateY(20px);
+      transition: transform 0.25s;
     }
-    #modal-overlay.show #modal-box { transform:translateY(0); }
+
+    #modal-overlay.show #modal-box {
+      transform: translateY(0);
+    }
 
     /* Toast */
     #toast {
-      position:fixed; bottom:28px; left:50%;
-      transform:translateX(-50%) translateY(70px);
-      padding:11px 20px; border-radius:12px;
-      font-size:0.85rem; font-weight:500;
-      display:flex; align-items:center; gap:10px;
-      z-index:9999; opacity:0; white-space:nowrap;
-      transition:transform 0.35s cubic-bezier(0.34,1.56,0.64,1), opacity 0.3s;
-      box-shadow:0 8px 24px rgba(0,0,0,0.15);
+      position: fixed;
+      bottom: 28px;
+      left: 50%;
+      transform: translateX(-50%) translateY(70px);
+      padding: 11px 20px;
+      border-radius: 12px;
+      font-size: 0.85rem;
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      z-index: 9999;
+      opacity: 0;
+      white-space: nowrap;
+      transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.3s;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
     }
-    #toast.show    { transform:translateX(-50%) translateY(0); opacity:1; }
-    #toast.success { background:var(--color-success); color:#fff; }
-    #toast.error   { background:var(--color-error);   color:#fff; }
-    #toast.info    { background:var(--color-primary);  color:#fff; }
 
-    .fade-up    { animation:fadeUp 0.5s ease forwards; opacity:0; }
-    .fade-up.d1 { animation-delay:0.1s; }
-    .fade-up.d2 { animation-delay:0.2s; }
-    @keyframes fadeUp { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:none} }
+    #toast.show {
+      transform: translateX(-50%) translateY(0);
+      opacity: 1;
+    }
+
+    #toast.success {
+      background: var(--color-success);
+      color: #fff;
+    }
+
+    #toast.error {
+      background: var(--color-error);
+      color: #fff;
+    }
+
+    #toast.info {
+      background: var(--color-primary);
+      color: #fff;
+    }
+
+    .fade-up {
+      animation: fadeUp 0.5s ease forwards;
+      opacity: 0;
+    }
+
+    .fade-up.d1 {
+      animation-delay: 0.1s;
+    }
+
+    .fade-up.d2 {
+      animation-delay: 0.2s;
+    }
+
+    @keyframes fadeUp {
+      from {
+        opacity: 0;
+        transform: translateY(12px)
+      }
+
+      to {
+        opacity: 1;
+        transform: none
+      }
+    }
   </style>
 </head>
+
 <body>
 
-<div id="page-loader"><div class="spinner"></div></div>
-<div id="toast"><i id="toast-icon" class="fa-solid fa-circle-check"></i><span id="toast-msg"></span></div>
+  <div id="page-loader">
+    <div class="spinner"></div>
+  </div>
+  <div id="toast"><i id="toast-icon" class="fa-solid fa-circle-check"></i><span id="toast-msg"></span></div>
 
-<!-- ══════════════════════════════
+  <!-- ══════════════════════════════
      AVAILABILITY MODAL
 ══════════════════════════════ -->
-<div id="modal-overlay">
-  <div id="modal-box">
+  <div id="modal-overlay">
+    <div id="modal-box">
 
-    <!-- Modal header -->
-    <div class="flex items-start justify-between mb-6">
-      <div>
-        <h2 class="font-bold text-base" id="modal-doctor-name">Set Availability</h2>
-        <p class="text-xs mt-0.5" style="color:var(--color-muted)" id="modal-doctor-sub">Configure working days, time slots & patient limits</p>
-      </div>
-      <button onclick="closeModal()"
-              class="w-8 h-8 rounded-lg flex items-center justify-center text-muted hover:text-primary transition-colors shrink-0 ml-4"
-              style="border:1px solid var(--color-border)">
-        <i class="fa-solid fa-xmark text-sm"></i>
-      </button>
-    </div>
-
-    <!-- Global max patients -->
-    <div class="p-4 rounded-xl mb-5"
-         style="background:color-mix(in srgb,var(--color-primary) 6%,transparent)">
-      <div class="flex items-center gap-3">
-        <div class="w-9 h-9 rounded-xl flex items-center justify-center text-white shrink-0"
-             style="background:var(--color-primary)">
-          <i class="fa-solid fa-users text-sm"></i>
+      <!-- Modal header -->
+      <div class="flex items-start justify-between mb-6">
+        <div>
+          <h2 class="font-bold text-base" id="modal-doctor-name">Set Availability</h2>
+          <p class="text-xs mt-0.5" style="color:var(--color-muted)" id="modal-doctor-sub">Configure working days, time
+            slots & patient limits</p>
         </div>
-        <div class="flex-1">
-          <label class="field-label mb-0" style="color:var(--color-primary)">
-            Default Max Patients Per Slot
-          </label>
-          <p class="text-xs" style="color:var(--color-muted)">Applied to all slots unless overridden</p>
-        </div>
-        <input id="global-max-patients" type="number" min="1" max="50" value="5"
-               class="input-field text-center font-semibold"
-               style="width:70px" />
-      </div>
-    </div>
-
-    <!-- Day selector -->
-    <div class="mb-5">
-      <label class="field-label mb-3">Working Days</label>
-      <div class="flex gap-2 flex-wrap">
-        <div class="day-btn" data-day="Mon" onclick="toggleDay(this)">Mon</div>
-        <div class="day-btn" data-day="Tue" onclick="toggleDay(this)">Tue</div>
-        <div class="day-btn" data-day="Wed" onclick="toggleDay(this)">Wed</div>
-        <div class="day-btn" data-day="Thu" onclick="toggleDay(this)">Thu</div>
-        <div class="day-btn" data-day="Fri" onclick="toggleDay(this)">Fri</div>
-        <div class="day-btn" data-day="Sat" onclick="toggleDay(this)">Sat</div>
-        <div class="day-btn" data-day="Sun" onclick="toggleDay(this)">Sun</div>
-      </div>
-    </div>
-
-    <!-- Per-day slot builder -->
-    <div id="day-slots-container" class="space-y-3 mb-5">
-      <!-- Populated dynamically per selected day -->
-    </div>
-
-    <!-- Add slot row -->
-    <div class="p-4 rounded-xl mb-6" style="border:1.5px dashed var(--color-border)">
-      <p class="text-xs font-semibold mb-3" style="color:var(--color-muted)">
-        <i class="fa-solid fa-plus-circle mr-1" style="color:var(--color-primary)"></i>
-        Add Time Slot to Selected Days
-      </p>
-      <div class="flex flex-wrap gap-3 items-end">
-        <div class="flex-1 min-w-[120px]">
-          <label class="field-label">Start Time</label>
-          <input id="slot-start" type="time" class="input-field" value="09:00" />
-        </div>
-        <div class="flex-1 min-w-[120px]">
-          <label class="field-label">End Time</label>
-          <input id="slot-end" type="time" class="input-field" value="09:30" />
-        </div>
-        <div style="width:90px">
-          <label class="field-label">Max Patients</label>
-          <input id="slot-max" type="number" min="1" max="50"
-                 class="input-field text-center" placeholder="—" />
-        </div>
-        <button class="btn-ghost" onclick="addSlotToSelectedDays()">
-          <i class="fa-solid fa-plus"></i> Add
+        <button onclick="closeModal()"
+          class="w-8 h-8 rounded-lg flex items-center justify-center text-muted hover:text-primary transition-colors shrink-0 ml-4"
+          style="border:1px solid var(--color-border)">
+          <i class="fa-solid fa-xmark text-sm"></i>
         </button>
       </div>
-    </div>
 
-    <!-- Action buttons -->
-    <div class="flex gap-3">
-      <button onclick="closeModal()"
-              class="flex-1 py-2.5 rounded-xl text-sm font-medium transition-colors"
-              style="border:1.5px solid var(--color-border);color:var(--color-muted)"
-              onmouseover="this.style.borderColor='var(--color-primary)';this.style.color='var(--color-primary)'"
-              onmouseout="this.style.borderColor='var(--color-border)';this.style.color='var(--color-muted)'">
-        Cancel
-      </button>
-      <button id="save-btn" class="btn-primary flex-1 justify-center" onclick="saveAvailability()">
-        <i class="fa-solid fa-floppy-disk"></i>
-        <span id="save-btn-text">Save Availability</span>
-        <i id="save-spinner" class="fa-solid fa-circle-notch fa-spin hidden"></i>
-      </button>
-    </div>
+      <!-- Global max patients -->
+      <div class="p-4 rounded-xl mb-5" style="background:color-mix(in srgb,var(--color-primary) 6%,transparent)">
+        <div class="flex items-center gap-3">
+          <div class="w-9 h-9 rounded-xl flex items-center justify-center text-white shrink-0"
+            style="background:var(--color-primary)">
+            <i class="fa-solid fa-users text-sm"></i>
+          </div>
+          <div class="flex-1">
+            <label class="field-label mb-0" style="color:var(--color-primary)">
+              Default Max Patients Per Slot
+            </label>
+            <p class="text-xs" style="color:var(--color-muted)">Applied to all slots unless overridden</p>
+          </div>
+          <input id="global-max-patients" type="number" min="1" max="50" value="5"
+            class="input-field text-center font-semibold" style="width:70px" />
+        </div>
+      </div>
 
+      <!-- Day selector -->
+      <div class="mb-5">
+        <label class="field-label mb-3">Working Days</label>
+        <div class="flex gap-2 flex-wrap">
+          <div class="day-btn" data-day="Mon" onclick="toggleDay(this)">Mon</div>
+          <div class="day-btn" data-day="Tue" onclick="toggleDay(this)">Tue</div>
+          <div class="day-btn" data-day="Wed" onclick="toggleDay(this)">Wed</div>
+          <div class="day-btn" data-day="Thu" onclick="toggleDay(this)">Thu</div>
+          <div class="day-btn" data-day="Fri" onclick="toggleDay(this)">Fri</div>
+          <div class="day-btn" data-day="Sat" onclick="toggleDay(this)">Sat</div>
+          <div class="day-btn" data-day="Sun" onclick="toggleDay(this)">Sun</div>
+        </div>
+      </div>
+
+      <!-- Per-day slot builder -->
+      <div id="day-slots-container" class="space-y-3 mb-5">
+        <!-- Populated dynamically per selected day -->
+      </div>
+
+
+
+      <!-- Action buttons -->
+      <div class="flex gap-3">
+        <button onclick="closeModal()" class="flex-1 py-2.5 rounded-xl text-sm font-medium transition-colors"
+          style="border:1.5px solid var(--color-border);color:var(--color-muted)"
+          onmouseover="this.style.borderColor='var(--color-primary)';this.style.color='var(--color-primary)'"
+          onmouseout="this.style.borderColor='var(--color-border)';this.style.color='var(--color-muted)'">
+          Cancel
+        </button>
+        <button id="save-btn" class="btn-primary flex-1 justify-center" onclick="saveAvailability()">
+          <i class="fa-solid fa-floppy-disk"></i>
+          <span id="save-btn-text">Save Availability</span>
+          <i id="save-spinner" class="fa-solid fa-circle-notch fa-spin hidden"></i>
+        </button>
+      </div>
+
+    </div>
   </div>
-</div>
 
 
-<!-- ══════════════════════════════
+  <!-- ══════════════════════════════
      MAIN CONTENT
 ══════════════════════════════ -->
-<div class="main-content min-h-screen">
-  <div class="p-6 max-w-7xl mx-auto">
+  <div class="main-content min-h-screen">
+    <div class="p-6 max-w-7xl mx-auto">
 
-    <!-- Header -->
-    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 fade-up">
-      <div>
-        <h2 class="text-lg font-bold">Doctor Availability</h2>
-        <p class="text-sm mt-0.5" style="color:var(--color-muted)">
-          Configure working days, time slots, and patient limits per doctor
-        </p>
+      <!-- Header -->
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 fade-up">
+        <div>
+          <h2 class="text-lg font-bold">Doctor Availability</h2>
+          <p class="text-sm mt-0.5" style="color:var(--color-muted)">
+            Configure working days, time slots, and patient limits per doctor
+          </p>
+        </div>
       </div>
-    </div>
 
-    <!-- Search -->
-    <div class="relative mb-5 max-w-sm fade-up">
-      <i class="fa-solid fa-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-sm"
-         style="color:var(--color-muted)"></i>
-      <input type="text" placeholder="Search doctors…"
-             class="input-field pl-10"
-             oninput="searchDoctors(this.value)" />
-    </div>
-
-    <!-- Doctor grid -->
-    <div id="doctor-grid" class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 fade-up d1">
-      <div class="col-span-full p-10 text-center text-sm" style="color:var(--color-muted)">
-        <i class="fa-solid fa-circle-notch fa-spin mr-2"></i> Loading doctors…
+      <!-- Search -->
+      <div class="relative mb-5 max-w-sm fade-up">
+        <i class="fa-solid fa-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-sm"
+          style="color:var(--color-muted)"></i>
+        <input type="text" placeholder="Search doctors…" class="input-field pl-10"
+          oninput="searchDoctors(this.value)" />
       </div>
-    </div>
 
+      <!-- Doctor grid -->
+      <div id="doctor-grid" class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 fade-up d1">
+        <div class="col-span-full p-10 text-center text-sm" style="color:var(--color-muted)">
+          <i class="fa-solid fa-circle-notch fa-spin mr-2"></i> Loading doctors…
+        </div>
+      </div>
+
+    </div>
   </div>
-</div>
-
 
 <script type="module">
   import { auth, db }      from "../../assets/js/firebase-config.js";
@@ -344,21 +498,22 @@
   import { logActivity }   from "../../assets/js/activity-logger.js";
   import {
     collection, query, where, getDocs,
-    doc, getDoc, updateDoc, serverTimestamp
+    doc, getDoc, setDoc, serverTimestamp
   } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-firestore.js";
   import { signOut } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-auth.js";
 
   const DAYS = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
+  const FULL = {
+    Mon:"Monday", Tue:"Tuesday", Wed:"Wednesday", Thu:"Thursday",
+    Fri:"Friday", Sat:"Saturday", Sun:"Sunday"
+  };
 
   let allDoctors      = [];
   let filteredDoctors = [];
   let selectedDoctor  = null;
+  let editState       = {};  // { Mon:[{start,end,maxPatients},...], ... }
 
-  // availability state while editing
-  // shape: { Mon: [ {start, end, maxPatients}, … ], … }
-  let editState = {};
-
-  // ── Theme ──────────────────────────────────────────────────────────
+  // ── Theme ────────────────────────────────────────────────────────────
   const htmlEl = document.getElementById("html-root");
   function applyTheme(dark) {
     htmlEl.setAttribute("data-theme", dark ? "dark" : "light");
@@ -368,7 +523,7 @@
   }
   applyTheme(localStorage.getItem("theme") === "dark");
 
-  // ── Load settings ──────────────────────────────────────────────────
+  // ── Load settings ────────────────────────────────────────────────────
   async function loadSettings() {
     try {
       const snap = await getDoc(doc(db, "settings", "hospital"));
@@ -390,22 +545,27 @@
     } catch(e) { console.error(e); }
   }
 
-  // ── Load doctors ───────────────────────────────────────────────────
+  // ── Load doctors ─────────────────────────────────────────────────────
   async function loadDoctors() {
     try {
       const q    = query(collection(db,"users"), where("role","==","doctor"));
       const snap = await getDocs(q);
 
-      // Merge user doc + doctor availability doc
       const promises = snap.docs.map(async d => {
-        const userData = { id: d.id, ...d.data() };
+        const userData = { id:d.id, ...d.data() };
         try {
-          const docSnap = await getDoc(doc(db, "doctors", d.id));
-          if (docSnap.exists()) {
-            userData.availability  = docSnap.data().availability  || [];
-            userData.maxPatients   = docSnap.data().maxPatients   || 5;
+          const ds = await getDoc(doc(db,"doctors",d.id));
+          if (ds.exists()) {
+            userData.availability = ds.data().availability || [];
+            userData.maxPatients  = ds.data().maxPatients  || 5;
+          } else {
+            userData.availability = [];
+            userData.maxPatients  = 5;
           }
-        } catch(_) {}
+        } catch(_) {
+          userData.availability = [];
+          userData.maxPatients  = 5;
+        }
         return userData;
       });
 
@@ -421,7 +581,7 @@
     }
   }
 
-  // ── Render doctor grid ─────────────────────────────────────────────
+  // ── Render doctor grid ───────────────────────────────────────────────
   function renderDoctorGrid() {
     const grid = document.getElementById("doctor-grid");
     if (filteredDoctors.length === 0) {
@@ -432,47 +592,46 @@
       return;
     }
 
-    grid.innerHTML = filteredDoctors.map(doc => {
-      const avail    = doc.availability || [];
-      // Count distinct active days
+    grid.innerHTML = filteredDoctors.map(d => {
+      const avail      = d.availability || [];
       const activeDays = [...new Set(avail.map(s => s.day))];
       const slotCount  = avail.length;
 
-      const dayPills = DAYS.map(d => `
+      const dayPills = DAYS.map(day => `
         <span class="text-[10px] font-semibold px-1.5 py-0.5 rounded-md"
-              style="background:${activeDays.includes(d)
-                ? 'color-mix(in srgb,var(--color-primary) 14%,transparent);color:var(--color-primary)'
-                : 'var(--color-border);color:var(--color-muted)'}">
-          ${d}
+              style="background:${activeDays.includes(day)
+                ? 'color-mix(in srgb,var(--color-primary) 14%,transparent)'
+                : 'var(--color-border)'};
+                     color:${activeDays.includes(day)
+                ? 'var(--color-primary)'
+                : 'var(--color-muted)'}">
+          ${day}
         </span>
       `).join('');
 
       return `
-        <div class="doctor-card" onclick="openModal('${doc.id}')">
+        <div class="doctor-card" onclick="openModal('${d.id}')">
           <div class="flex items-start gap-3 mb-4">
-            <div class="w-11 h-11 rounded-xl flex items-center justify-center text-white shrink-0"
+            <div class="w-11 h-11 rounded-xl flex items-center justify-center
+                        text-white shrink-0"
                  style="background:linear-gradient(135deg,var(--color-primary),var(--color-secondary))">
               <i class="fa-solid fa-user-doctor"></i>
             </div>
             <div class="flex-1 min-w-0">
-              <div class="font-semibold text-sm truncate">${doc.name || "—"}</div>
+              <div class="font-semibold text-sm truncate">${d.name || "—"}</div>
               <div class="text-xs truncate" style="color:var(--color-muted)">
-                ${doc.specialization || "—"}
-                ${doc.department ? `· ${doc.department}` : ""}
+                ${d.specialization || "—"}${d.department ? " · "+d.department : ""}
               </div>
             </div>
             <span class="text-xs px-2 py-1 rounded-lg font-medium shrink-0"
-                  style="background:${doc.isActive !== false
-                    ? 'color-mix(in srgb,#10b981 10%,transparent);color:#10b981'
-                    : 'color-mix(in srgb,#ef4444 10%,transparent);color:#ef4444'}">
-              ${doc.isActive !== false ? "Active" : "Off"}
+                  style="background:${d.isActive !== false
+                    ? 'color-mix(in srgb,#10b981 10%,transparent)'
+                    : 'color-mix(in srgb,#ef4444 10%,transparent)'};
+                         color:${d.isActive !== false ? '#10b981' : '#ef4444'}">
+              ${d.isActive !== false ? "Active" : "Off"}
             </span>
           </div>
-
-          <!-- Day pills -->
           <div class="flex flex-wrap gap-1 mb-3">${dayPills}</div>
-
-          <!-- Stats row -->
           <div class="flex items-center justify-between pt-3"
                style="border-top:1px solid var(--color-border)">
             <div class="flex items-center gap-1.5 text-xs" style="color:var(--color-muted)">
@@ -488,7 +647,7 @@
     }).join('');
   }
 
-  // ── Search ─────────────────────────────────────────────────────────
+  // ── Search ───────────────────────────────────────────────────────────
   window.searchDoctors = function(val) {
     const q = val.toLowerCase();
     filteredDoctors = allDoctors.filter(d =>
@@ -499,32 +658,37 @@
     renderDoctorGrid();
   };
 
-  // ── Open modal ─────────────────────────────────────────────────────
+  // ── Open modal ───────────────────────────────────────────────────────
   window.openModal = function(doctorId) {
     selectedDoctor = allDoctors.find(d => d.id === doctorId);
     if (!selectedDoctor) return;
 
-    // Set modal title
     document.getElementById("modal-doctor-name").textContent =
       `${selectedDoctor.name || "Doctor"} — Availability`;
     document.getElementById("modal-doctor-sub").textContent =
-      `${selectedDoctor.specialization || ""} ${selectedDoctor.department ? "· " + selectedDoctor.department : ""}`;
-
-    // Set global max patients
+      `${selectedDoctor.specialization || ""}${selectedDoctor.department ? " · "+selectedDoctor.department : ""}`;
     document.getElementById("global-max-patients").value =
       selectedDoctor.maxPatients || 5;
 
-    // Rebuild editState from existing availability
+    // ── Rebuild editState from saved availability ──────────────────
     editState = {};
+    DAYS.forEach(d => {
+      // Pre-init all days as undefined (not active)
+    });
     (selectedDoctor.availability || []).forEach(slot => {
       if (!editState[slot.day]) editState[slot.day] = [];
-      editState[slot.day].push({ start: slot.start, end: slot.end, maxPatients: slot.maxPatients });
+      editState[slot.day].push({
+        start:       slot.start,
+        end:         slot.end,
+        maxPatients: slot.maxPatients || 5
+      });
     });
 
-    // Reset day buttons
+    // ── Sync day toggle buttons ────────────────────────────────────
     document.querySelectorAll(".day-btn").forEach(btn => {
       const d = btn.getAttribute("data-day");
-      btn.classList.toggle("active", !!editState[d]);
+      const isActive = editState[d] !== undefined;
+      btn.classList.toggle("active", isActive);
     });
 
     renderDaySlots();
@@ -534,10 +698,10 @@
   window.closeModal = function() {
     document.getElementById("modal-overlay").classList.remove("show");
     selectedDoctor = null;
-    editState = {};
+    editState      = {};
   };
 
-  // ── Toggle day ─────────────────────────────────────────────────────
+  // ── Toggle day on/off ────────────────────────────────────────────────
   window.toggleDay = function(btn) {
     const day = btn.getAttribute("data-day");
     btn.classList.toggle("active");
@@ -550,14 +714,14 @@
     renderDaySlots();
   };
 
-  // ── Render day slot rows ───────────────────────────────────────────
+  // ── Render day slot rows ─────────────────────────────────────────────
   function renderDaySlots() {
     const container  = document.getElementById("day-slots-container");
     const activeDays = DAYS.filter(d => editState[d] !== undefined);
 
     if (activeDays.length === 0) {
       container.innerHTML = `
-        <div class="text-center py-4 text-sm" style="color:var(--color-muted)">
+        <div class="text-center py-6 text-sm" style="color:var(--color-muted)">
           <i class="fa-solid fa-calendar-xmark mr-2"></i>
           Select working days above to configure slots.
         </div>`;
@@ -566,76 +730,138 @@
 
     container.innerHTML = activeDays.map(day => {
       const slots = editState[day] || [];
+
       const pillsHTML = slots.length > 0
         ? slots.map((s, i) => `
-            <span class="slot-pill">
+            <span class="slot-pill inline-flex items-center gap-1.5 px-2.5 py-1
+                         rounded-lg text-xs font-medium"
+                  style="background:color-mix(in srgb,var(--color-primary) 10%,transparent);
+                         color:var(--color-primary);border:1px solid color-mix(in srgb,var(--color-primary) 20%,transparent)">
               <i class="fa-regular fa-clock text-[10px]"></i>
               ${s.start}–${s.end}
-              <span class="text-[10px] opacity-70">· ${s.maxPatients}p</span>
-              <button onclick="removeSlot('${day}', ${i})" title="Remove">
+              <span class="opacity-60">· ${s.maxPatients}p</span>
+              <button onclick="removeSlot('${day}',${i})"
+                      class="ml-1 hover:text-red-500 transition-colors"
+                      title="Remove slot">
                 <i class="fa-solid fa-xmark text-[10px]"></i>
               </button>
             </span>
           `).join('')
-        : `<span class="text-xs" style="color:var(--color-muted)">No slots yet — add one below.</span>`;
+        : `<span class="text-xs" style="color:var(--color-muted)">
+             No slots yet — use the form below to add.
+           </span>`;
 
       return `
-        <div class="day-row ${slots.length > 0 ? 'has-slots' : ''}" id="day-row-${day}">
-          <div class="flex items-center justify-between mb-2.5">
+        <div class="rounded-xl p-4 mb-3"
+             style="border:1.5px solid ${slots.length > 0
+               ? 'color-mix(in srgb,var(--color-primary) 25%,transparent)'
+               : 'var(--color-border)'};
+                    background:${slots.length > 0
+               ? 'color-mix(in srgb,var(--color-primary) 3%,transparent)'
+               : 'var(--color-bg)'}">
+
+          <!-- Day header -->
+          <div class="flex items-center justify-between mb-3">
             <div class="flex items-center gap-2">
-              <div class="w-7 h-7 rounded-lg flex items-center justify-center text-white text-xs font-bold"
+              <div class="w-8 h-8 rounded-lg flex items-center justify-center
+                          text-white text-xs font-bold"
                    style="background:var(--color-primary)">${day}</div>
-              <span class="text-sm font-semibold">${fullDay(day)}</span>
+              <span class="text-sm font-semibold">${FULL[day]}</span>
             </div>
             <span class="text-xs font-medium px-2 py-0.5 rounded-full"
-                  style="background:color-mix(in srgb,var(--color-primary) 10%,transparent);color:var(--color-primary)">
+                  style="background:color-mix(in srgb,var(--color-primary) 10%,transparent);
+                         color:var(--color-primary)">
               ${slots.length} slot${slots.length !== 1 ? "s" : ""}
             </span>
           </div>
-          <div class="flex flex-wrap gap-2">${pillsHTML}</div>
+
+          <!-- Existing slot pills -->
+          <div class="flex flex-wrap gap-2 mb-3">${pillsHTML}</div>
+
+          <!-- ✅ Per-day add slot form -->
+          <div class="flex flex-wrap items-end gap-2 pt-3"
+               style="border-top:1px solid var(--color-border)">
+            <div>
+              <label class="text-[10px] font-semibold block mb-1"
+                     style="color:var(--color-muted)">START</label>
+              <input type="time" id="start-${day}"
+                     value="09:00"
+                     class="input-field" style="width:120px;padding:6px 10px" />
+            </div>
+            <div>
+              <label class="text-[10px] font-semibold block mb-1"
+                     style="color:var(--color-muted)">END</label>
+              <input type="time" id="end-${day}"
+                     value="10:00"
+                     class="input-field" style="width:120px;padding:6px 10px" />
+            </div>
+            <div>
+              <label class="text-[10px] font-semibold block mb-1"
+                     style="color:var(--color-muted)">MAX PATIENTS</label>
+              <input type="number" id="max-${day}"
+                     value="${document.getElementById('global-max-patients')?.value || 5}"
+                     min="1" max="50"
+                     class="input-field" style="width:90px;padding:6px 10px" />
+            </div>
+            <button onclick="addSlot('${day}')"
+                    class="flex items-center gap-1.5 px-3 py-2 rounded-lg
+                           text-xs font-semibold text-white transition-colors"
+                    style="background:var(--color-primary)">
+              <i class="fa-solid fa-plus text-[10px]"></i> Add Slot
+            </button>
+          </div>
+
         </div>
       `;
     }).join('');
   }
 
-  // ── Add slot to all selected days ──────────────────────────────────
-  window.addSlotToSelectedDays = function() {
-    const start = document.getElementById("slot-start").value;
-    const end   = document.getElementById("slot-end").value;
-    const max   = parseInt(document.getElementById("slot-max").value) ||
-                  parseInt(document.getElementById("global-max-patients").value) || 5;
+  // ── Add slot to specific day ─────────────────────────────────────────
+  // ✅ Fixed — reads from per-day inputs, not a global form
+  window.addSlot = function(day) {
+    const startEl = document.getElementById(`start-${day}`);
+    const endEl   = document.getElementById(`end-${day}`);
+    const maxEl   = document.getElementById(`max-${day}`);
 
-    if (!start || !end) { showToast("Set both start and end time.", "error"); return; }
-    if (start >= end)   { showToast("End time must be after start time.", "error"); return; }
-
-    const activeDays = DAYS.filter(d => editState[d] !== undefined);
-    if (activeDays.length === 0) { showToast("Select at least one working day.", "error"); return; }
-
-    let added = 0;
-    activeDays.forEach(day => {
-      // Prevent duplicate slot on same day
-      const exists = editState[day].some(s => s.start === start && s.end === end);
-      if (!exists) {
-        editState[day].push({ start, end, maxPatients: max });
-        added++;
-      }
-    });
-
-    if (added === 0) {
-      showToast("Slot already exists on all selected days.", "info"); return;
+    if (!startEl || !endEl) {
+      showToast("Slot inputs not found.", "error"); return;
     }
 
+    const start = startEl.value;
+    const end   = endEl.value;
+    const max   = parseInt(maxEl?.value) || 5;
+
+    if (!start || !end) {
+      showToast("Set both start and end time.", "error"); return;
+    }
+    if (start >= end) {
+      showToast("End time must be after start time.", "error"); return;
+    }
+
+    // Prevent duplicate
+    const exists = (editState[day] || []).some(s => s.start === start && s.end === end);
+    if (exists) {
+      showToast(`Slot ${start}–${end} already exists on ${FULL[day]}.`, "info"); return;
+    }
+
+    if (!editState[day]) editState[day] = [];
+    editState[day].push({ start, end, maxPatients: max });
+
+    console.log(`Added slot to ${day}:`, { start, end, maxPatients:max });
+    console.log("editState now:", JSON.stringify(editState));
+
     renderDaySlots();
-    showToast(`Slot ${start}–${end} added to ${added} day(s).`, "success");
+    showToast(`Slot ${start}–${end} added to ${FULL[day]}.`, "success");
   };
 
-  // ── Remove individual slot ─────────────────────────────────────────
+  // ── Remove slot ──────────────────────────────────────────────────────
   window.removeSlot = function(day, index) {
+    if (!editState[day]) return;
     editState[day].splice(index, 1);
     renderDaySlots();
   };
 
-  // ── Save availability ──────────────────────────────────────────────
+  // ── Save availability ────────────────────────────────────────────────
   window.saveAvailability = async function() {
     if (!selectedDoctor) return;
 
@@ -648,26 +874,39 @@
       // Flatten editState → availability array
       const availability = [];
       DAYS.forEach(day => {
-        if (editState[day]) {
+        if (editState[day] && editState[day].length > 0) {
           editState[day].forEach(slot => {
-            availability.push({ day, start: slot.start, end: slot.end, maxPatients: slot.maxPatients });
+            availability.push({
+              day,
+              start:       slot.start,
+              end:         slot.end,
+              maxPatients: slot.maxPatients || 5
+            });
           });
         }
       });
 
-      const maxPatients = parseInt(document.getElementById("global-max-patients").value) || 5;
+      const maxPatients = parseInt(
+        document.getElementById("global-max-patients").value
+      ) || 5;
 
-      await updateDoc(doc(db, "doctors", selectedDoctor.id), {
-        availability,
-        maxPatients,
-        updatedAt: serverTimestamp(),
-      });
+      console.log("Saving availability:", availability);
 
-      await logActivity("UPDATE_AVAILABILITY", {
-        doctorId:   selectedDoctor.id,
-        doctorName: selectedDoctor.name,
-        slotCount:  availability.length,
-      });
+      // setDoc with merge — safe even if doc doesn't exist
+      await setDoc(
+        doc(db, "doctors", selectedDoctor.id),
+        { availability, maxPatients, updatedAt: serverTimestamp() },
+        { merge: true }
+      );
+
+      // Log activity (non-critical)
+      try {
+        await logActivity("UPDATE_AVAILABILITY", {
+          doctorId:   selectedDoctor.id,
+          doctorName: selectedDoctor.name,
+          slotCount:  availability.length,
+        });
+      } catch(_) {}
 
       // Update local state
       const idx = allDoctors.findIndex(d => d.id === selectedDoctor.id);
@@ -677,27 +916,22 @@
       }
       filteredDoctors = [...allDoctors];
 
-      showToast(`${selectedDoctor.name}'s availability saved.`, "success");
+      showToast(`✓ ${selectedDoctor.name}'s availability saved!`, "success");
       closeModal();
       renderDoctorGrid();
 
     } catch(e) {
-      console.error(e);
-      showToast("Failed to save availability.", "error");
+      console.error("Save error:", e);
+      showToast(`Failed to save: ${e.message}`, "error");
     } finally {
-      btn.disabled = false; txt.textContent = "Save Availability"; spn.classList.add("hidden");
+      btn.disabled = false;
+      txt.textContent = "Save Availability";
+      spn.classList.add("hidden");
     }
   };
 
-  // ── Helpers ────────────────────────────────────────────────────────
-  function fullDay(abbr) {
-    const map = { Mon:"Monday", Tue:"Tuesday", Wed:"Wednesday", Thu:"Thursday",
-                  Fri:"Friday", Sat:"Saturday", Sun:"Sunday" };
-    return map[abbr] || abbr;
-  }
-
-  // ── Toast ──────────────────────────────────────────────────────────
-  window.showToast = function(msg, type="info") {
+  // ── Toast ────────────────────────────────────────────────────────────
+  window.showToast = function(msg, type = "info") {
     const toast = document.getElementById("toast");
     const icons = {
       success:"fa-solid fa-circle-check",
@@ -711,13 +945,13 @@
     window._tt = setTimeout(() => { toast.className = type; }, 3500);
   };
 
-  // ── Logout ─────────────────────────────────────────────────────────
+  // ── Logout ───────────────────────────────────────────────────────────
   window.adminLogout = async function() {
     await signOut(auth);
     window.location.href = "/auth/staff-login/";
   };
 
-  // ── Init ───────────────────────────────────────────────────────────
+  // ── Init ─────────────────────────────────────────────────────────────
   guardPage(["admin"], async (user, userData) => {
     renderSidebar("doctors");
 
@@ -737,7 +971,10 @@
     loader.classList.add("hidden");
     setTimeout(() => loader.remove(), 500);
   });
+
 </script>
 
+
 </body>
+
 </html>

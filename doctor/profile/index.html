@@ -1,0 +1,907 @@
+<!DOCTYPE html>
+<html lang="en" id="html-root">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>My Profile — Doctor</title>
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+
+  <style>
+    :root {
+      --color-primary:      #2563eb;
+      --color-primary-dark: #1d4ed8;
+      --color-secondary:    #0ea5e9;
+      --color-bg:           #f8fafc;
+      --color-surface:      #ffffff;
+      --color-text:         #0f172a;
+      --color-muted:        #64748b;
+      --color-border:       #e2e8f0;
+      --color-success:      #10b981;
+      --color-warning:      #f59e0b;
+      --color-error:        #ef4444;
+      --font-family:        'Inter', sans-serif;
+    }
+    [data-theme="dark"] {
+      --color-bg:      #0f172a;
+      --color-surface: #1e293b;
+      --color-text:    #f1f5f9;
+      --color-muted:   #94a3b8;
+      --color-border:  #334155;
+    }
+    * { font-family:var(--font-family); box-sizing:border-box; margin:0; padding:0; }
+    body { background:var(--color-bg); color:var(--color-text); transition:background 0.3s,color 0.3s; }
+
+    .main-content { margin-left:0; padding-top:64px; }
+    @media(min-width:1024px) { .main-content { margin-left:260px; } }
+
+    #page-loader {
+      position:fixed; inset:0; z-index:9999;
+      background:var(--color-bg);
+      display:flex; align-items:center; justify-content:center;
+      transition:opacity 0.4s;
+    }
+    #page-loader.hidden { opacity:0; pointer-events:none; }
+    .spinner {
+      width:36px; height:36px;
+      border:3px solid var(--color-border);
+      border-top-color:var(--color-primary);
+      border-radius:50%; animation:spin 0.75s linear infinite;
+    }
+    @keyframes spin { to{transform:rotate(360deg)} }
+
+    .card { background:var(--color-surface); border:1px solid var(--color-border); border-radius:1rem; }
+
+    /* Sidebar */
+    #sidebar {
+      position:fixed; top:0; left:0; height:100%; width:260px; z-index:40;
+      background:var(--color-surface); border-right:1px solid var(--color-border);
+      display:flex; flex-direction:column;
+      transform:translateX(-100%); transition:transform 0.3s;
+    }
+    #sidebar.open { transform:translateX(0); }
+    @media(min-width:1024px) { #sidebar { transform:translateX(0); } }
+    #sidebar-overlay {
+      position:fixed; inset:0; z-index:30;
+      background:rgba(0,0,0,0.4); backdrop-filter:blur(3px); display:none;
+    }
+    #sidebar-overlay.show { display:block; }
+    .nav-link {
+      display:flex; align-items:center; gap:12px;
+      padding:10px 14px; border-radius:12px;
+      font-size:0.85rem; font-weight:500;
+      color:var(--color-muted); text-decoration:none; transition:all 0.15s;
+    }
+    .nav-link:hover { background:color-mix(in srgb,var(--color-primary) 8%,transparent); color:var(--color-primary); }
+    .nav-link.active { background:color-mix(in srgb,var(--color-primary) 12%,transparent); color:var(--color-primary); font-weight:600; }
+    .nav-link i { width:18px; text-align:center; }
+
+    /* Topbar */
+    #topbar {
+      position:fixed; top:0; right:0; left:0; z-index:20; height:64px;
+      background:var(--color-surface); border-bottom:1px solid var(--color-border);
+      display:flex; align-items:center; justify-content:space-between; padding:0 20px;
+    }
+    @media(min-width:1024px) { #topbar { left:260px; } }
+
+    /* Input */
+    .input-field {
+      padding:9px 14px; background:var(--color-bg);
+      border:1.5px solid var(--color-border); border-radius:10px;
+      color:var(--color-text); font-size:0.85rem; outline:none;
+      transition:border-color 0.2s, box-shadow 0.2s; width:100%;
+    }
+    .input-field:focus {
+      border-color:var(--color-primary);
+      box-shadow:0 0 0 3px color-mix(in srgb,var(--color-primary) 15%,transparent);
+    }
+    .input-field:disabled {
+      opacity:0.6; cursor:not-allowed;
+    }
+    textarea.input-field { resize:vertical; min-height:90px; }
+    .field-label {
+      display:block; font-size:0.8rem; font-weight:500;
+      margin-bottom:6px; color:var(--color-muted);
+    }
+
+    /* Avatar upload */
+    #avatar-wrap {
+      position:relative; width:96px; height:96px; cursor:pointer;
+    }
+    #avatar-img {
+      width:96px; height:96px; border-radius:1.25rem;
+      object-fit:cover; display:none;
+      border:3px solid var(--color-border);
+    }
+    #avatar-initials {
+      width:96px; height:96px; border-radius:1.25rem;
+      display:flex; align-items:center; justify-content:center;
+      font-size:2rem; font-weight:700; color:#fff;
+    }
+    #avatar-overlay {
+      position:absolute; inset:0; border-radius:1.25rem;
+      background:rgba(0,0,0,0.45);
+      display:flex; align-items:center; justify-content:center;
+      opacity:0; transition:opacity 0.2s;
+    }
+    #avatar-wrap:hover #avatar-overlay { opacity:1; }
+
+    /* Section tab */
+    .section-tab {
+      flex:1; padding:10px; text-align:center; font-size:0.82rem; font-weight:500;
+      border-bottom:2px solid transparent; color:var(--color-muted);
+      cursor:pointer; background:none;
+      border-top:none; border-left:none; border-right:none;
+      transition:all 0.15s;
+    }
+    .section-tab.active {
+      color:var(--color-primary); border-bottom-color:var(--color-primary);
+    }
+
+    /* Btn */
+    .btn-primary {
+      padding:10px 20px; background:var(--color-primary); color:#fff;
+      font-size:0.85rem; font-weight:600; border:none; border-radius:10px;
+      cursor:pointer; display:inline-flex; align-items:center; gap:8px;
+      transition:background 0.2s, transform 0.15s;
+    }
+    .btn-primary:hover { background:var(--color-primary-dark); transform:translateY(-1px); }
+    .btn-primary:disabled { opacity:0.55; cursor:not-allowed; transform:none; }
+
+    /* Toast */
+    #toast {
+      position:fixed; bottom:28px; left:50%;
+      transform:translateX(-50%) translateY(70px);
+      padding:11px 20px; border-radius:12px;
+      font-size:0.85rem; font-weight:500;
+      display:flex; align-items:center; gap:10px;
+      z-index:9999; opacity:0; white-space:nowrap;
+      transition:transform 0.35s cubic-bezier(0.34,1.56,0.64,1), opacity 0.3s;
+      box-shadow:0 8px 24px rgba(0,0,0,0.15);
+    }
+    #toast.show    { transform:translateX(-50%) translateY(0); opacity:1; }
+    #toast.success { background:var(--color-success); color:#fff; }
+    #toast.error   { background:var(--color-error);   color:#fff; }
+    #toast.info    { background:var(--color-primary);  color:#fff; }
+
+    .fade-up    { animation:fadeUp 0.5s ease forwards; opacity:0; }
+    .fade-up.d1 { animation-delay:0.1s; }
+    .fade-up.d2 { animation-delay:0.2s; }
+    @keyframes fadeUp { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:none} }
+  </style>
+</head>
+<body>
+
+<div id="page-loader"><div class="spinner"></div></div>
+<div id="toast"><i id="toast-icon"></i><span id="toast-msg"></span></div>
+<div id="sidebar-overlay" onclick="toggleSidebar()"></div>
+<input type="file" id="avatar-input" accept="image/*" class="hidden"/>
+
+<!-- ══════════════════════════════
+     SIDEBAR
+══════════════════════════════ -->
+<aside id="sidebar">
+  <div class="flex items-center gap-3 px-5 py-5"
+       style="border-bottom:1px solid var(--color-border)">
+    <div class="w-9 h-9 rounded-xl flex items-center justify-center
+                text-white text-sm font-bold shrink-0 overflow-hidden"
+         style="background:var(--color-primary)">
+      <img id="sb-logo-img" src="" alt="" class="w-full h-full object-cover hidden"/>
+      <i id="sb-logo-icon" class="fa-solid fa-hospital text-sm"></i>
+    </div>
+    <div>
+      <div id="sb-hospital-name" class="text-sm font-semibold">MediCore</div>
+      <div class="text-xs" style="color:var(--color-muted)">Doctor Portal</div>
+    </div>
+  </div>
+
+  <nav class="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
+    <a href="/doctor/dashboard/"    class="nav-link"><i class="fa-solid fa-gauge-high"></i> Dashboard</a>
+    <a href="/doctor/appointments/" class="nav-link"><i class="fa-solid fa-calendar-check"></i> Appointments</a>
+    <a href="/doctor/reports/"      class="nav-link"><i class="fa-solid fa-file-waveform"></i> Lab Reports</a>
+    <a href="/doctor/patients/"     class="nav-link"><i class="fa-solid fa-users"></i> My Patients</a>
+    <div class="pt-3 pb-1 px-3">
+      <p class="text-[10px] font-semibold uppercase tracking-wider"
+         style="color:var(--color-muted)">Account</p>
+    </div>
+    <a href="/doctor/profile/"      class="nav-link active"><i class="fa-solid fa-circle-user"></i> My Profile</a>
+    <a href="/doctor/availability/" class="nav-link"><i class="fa-solid fa-clock"></i> My Availability</a>
+  </nav>
+
+  <div class="px-3 py-4" style="border-top:1px solid var(--color-border)">
+    <div class="flex items-center gap-3 px-3 py-2.5 rounded-xl mb-1"
+         style="background:color-mix(in srgb,var(--color-primary) 6%,transparent)">
+      <div class="w-8 h-8 rounded-full flex items-center justify-center
+                  text-white text-xs shrink-0"
+           style="background:var(--color-primary)">
+        <i class="fa-solid fa-user-doctor text-xs"></i>
+      </div>
+      <div class="overflow-hidden">
+        <div id="sb-doctor-name" class="text-xs font-semibold truncate">Doctor</div>
+        <div id="sb-doctor-spec" class="text-xs truncate" style="color:var(--color-muted)">—</div>
+      </div>
+    </div>
+    <button onclick="doctorLogout()"
+            class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl
+                   text-sm transition-colors hover:text-red-500"
+            style="color:var(--color-muted)">
+      <i class="fa-solid fa-right-from-bracket w-4 text-center"></i> Logout
+    </button>
+  </div>
+</aside>
+
+<!-- ══════════════════════════════
+     TOPBAR
+══════════════════════════════ -->
+<header id="topbar">
+  <div class="flex items-center gap-3">
+    <button class="lg:hidden w-9 h-9 rounded-xl border flex items-center justify-center"
+            style="border-color:var(--color-border)" onclick="toggleSidebar()">
+      <i class="fa-solid fa-bars text-sm" style="color:var(--color-muted)"></i>
+    </button>
+    <div>
+      <h1 class="text-sm font-semibold">My Profile</h1>
+      <p class="text-xs" style="color:var(--color-muted)">Manage your personal and professional details</p>
+    </div>
+  </div>
+  <button id="theme-toggle"
+          class="w-9 h-9 rounded-xl border flex items-center justify-center"
+          style="border-color:var(--color-border);color:var(--color-muted)">
+    <i id="theme-icon" class="fa-solid fa-moon text-sm"></i>
+  </button>
+</header>
+
+
+<!-- ══════════════════════════════
+     MAIN
+══════════════════════════════ -->
+<div class="main-content min-h-screen">
+  <div class="p-6 max-w-4xl mx-auto">
+
+    <!-- Profile header card -->
+    <div class="card p-6 mb-6 fade-up">
+      <div class="flex flex-col sm:flex-row items-start sm:items-center gap-5">
+
+        <!-- Avatar -->
+        <div id="avatar-wrap" onclick="document.getElementById('avatar-input').click()">
+          <img id="avatar-img" src="" alt=""/>
+          <div id="avatar-initials" style="background:var(--color-primary)">?</div>
+          <div id="avatar-overlay">
+            <div class="text-center text-white">
+              <i class="fa-solid fa-camera text-sm block mb-1"></i>
+              <span class="text-[10px] font-semibold">Change</span>
+            </div>
+          </div>
+          <div id="avatar-spinner"
+               class="absolute inset-0 rounded-2xl hidden items-center justify-center"
+               style="background:rgba(0,0,0,0.5)">
+            <div class="spinner" style="width:24px;height:24px;border-width:2px"></div>
+          </div>
+        </div>
+
+        <!-- Name + meta -->
+        <div class="flex-1">
+          <h2 id="profile-name" class="text-xl font-bold">—</h2>
+          <p id="profile-spec" class="text-sm mt-0.5" style="color:var(--color-muted)">—</p>
+          <p id="profile-email" class="text-xs mt-1" style="color:var(--color-muted)">—</p>
+          <div class="flex flex-wrap gap-2 mt-3">
+            <span id="badge-dept"
+                  class="hidden text-xs font-medium px-2.5 py-1 rounded-lg"
+                  style="background:color-mix(in srgb,var(--color-primary) 10%,transparent);
+                         color:var(--color-primary)">
+              <i class="fa-solid fa-building-columns mr-1"></i>
+              <span id="badge-dept-text"></span>
+            </span>
+            <span id="badge-exp"
+                  class="hidden text-xs font-medium px-2.5 py-1 rounded-lg"
+                  style="background:color-mix(in srgb,var(--color-success) 10%,transparent);
+                         color:var(--color-success)">
+              <i class="fa-solid fa-star mr-1"></i>
+              <span id="badge-exp-text"></span> yrs exp
+            </span>
+            <span class="text-xs font-medium px-2.5 py-1 rounded-lg"
+                  style="background:color-mix(in srgb,#10b981 10%,transparent);color:#10b981">
+              <i class="fa-solid fa-circle-check mr-1"></i> Active
+            </span>
+          </div>
+        </div>
+
+        <!-- Stats -->
+        <div class="flex gap-4 shrink-0">
+          <div class="text-center">
+            <div id="stat-appts" class="text-xl font-bold" style="color:var(--color-primary)">—</div>
+            <div class="text-xs" style="color:var(--color-muted)">Appointments</div>
+          </div>
+          <div class="text-center">
+            <div id="stat-patients" class="text-xl font-bold" style="color:#8b5cf6">—</div>
+            <div class="text-xs" style="color:var(--color-muted)">Patients</div>
+          </div>
+          <div class="text-center">
+            <div id="stat-reports" class="text-xl font-bold" style="color:var(--color-success)">—</div>
+            <div class="text-xs" style="color:var(--color-muted)">Reports</div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Section tabs -->
+    <div class="card mb-6 fade-up d1" style="padding:0;overflow:hidden">
+      <div class="flex" style="border-bottom:1px solid var(--color-border)">
+        <button class="section-tab active" onclick="switchSection('personal',this)">
+          <i class="fa-solid fa-user mr-1.5"></i> Personal
+        </button>
+        <button class="section-tab" onclick="switchSection('professional',this)">
+          <i class="fa-solid fa-briefcase-medical mr-1.5"></i> Professional
+        </button>
+        <button class="section-tab" onclick="switchSection('security',this)">
+          <i class="fa-solid fa-shield-halved mr-1.5"></i> Security
+        </button>
+      </div>
+
+      <!-- ── Personal ── -->
+      <div id="section-personal" class="p-6 space-y-4">
+        <div class="grid sm:grid-cols-2 gap-4">
+          <div>
+            <label class="field-label">Full Name</label>
+            <input id="f-name" type="text" class="input-field" placeholder="Dr. John Smith"/>
+          </div>
+          <div>
+            <label class="field-label">Email <span class="text-xs opacity-50">(read only)</span></label>
+            <input id="f-email" type="email" class="input-field" disabled/>
+          </div>
+          <div>
+            <label class="field-label">Phone</label>
+            <input id="f-phone" type="tel" class="input-field" placeholder="+91 98765 43210"/>
+          </div>
+          <div>
+            <label class="field-label">Date of Birth</label>
+            <input id="f-dob" type="date" class="input-field"/>
+          </div>
+          <div>
+            <label class="field-label">Gender</label>
+            <select id="f-gender" class="input-field">
+              <option value="">Select gender</option>
+              <option value="Male">Male</option>
+              <option value="Female">Female</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+          <div>
+            <label class="field-label">Blood Group</label>
+            <select id="f-blood" class="input-field">
+              <option value="">Select</option>
+              <option>A+</option><option>A-</option>
+              <option>B+</option><option>B-</option>
+              <option>O+</option><option>O-</option>
+              <option>AB+</option><option>AB-</option>
+            </select>
+          </div>
+        </div>
+        <div>
+          <label class="field-label">Address</label>
+          <textarea id="f-address" class="input-field" placeholder="Your address…"></textarea>
+        </div>
+        <div class="flex justify-end">
+          <button onclick="savePersonal()" class="btn-primary">
+            <i class="fa-solid fa-floppy-disk"></i>
+            <span id="save-personal-text">Save Personal Info</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- ── Professional ── -->
+      <div id="section-professional" class="p-6 space-y-4 hidden">
+        <div class="grid sm:grid-cols-2 gap-4">
+          <div>
+            <label class="field-label">Specialization</label>
+            <input id="f-spec" type="text" class="input-field" placeholder="e.g. Cardiologist"/>
+          </div>
+          <div>
+            <label class="field-label">Department</label>
+            <input id="f-dept" type="text" class="input-field" placeholder="e.g. Cardiology"/>
+          </div>
+          <div>
+            <label class="field-label">Qualification</label>
+            <input id="f-qual" type="text" class="input-field" placeholder="e.g. MBBS, MD"/>
+          </div>
+          <div>
+            <label class="field-label">Years of Experience</label>
+            <input id="f-exp" type="number" min="0" max="60" class="input-field" placeholder="10"/>
+          </div>
+          <div>
+            <label class="field-label">Registration No.</label>
+            <input id="f-reg" type="text" class="input-field" placeholder="MCI-XXXXX"/>
+          </div>
+          <div>
+            <label class="field-label">Consultation Fee (₹)</label>
+            <input id="f-fee" type="number" min="0" class="input-field" placeholder="500"/>
+          </div>
+        </div>
+        <div>
+          <label class="field-label">Bio / About</label>
+          <textarea id="f-bio" class="input-field" rows="4"
+                    placeholder="Brief professional summary visible to patients…"></textarea>
+        </div>
+        <div>
+          <label class="field-label">Languages Spoken</label>
+          <input id="f-langs" type="text" class="input-field"
+                 placeholder="e.g. English, Hindi, Odia (comma separated)"/>
+        </div>
+        <div class="flex justify-end">
+          <button onclick="saveProfessional()" class="btn-primary">
+            <i class="fa-solid fa-floppy-disk"></i>
+            <span id="save-prof-text">Save Professional Info</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- ── Security ── -->
+      <div id="section-security" class="p-6 space-y-4 hidden">
+        <div class="p-4 rounded-xl mb-2"
+             style="background:color-mix(in srgb,var(--color-warning) 8%,transparent);
+                    border:1px solid color-mix(in srgb,var(--color-warning) 20%,transparent)">
+          <p class="text-xs font-medium" style="color:var(--color-warning)">
+            <i class="fa-solid fa-triangle-exclamation mr-2"></i>
+            You will be logged out after changing your password.
+          </p>
+        </div>
+        <div>
+          <label class="field-label">Current Password</label>
+          <div class="relative">
+            <input id="f-curr-pw" type="password" class="input-field pr-10"
+                   placeholder="Enter current password"/>
+            <button type="button" onclick="togglePw('f-curr-pw','eye-curr')"
+                    class="absolute right-3 top-1/2 -translate-y-1/2 text-sm"
+                    style="color:var(--color-muted)">
+              <i id="eye-curr" class="fa-regular fa-eye"></i>
+            </button>
+          </div>
+        </div>
+        <div>
+          <label class="field-label">New Password</label>
+          <div class="relative">
+            <input id="f-new-pw" type="password" class="input-field pr-10"
+                   placeholder="Min 8 characters"/>
+            <button type="button" onclick="togglePw('f-new-pw','eye-new')"
+                    class="absolute right-3 top-1/2 -translate-y-1/2 text-sm"
+                    style="color:var(--color-muted)">
+              <i id="eye-new" class="fa-regular fa-eye"></i>
+            </button>
+          </div>
+          <!-- Strength bar -->
+          <div class="flex gap-1 mt-2">
+            <div class="strength-bar h-1 flex-1 rounded-full transition-colors"
+                 style="background:var(--color-border)" id="sb1"></div>
+            <div class="strength-bar h-1 flex-1 rounded-full transition-colors"
+                 style="background:var(--color-border)" id="sb2"></div>
+            <div class="strength-bar h-1 flex-1 rounded-full transition-colors"
+                 style="background:var(--color-border)" id="sb3"></div>
+            <div class="strength-bar h-1 flex-1 rounded-full transition-colors"
+                 style="background:var(--color-border)" id="sb4"></div>
+          </div>
+          <p id="strength-label" class="text-xs mt-1" style="color:var(--color-muted)"></p>
+        </div>
+        <div>
+          <label class="field-label">Confirm New Password</label>
+          <div class="relative">
+            <input id="f-conf-pw" type="password" class="input-field pr-10"
+                   placeholder="Re-enter new password"/>
+            <button type="button" onclick="togglePw('f-conf-pw','eye-conf')"
+                    class="absolute right-3 top-1/2 -translate-y-1/2 text-sm"
+                    style="color:var(--color-muted)">
+              <i id="eye-conf" class="fa-regular fa-eye"></i>
+            </button>
+          </div>
+        </div>
+        <div class="flex justify-end">
+          <button onclick="changePassword()" class="btn-primary"
+                  style="background:var(--color-error)">
+            <i class="fa-solid fa-lock"></i>
+            <span id="save-pw-text">Update Password</span>
+          </button>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+</div>
+
+
+<script type="module">
+  import { auth, db }  from "../../assets/js/firebase-config.js";
+  import { guardPage } from "../../assets/js/auth-guard.js";
+  import { logActivity } from "../../assets/js/activity-logger.js";
+  import {
+    doc, getDoc, getDocs, setDoc, updateDoc,
+    collection, query, where, serverTimestamp
+  } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-firestore.js";
+  import {
+    signOut, updatePassword,
+    reauthenticateWithCredential, EmailAuthProvider
+  } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-auth.js";
+  import {
+    getStorage, ref, uploadBytes, getDownloadURL
+  } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-storage.js";
+
+  let currentUser = null;
+  let userData    = {};
+  let doctorData  = {};
+  const storage   = getStorage();
+
+  const COLORS = ["#2563eb","#0ea5e9","#8b5cf6","#10b981","#f59e0b","#ec4899"];
+
+  // ── Theme ──────────────────────────────────────────────────────────
+  const htmlEl = document.getElementById("html-root");
+  function applyTheme(dark) {
+    htmlEl.setAttribute("data-theme", dark ? "dark" : "light");
+    document.getElementById("theme-icon").className =
+      dark ? "fa-solid fa-sun text-sm" : "fa-solid fa-moon text-sm";
+    localStorage.setItem("theme", dark ? "dark" : "light");
+  }
+  applyTheme(localStorage.getItem("theme") === "dark");
+  document.getElementById("theme-toggle").addEventListener("click", () =>
+    applyTheme(htmlEl.getAttribute("data-theme") !== "dark")
+  );
+
+  window.toggleSidebar = () => {
+    document.getElementById("sidebar").classList.toggle("open");
+    document.getElementById("sidebar-overlay").classList.toggle("show");
+  };
+
+  // ── Settings ───────────────────────────────────────────────────────
+  async function loadSettings() {
+    try {
+      const snap = await getDoc(doc(db,"settings","hospital"));
+      if (!snap.exists()) return;
+      const s = snap.data(); const t = s.theme || {};
+      const r = document.documentElement;
+      if (t.primary)    r.style.setProperty("--color-primary",      t.primary);
+      if (t.primaryDark)r.style.setProperty("--color-primary-dark", t.primaryDark);
+      if (t.secondary)  r.style.setProperty("--color-secondary",    t.secondary);
+      if (t.fontFamily) r.style.setProperty("--font-family",        t.fontFamily);
+      const sbName = document.getElementById("sb-hospital-name");
+      if (sbName) sbName.textContent = s.hospitalName || "MediCore";
+      if (s.logoUrl) {
+        const img  = document.getElementById("sb-logo-img");
+        const icon = document.getElementById("sb-logo-icon");
+        if (img)  { img.src = s.logoUrl; img.classList.remove("hidden"); }
+        if (icon) icon.classList.add("hidden");
+      }
+    } catch(e) { console.error(e); }
+  }
+
+  // ── Load profile ───────────────────────────────────────────────────
+  async function loadProfile() {
+    try {
+      // user doc
+      const uSnap = await getDoc(doc(db,"users", currentUser.uid));
+      if (uSnap.exists()) userData = uSnap.data();
+
+      // doctor doc
+      const dSnap = await getDoc(doc(db,"doctors", currentUser.uid));
+      if (dSnap.exists()) doctorData = dSnap.data();
+
+      populateFields();
+      updateHeaderCard();
+      await loadStats();
+
+    } catch(e) { console.error("Load profile error:", e); }
+  }
+
+  // ── Populate form fields ───────────────────────────────────────────
+  function populateFields() {
+    // Personal
+    setVal("f-name",    userData.name    || "");
+    setVal("f-email",   userData.email   || currentUser.email || "");
+    setVal("f-phone",   userData.phone   || "");
+    setVal("f-dob",     userData.dob     || "");
+    setVal("f-gender",  userData.gender  || "");
+    setVal("f-blood",   userData.blood   || "");
+    setVal("f-address", userData.address || "");
+
+    // Professional
+    setVal("f-spec",  userData.specialization || doctorData.specialization || "");
+    setVal("f-dept",  userData.department     || doctorData.department     || "");
+    setVal("f-qual",  userData.qualification  || "");
+    setVal("f-exp",   userData.experience     || doctorData.experience     || "");
+    setVal("f-reg",   userData.registrationNo || "");
+    setVal("f-fee",   userData.consultationFee|| "");
+    setVal("f-bio",   userData.bio            || "");
+    setVal("f-langs", (userData.languages     || []).join(", "));
+  }
+
+  function setVal(id, val) {
+    const el = document.getElementById(id);
+    if (el) el.value = val;
+  }
+
+  // ── Update header card ─────────────────────────────────────────────
+  function updateHeaderCard() {
+    const name = userData.name || "Doctor";
+    const spec = userData.specialization || "—";
+
+    document.getElementById("profile-name").textContent  = `Dr. ${name}`;
+    document.getElementById("profile-spec").textContent  = spec;
+    document.getElementById("profile-email").textContent = userData.email || currentUser.email || "";
+    document.getElementById("sb-doctor-name").textContent= `Dr. ${name}`;
+    document.getElementById("sb-doctor-spec").textContent= spec;
+
+    // Avatar
+    if (userData.photoUrl) {
+      const img = document.getElementById("avatar-img");
+      img.src = userData.photoUrl;
+      img.style.display = "block";
+      document.getElementById("avatar-initials").style.display = "none";
+    } else {
+      const ini = name.charAt(0).toUpperCase();
+      const bg  = COLORS[name.charCodeAt(0) % COLORS.length];
+      document.getElementById("avatar-initials").textContent = ini;
+      document.getElementById("avatar-initials").style.background = bg;
+    }
+
+    // Dept badge
+    if (userData.department || doctorData.department) {
+      const b = document.getElementById("badge-dept");
+      b.classList.remove("hidden");
+      document.getElementById("badge-dept-text").textContent =
+        userData.department || doctorData.department;
+    }
+
+    // Exp badge
+    const exp = userData.experience || doctorData.experience;
+    if (exp) {
+      const b = document.getElementById("badge-exp");
+      b.classList.remove("hidden");
+      document.getElementById("badge-exp-text").textContent = exp;
+    }
+  }
+
+  // ── Load stats ─────────────────────────────────────────────────────
+  async function loadStats() {
+    try {
+      const [apptSnap, repSnap] = await Promise.all([
+        getDocs(query(collection(db,"appointments"), where("doctorId","==",currentUser.uid))),
+        getDocs(query(collection(db,"reports"),      where("doctorId","==",currentUser.uid))),
+      ]);
+
+      const patientIds = [...new Set(apptSnap.docs.map(d => d.data().patientId).filter(Boolean))];
+
+      document.getElementById("stat-appts").textContent    = apptSnap.size;
+      document.getElementById("stat-patients").textContent = patientIds.length;
+      document.getElementById("stat-reports").textContent  = repSnap.size;
+    } catch(e) { console.error(e); }
+  }
+
+  // ── Section tabs ───────────────────────────────────────────────────
+  window.switchSection = function(name, btn) {
+    ["personal","professional","security"].forEach(s => {
+      document.getElementById(`section-${s}`).classList.add("hidden");
+    });
+    document.querySelectorAll(".section-tab").forEach(b => b.classList.remove("active"));
+    document.getElementById(`section-${name}`).classList.remove("hidden");
+    btn.classList.add("active");
+  };
+
+  // ── Save personal ──────────────────────────────────────────────────
+  window.savePersonal = async function() {
+    const btn = document.getElementById("save-personal-text");
+    btn.textContent = "Saving…";
+    try {
+      const updates = {
+        name:      document.getElementById("f-name").value.trim(),
+        phone:     document.getElementById("f-phone").value.trim(),
+        dob:       document.getElementById("f-dob").value,
+        gender:    document.getElementById("f-gender").value,
+        blood:     document.getElementById("f-blood").value,
+        address:   document.getElementById("f-address").value.trim(),
+        updatedAt: serverTimestamp(),
+      };
+
+      await updateDoc(doc(db,"users", currentUser.uid), updates);
+      Object.assign(userData, updates);
+      updateHeaderCard();
+      try { await logActivity("UPDATE_PROFILE", { section:"personal" }); } catch(_) {}
+      showToast("Personal info saved!", "success");
+    } catch(e) {
+      console.error(e);
+      showToast("Failed to save: " + e.message, "error");
+    } finally { btn.textContent = "Save Personal Info"; }
+  };
+
+  // ── Save professional ──────────────────────────────────────────────
+  window.saveProfessional = async function() {
+    const btn = document.getElementById("save-prof-text");
+    btn.textContent = "Saving…";
+    try {
+      const langs = document.getElementById("f-langs").value
+        .split(",").map(l => l.trim()).filter(Boolean);
+
+      const userUpdates = {
+        specialization:   document.getElementById("f-spec").value.trim(),
+        department:       document.getElementById("f-dept").value.trim(),
+        qualification:    document.getElementById("f-qual").value.trim(),
+        experience:       document.getElementById("f-exp").value,
+        registrationNo:   document.getElementById("f-reg").value.trim(),
+        consultationFee:  document.getElementById("f-fee").value,
+        bio:              document.getElementById("f-bio").value.trim(),
+        languages:        langs,
+        updatedAt:        serverTimestamp(),
+      };
+
+      // Save to both users + doctors docs
+      await Promise.all([
+        updateDoc(doc(db,"users",   currentUser.uid), userUpdates),
+        setDoc(doc(db,"doctors", currentUser.uid), {
+          specialization: userUpdates.specialization,
+          department:     userUpdates.department,
+          experience:     userUpdates.experience,
+          bio:            userUpdates.bio,
+          languages:      langs,
+          updatedAt:      serverTimestamp(),
+        }, { merge:true }),
+      ]);
+
+      Object.assign(userData, userUpdates);
+      updateHeaderCard();
+      try { await logActivity("UPDATE_PROFILE", { section:"professional" }); } catch(_) {}
+      showToast("Professional info saved!", "success");
+    } catch(e) {
+      console.error(e);
+      showToast("Failed to save: " + e.message, "error");
+    } finally { btn.textContent = "Save Professional Info"; }
+  };
+
+  // ── Change password ────────────────────────────────────────────────
+  window.changePassword = async function() {
+    const currPw = document.getElementById("f-curr-pw").value;
+    const newPw  = document.getElementById("f-new-pw").value;
+    const confPw = document.getElementById("f-conf-pw").value;
+    const btn    = document.getElementById("save-pw-text");
+
+    if (!currPw || !newPw || !confPw) {
+      showToast("Fill all password fields.", "error"); return;
+    }
+    if (newPw !== confPw) {
+      showToast("New passwords don't match.", "error"); return;
+    }
+    if (newPw.length < 8) {
+      showToast("Password must be at least 8 characters.", "error"); return;
+    }
+
+    btn.textContent = "Updating…";
+    try {
+      // Re-authenticate first
+      const credential = EmailAuthProvider.credential(
+        currentUser.email, currPw
+      );
+      await reauthenticateWithCredential(currentUser, credential);
+      await updatePassword(currentUser, newPw);
+
+      try { await logActivity("CHANGE_PASSWORD", {}); } catch(_) {}
+      showToast("Password updated! Logging out…", "success");
+
+      setTimeout(async () => {
+        await signOut(auth);
+        window.location.href = "/auth/staff-login/";
+      }, 1800);
+
+    } catch(e) {
+      console.error(e);
+      const msg = e.code === "auth/wrong-password"
+        ? "Current password is incorrect."
+        : e.message;
+      showToast(msg, "error");
+    } finally { btn.textContent = "Update Password"; }
+  };
+
+  // ── Password strength ──────────────────────────────────────────────
+  document.getElementById("f-new-pw").addEventListener("input", function() {
+    const v = this.value;
+    let score = 0;
+    if (v.length >= 8)          score++;
+    if (/[A-Z]/.test(v))        score++;
+    if (/[0-9]/.test(v))        score++;
+    if (/[^A-Za-z0-9]/.test(v)) score++;
+
+    const colors  = ["","#ef4444","#f59e0b","#3b82f6","#10b981"];
+    const labels  = ["","Weak","Fair","Good","Strong"];
+    for (let i = 1; i <= 4; i++) {
+      const bar = document.getElementById(`sb${i}`);
+      bar.style.background = i <= score ? colors[score] : "var(--color-border)";
+    }
+    const lbl = document.getElementById("strength-label");
+    lbl.textContent = v ? labels[score] : "";
+    lbl.style.color = colors[score];
+  });
+
+  // ── Password visibility toggle ─────────────────────────────────────
+  window.togglePw = function(inputId, iconId) {
+    const input = document.getElementById(inputId);
+    const icon  = document.getElementById(iconId);
+    if (input.type === "password") {
+      input.type = "text";
+      icon.className = "fa-regular fa-eye-slash";
+    } else {
+      input.type = "password";
+      icon.className = "fa-regular fa-eye";
+    }
+  };
+
+  // ── Avatar upload ──────────────────────────────────────────────────
+  document.getElementById("avatar-input").addEventListener("change", async function() {
+    const file = this.files[0];
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024) {
+      showToast("Image must be under 2MB.", "error"); return;
+    }
+
+    const spinner = document.getElementById("avatar-spinner");
+    spinner.classList.remove("hidden");
+    spinner.style.display = "flex";
+
+    try {
+      const storageRef = ref(storage, `avatars/doctors/${currentUser.uid}`);
+      await uploadBytes(storageRef, file);
+      const url = await getDownloadURL(storageRef);
+
+      await updateDoc(doc(db,"users", currentUser.uid), {
+        photoUrl: url, updatedAt: serverTimestamp()
+      });
+      userData.photoUrl = url;
+
+      // Show new avatar
+      const img = document.getElementById("avatar-img");
+      img.src = url; img.style.display = "block";
+      document.getElementById("avatar-initials").style.display = "none";
+
+      showToast("Profile photo updated!", "success");
+    } catch(e) {
+      console.error(e);
+      showToast("Upload failed: " + e.message, "error");
+    } finally {
+      spinner.classList.add("hidden");
+      spinner.style.display = "none";
+    }
+  });
+
+  // ── Toast ──────────────────────────────────────────────────────────
+  window.showToast = function(msg, type = "info") {
+    const toast = document.getElementById("toast");
+    const icons = {
+      success:"fa-solid fa-circle-check",
+      error:"fa-solid fa-circle-exclamation",
+      info:"fa-solid fa-circle-info"
+    };
+    document.getElementById("toast-msg").textContent = msg;
+    document.getElementById("toast-icon").className  = icons[type];
+    toast.className = `show ${type}`;
+    clearTimeout(window._tt);
+    window._tt = setTimeout(() => { toast.className = type; }, 3500);
+  };
+
+  // ── Logout ─────────────────────────────────────────────────────────
+  window.doctorLogout = async function() {
+    await signOut(auth);
+    window.location.href = "/auth/staff-login/";
+  };
+
+  // ── Init ───────────────────────────────────────────────────────────
+  guardPage(["doctor"], async (user, uData) => {
+    currentUser = user;
+    userData    = uData;
+
+    await loadSettings();
+    await loadProfile();
+
+    const loader = document.getElementById("page-loader");
+    loader.classList.add("hidden");
+    setTimeout(() => loader.remove(), 500);
+  });
+
+</script>
+</body>
+</html>

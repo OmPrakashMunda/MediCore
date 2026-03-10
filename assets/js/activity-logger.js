@@ -1,24 +1,23 @@
 // assets/js/activity-logger.js
+import { auth, db } from "./firebase-config.js";
+import {
+  collection, addDoc, serverTimestamp
+} from "https://www.gstatic.com/firebasejs/11.4.0/firebase-firestore.js";
 
-import { db, auth } from "./firebase-config.js";
-import { collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-firestore.js";
-
-/**
- * @param {string} action - e.g. "LOGIN", "BOOK_APPOINTMENT", "UPLOAD_REPORT"
- * @param {object} metadata - any extra info
- */
-export async function logActivity(action, metadata = {}) {
-  const user = auth.currentUser;
-  if (!user) return;
-
+export async function logActivity(action, details = {}) {
   try {
-    await addDoc(collection(db, "activityLogs"), {
-      uid: user.uid,
+    const user = auth.currentUser;
+    if (!user) return;   // ← silently skip if not logged in
+
+    await addDoc(collection(db, "activity_logs"), {
+      uid:       user.uid,
+      email:     user.email || "",
       action,
-      metadata,
-      timestamp: serverTimestamp()
+      details,
+      timestamp: serverTimestamp(),
     });
-  } catch (err) {
-    console.error("Activity log failed:", err);
+  } catch(e) {
+    // ← Never throw — logging should never break main flow
+    console.warn("Activity log failed (non-critical):", e.message);
   }
 }

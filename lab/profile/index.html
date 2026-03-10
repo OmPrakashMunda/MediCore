@@ -1,0 +1,1164 @@
+<!DOCTYPE html>
+<html lang="en" id="html-root">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>My Profile — Lab</title>
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+
+  <style>
+    :root {
+      --color-primary:      #2563eb;
+      --color-primary-dark: #1d4ed8;
+      --color-secondary:    #0ea5e9;
+      --color-bg:           #f8fafc;
+      --color-surface:      #ffffff;
+      --color-text:         #0f172a;
+      --color-muted:        #64748b;
+      --color-border:       #e2e8f0;
+      --color-success:      #10b981;
+      --color-warning:      #f59e0b;
+      --color-error:        #ef4444;
+      --font-family:        'Inter', sans-serif;
+    }
+    [data-theme="dark"] {
+      --color-bg:      #0f172a;
+      --color-surface: #1e293b;
+      --color-text:    #f1f5f9;
+      --color-muted:   #94a3b8;
+      --color-border:  #334155;
+    }
+    * { font-family:var(--font-family); box-sizing:border-box; margin:0; padding:0; }
+    body { background:var(--color-bg); color:var(--color-text); transition:background 0.3s,color 0.3s; }
+
+    .main-content { margin-left:0; padding-top:64px; }
+    @media(min-width:1024px) { .main-content { margin-left:260px; } }
+
+    #page-loader {
+      position:fixed; inset:0; z-index:9999; background:var(--color-bg);
+      display:flex; align-items:center; justify-content:center; transition:opacity 0.4s;
+    }
+    #page-loader.hidden { opacity:0; pointer-events:none; }
+    .spinner {
+      width:36px; height:36px; border:3px solid var(--color-border);
+      border-top-color:var(--color-primary); border-radius:50%;
+      animation:spin 0.75s linear infinite;
+    }
+    @keyframes spin { to { transform:rotate(360deg) } }
+
+    .card { background:var(--color-surface); border:1px solid var(--color-border); border-radius:1rem; }
+
+    /* Sidebar */
+    #sidebar {
+      position:fixed; top:0; left:0; height:100%; width:260px; z-index:40;
+      background:var(--color-surface); border-right:1px solid var(--color-border);
+      display:flex; flex-direction:column;
+      transform:translateX(-100%); transition:transform 0.3s;
+    }
+    #sidebar.open { transform:translateX(0); }
+    @media(min-width:1024px) { #sidebar { transform:translateX(0); } }
+    #sidebar-overlay {
+      position:fixed; inset:0; z-index:30;
+      background:rgba(0,0,0,0.4); backdrop-filter:blur(3px); display:none;
+    }
+    #sidebar-overlay.show { display:block; }
+    .nav-link {
+      display:flex; align-items:center; gap:12px; padding:10px 14px;
+      border-radius:12px; font-size:0.85rem; font-weight:500;
+      color:var(--color-muted); text-decoration:none; transition:all 0.15s;
+    }
+    .nav-link:hover  { background:color-mix(in srgb,var(--color-primary) 8%,transparent); color:var(--color-primary); }
+    .nav-link.active { background:color-mix(in srgb,var(--color-primary) 12%,transparent); color:var(--color-primary); font-weight:600; }
+    .nav-link i { width:18px; text-align:center; }
+
+    /* Topbar */
+    #topbar {
+      position:fixed; top:0; right:0; left:0; z-index:20; height:64px;
+      background:var(--color-surface); border-bottom:1px solid var(--color-border);
+      display:flex; align-items:center; justify-content:space-between; padding:0 20px;
+    }
+    @media(min-width:1024px) { #topbar { left:260px; } }
+
+    /* Profile tab */
+    .profile-tab {
+      padding:10px 20px; font-size:0.83rem; font-weight:500;
+      border-bottom:2px solid transparent; color:var(--color-muted);
+      cursor:pointer; background:none; border-top:none;
+      border-left:none; border-right:none;
+      transition:all 0.15s; white-space:nowrap;
+    }
+    .profile-tab.active { color:var(--color-primary); border-bottom-color:var(--color-primary); }
+
+    /* Input */
+    .input-field {
+      padding:10px 14px; background:var(--color-bg);
+      border:1.5px solid var(--color-border); border-radius:10px;
+      color:var(--color-text); font-size:0.85rem; outline:none;
+      transition:border-color 0.2s, box-shadow 0.2s; width:100%;
+    }
+    .input-field:focus {
+      border-color:var(--color-primary);
+      box-shadow:0 0 0 3px color-mix(in srgb,var(--color-primary) 15%,transparent);
+    }
+    .input-field:disabled {
+      opacity:0.6; cursor:not-allowed;
+    }
+    .input-field.error { border-color:var(--color-error); }
+    .field-label { display:block; font-size:0.8rem; font-weight:600; margin-bottom:6px; }
+    .field-error  { font-size:0.72rem; color:var(--color-error); margin-top:4px; }
+
+    /* Avatar upload */
+    #avatar-wrap {
+      position:relative; width:96px; height:96px; cursor:pointer;
+    }
+    #avatar-wrap:hover #avatar-overlay { opacity:1; }
+    #avatar-overlay {
+      position:absolute; inset:0; border-radius:50%;
+      background:rgba(0,0,0,0.45);
+      display:flex; align-items:center; justify-content:center;
+      opacity:0; transition:opacity 0.2s;
+    }
+
+    /* Btn */
+    .btn-primary {
+      padding:10px 20px; background:var(--color-primary); color:#fff;
+      font-size:0.85rem; font-weight:600; border:none; border-radius:10px;
+      cursor:pointer; display:inline-flex; align-items:center; gap:8px;
+      transition:background 0.2s, transform 0.15s;
+    }
+    .btn-primary:hover    { background:var(--color-primary-dark); transform:translateY(-1px); }
+    .btn-primary:disabled { opacity:0.55; cursor:not-allowed; transform:none; }
+    .btn-outline {
+      padding:10px 20px; background:transparent; color:var(--color-muted);
+      font-size:0.85rem; font-weight:600;
+      border:1.5px solid var(--color-border); border-radius:10px;
+      cursor:pointer; display:inline-flex; align-items:center; gap:8px;
+      transition:all 0.15s;
+    }
+    .btn-outline:hover { border-color:var(--color-primary); color:var(--color-primary); }
+
+    /* Password strength */
+    .strength-bar {
+      height:4px; border-radius:99px; transition:width 0.3s, background 0.3s;
+    }
+
+    /* Activity row */
+    .activity-row {
+      display:flex; align-items:flex-start; gap:12px; padding:12px 0;
+      border-bottom:1px solid var(--color-border); font-size:0.82rem;
+    }
+    .activity-row:last-child { border-bottom:none; }
+
+    /* Toast */
+    #toast {
+      position:fixed; bottom:28px; left:50%;
+      transform:translateX(-50%) translateY(70px);
+      padding:11px 20px; border-radius:12px; font-size:0.85rem; font-weight:500;
+      display:flex; align-items:center; gap:10px; z-index:9999; opacity:0;
+      white-space:nowrap;
+      transition:transform 0.35s cubic-bezier(0.34,1.56,0.64,1), opacity 0.3s;
+      box-shadow:0 8px 24px rgba(0,0,0,0.15);
+    }
+    #toast.show    { transform:translateX(-50%) translateY(0); opacity:1; }
+    #toast.success { background:var(--color-success); color:#fff; }
+    #toast.error   { background:var(--color-error);   color:#fff; }
+    #toast.info    { background:var(--color-primary);  color:#fff; }
+    #toast.warning { background:var(--color-warning);  color:#fff; }
+
+    /* Danger zone */
+    .danger-zone {
+      border:1.5px solid color-mix(in srgb,var(--color-error) 25%,transparent);
+      border-radius:14px; padding:20px;
+      background:color-mix(in srgb,var(--color-error) 4%,transparent);
+    }
+
+    .fade-up    { animation:fadeUp 0.5s ease forwards; opacity:0; }
+    .fade-up.d1 { animation-delay:0.1s; }
+    .fade-up.d2 { animation-delay:0.2s; }
+    .fade-up.d3 { animation-delay:0.3s; }
+    @keyframes fadeUp { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:none} }
+  </style>
+</head>
+<body>
+
+<div id="page-loader"><div class="spinner"></div></div>
+<div id="toast"><i id="toast-icon"></i><span id="toast-msg"></span></div>
+<div id="sidebar-overlay" onclick="toggleSidebar()"></div>
+<input type="file" id="avatar-input" accept="image/*" class="hidden"
+       onchange="handleAvatarSelect(this.files[0])"/>
+
+<!-- ══════════════════════════════ SIDEBAR ══════════════════════════════ -->
+<aside id="sidebar">
+  <div class="flex items-center gap-3 px-5 py-5"
+       style="border-bottom:1px solid var(--color-border)">
+    <div class="w-9 h-9 rounded-xl flex items-center justify-center text-white
+                text-sm font-bold shrink-0 overflow-hidden"
+         style="background:var(--color-primary)">
+      <img id="sb-logo-img" src="" alt="" class="w-full h-full object-cover hidden"/>
+      <i id="sb-logo-icon" class="fa-solid fa-hospital text-sm"></i>
+    </div>
+    <div>
+      <div id="sb-hospital-name" class="text-sm font-semibold">MediCore</div>
+      <div class="text-xs" style="color:var(--color-muted)">Lab Portal</div>
+    </div>
+  </div>
+  <nav class="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
+    <a href="/lab/dashboard/" class="nav-link"><i class="fa-solid fa-gauge-high"></i> Dashboard</a>
+    <a href="/lab/reports/"   class="nav-link"><i class="fa-solid fa-file-waveform"></i> All Reports</a>
+    <a href="/lab/upload/"    class="nav-link"><i class="fa-solid fa-file-arrow-up"></i> Upload Report</a>
+    <a href="/lab/patients/"  class="nav-link"><i class="fa-solid fa-users"></i> Patients</a>
+    <div class="pt-3 pb-1 px-3">
+      <p class="text-[10px] font-semibold uppercase tracking-wider"
+         style="color:var(--color-muted)">Account</p>
+    </div>
+    <a href="/lab/profile/"   class="nav-link active"><i class="fa-solid fa-circle-user"></i> My Profile</a>
+  </nav>
+  <div class="px-3 py-4" style="border-top:1px solid var(--color-border)">
+    <div class="flex items-center gap-3 px-3 py-2.5 rounded-xl mb-1"
+         style="background:color-mix(in srgb,var(--color-primary) 6%,transparent)">
+      <div class="w-8 h-8 rounded-xl flex items-center justify-center
+                  text-white text-xs shrink-0 overflow-hidden"
+           style="background:var(--color-primary)" id="sb-avatar-wrap">
+        <img id="sb-avatar-img" src="" alt="" class="w-full h-full object-cover hidden"/>
+        <i id="sb-avatar-icon" class="fa-solid fa-flask text-xs"></i>
+      </div>
+      <div class="overflow-hidden">
+        <div id="sb-lab-name"  class="text-xs font-semibold truncate">Lab Staff</div>
+        <div id="sb-lab-email" class="text-xs truncate" style="color:var(--color-muted)">—</div>
+      </div>
+    </div>
+    <button onclick="labLogout()"
+            class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl
+                   text-sm transition-colors hover:text-red-500"
+            style="color:var(--color-muted)">
+      <i class="fa-solid fa-right-from-bracket w-4 text-center"></i> Logout
+    </button>
+  </div>
+</aside>
+
+<!-- ══════════════════════════════ TOPBAR ══════════════════════════════ -->
+<header id="topbar">
+  <div class="flex items-center gap-3">
+    <button class="lg:hidden w-9 h-9 rounded-xl border flex items-center justify-center"
+            style="border-color:var(--color-border)" onclick="toggleSidebar()">
+      <i class="fa-solid fa-bars text-sm" style="color:var(--color-muted)"></i>
+    </button>
+    <div>
+      <h1 class="text-sm font-semibold">My Profile</h1>
+      <p class="text-xs" style="color:var(--color-muted)">Manage your account settings</p>
+    </div>
+  </div>
+  <button id="theme-toggle"
+          class="w-9 h-9 rounded-xl border flex items-center justify-center"
+          style="border-color:var(--color-border);color:var(--color-muted)">
+    <i id="theme-icon" class="fa-solid fa-moon text-sm"></i>
+  </button>
+</header>
+
+<!-- ══════════════════════════════ MAIN ══════════════════════════════ -->
+<div class="main-content min-h-screen">
+  <div class="p-6 max-w-4xl mx-auto">
+
+    <!-- ── Profile hero card ── -->
+    <div class="card p-6 mb-6 fade-up">
+      <div class="flex flex-col sm:flex-row items-center sm:items-start gap-5">
+
+        <!-- Avatar -->
+        <div id="avatar-wrap" onclick="document.getElementById('avatar-input').click()"
+             class="shrink-0 mx-auto sm:mx-0">
+          <div id="profile-avatar"
+               class="w-24 h-24 rounded-full flex items-center justify-center
+                      text-white text-3xl font-bold overflow-hidden"
+               style="background:var(--color-primary)">
+            <img id="profile-avatar-img" src="" alt="" class="w-full h-full object-cover hidden"/>
+            <span id="profile-avatar-ini">?</span>
+          </div>
+          <div id="avatar-overlay" class="rounded-full">
+            <i class="fa-solid fa-camera text-white text-sm"></i>
+          </div>
+        </div>
+
+        <!-- Info -->
+        <div class="flex-1 text-center sm:text-left">
+          <div class="flex flex-col sm:flex-row sm:items-center gap-2 mb-1">
+            <h2 id="hero-name"  class="text-xl font-bold">—</h2>
+            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full
+                         text-xs font-semibold mx-auto sm:mx-0"
+                  style="background:color-mix(in srgb,var(--color-primary) 10%,transparent);
+                         color:var(--color-primary)">
+              <i class="fa-solid fa-flask text-[10px]"></i> Lab Technician
+            </span>
+          </div>
+          <p id="hero-email" class="text-sm mb-1" style="color:var(--color-muted)">—</p>
+          <p id="hero-joined" class="text-xs" style="color:var(--color-muted)">—</p>
+        </div>
+
+        <!-- Stats -->
+        <div class="flex gap-4 shrink-0">
+          <div class="text-center">
+            <div id="hero-reports" class="font-bold text-xl"
+                 style="color:var(--color-primary)">—</div>
+            <div class="text-xs" style="color:var(--color-muted)">Reports</div>
+          </div>
+          <div class="text-center">
+            <div id="hero-patients" class="font-bold text-xl"
+                 style="color:var(--color-success)">—</div>
+            <div class="text-xs" style="color:var(--color-muted)">Patients</div>
+          </div>
+          <div class="text-center">
+            <div id="hero-today" class="font-bold text-xl"
+                 style="color:#8b5cf6">—</div>
+            <div class="text-xs" style="color:var(--color-muted)">Today</div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Avatar upload progress -->
+      <div id="avatar-upload-wrap" class="hidden mt-4">
+        <div class="flex justify-between text-xs mb-1" style="color:var(--color-muted)">
+          <span>Uploading photo…</span>
+          <span id="avatar-pct">0%</span>
+        </div>
+        <div class="h-1.5 rounded-full" style="background:var(--color-border)">
+          <div id="avatar-bar"
+               class="h-full rounded-full transition-all"
+               style="width:0%;background:var(--color-primary)"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Tabs ── -->
+    <div class="flex overflow-x-auto mb-5 fade-up d1"
+         style="border-bottom:1px solid var(--color-border)">
+      <button class="profile-tab active" onclick="switchTab('info',this)">
+        <i class="fa-solid fa-id-card mr-1.5"></i>Personal Info
+      </button>
+      <button class="profile-tab" onclick="switchTab('security',this)">
+        <i class="fa-solid fa-shield-halved mr-1.5"></i>Security
+      </button>
+      <button class="profile-tab" onclick="switchTab('activity',this)">
+        <i class="fa-solid fa-list-check mr-1.5"></i>Activity
+      </button>
+      <button class="profile-tab" onclick="switchTab('preferences',this)">
+        <i class="fa-solid fa-sliders mr-1.5"></i>Preferences
+      </button>
+    </div>
+
+    <!-- ── Tab panels ── -->
+    <div id="tab-content" class="fade-up d2"></div>
+
+  </div>
+</div>
+
+
+<script type="module">
+  import { auth, db }    from "../../assets/js/firebase-config.js";
+  import { guardPage }   from "../../assets/js/auth-guard.js";
+  import { logActivity } from "../../assets/js/activity-logger.js";
+  import {
+    doc, getDoc, updateDoc, collection,
+    query, where, getDocs, serverTimestamp, orderBy, limit
+  } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-firestore.js";
+  import {
+    getStorage, ref, uploadBytesResumable, getDownloadURL
+  } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-storage.js";
+  import {
+    updatePassword, updateEmail, reauthenticateWithCredential,
+    EmailAuthProvider, sendEmailVerification, signOut
+  } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-auth.js";
+
+  const storage = getStorage();
+  let labUid    = "";
+  let labUser   = null;
+  let userData  = {};
+  let activeTab = "info";
+
+  const COLORS   = ["#2563eb","#0ea5e9","#8b5cf6","#10b981","#f59e0b","#ec4899"];
+  const avatarBg = n => COLORS[(n||"?").charCodeAt(0) % COLORS.length];
+
+  // ── Theme ──────────────────────────────────────────────────────────
+  const htmlEl = document.getElementById("html-root");
+  function applyTheme(dark) {
+    htmlEl.setAttribute("data-theme", dark ? "dark" : "light");
+    document.getElementById("theme-icon").className =
+      dark ? "fa-solid fa-sun text-sm" : "fa-solid fa-moon text-sm";
+    localStorage.setItem("theme", dark ? "dark" : "light");
+  }
+  applyTheme(localStorage.getItem("theme") === "dark");
+  document.getElementById("theme-toggle").addEventListener("click", () =>
+    applyTheme(htmlEl.getAttribute("data-theme") !== "dark")
+  );
+
+  window.toggleSidebar = () => {
+    document.getElementById("sidebar").classList.toggle("open");
+    document.getElementById("sidebar-overlay").classList.toggle("show");
+  };
+
+  // ── Settings ───────────────────────────────────────────────────────
+  async function loadSettings() {
+    try {
+      const snap = await getDoc(doc(db,"settings","hospital"));
+      if (!snap.exists()) return;
+      const s = snap.data(); const t = s.theme || {};
+      const r = document.documentElement;
+      if (t.primary)    r.style.setProperty("--color-primary",      t.primary);
+      if (t.primaryDark)r.style.setProperty("--color-primary-dark", t.primaryDark);
+      if (t.secondary)  r.style.setProperty("--color-secondary",    t.secondary);
+      if (t.fontFamily) r.style.setProperty("--font-family",        t.fontFamily);
+      const sbName = document.getElementById("sb-hospital-name");
+      if (sbName) sbName.textContent = s.hospitalName || "MediCore";
+      if (s.logoUrl) {
+        const img  = document.getElementById("sb-logo-img");
+        const icon = document.getElementById("sb-logo-icon");
+        if (img)  { img.src = s.logoUrl; img.classList.remove("hidden"); }
+        if (icon) icon.classList.add("hidden");
+      }
+    } catch(e) { console.error(e); }
+  }
+
+  // ── Load profile ───────────────────────────────────────────────────
+  async function loadProfile() {
+    try {
+      const snap = await getDoc(doc(db,"users", labUid));
+      if (!snap.exists()) return;
+      userData = { id:labUid, ...snap.data() };
+
+      // Hero
+      const ini = (userData.name||"?").charAt(0).toUpperCase();
+      const bg  = avatarBg(userData.name||"");
+
+      document.getElementById("hero-name").textContent  = userData.name  || "—";
+      document.getElementById("hero-email").textContent = userData.email || labUser.email || "—";
+      document.getElementById("sb-lab-name").textContent  = userData.name  || "Lab Staff";
+      document.getElementById("sb-lab-email").textContent = userData.email || labUser.email || "—";
+
+      // Avatar
+      setAvatarUI(userData.photoUrl || null, ini, bg);
+
+      // Joined
+      const joined = userData.createdAt?.toDate
+        ? userData.createdAt.toDate().toLocaleDateString("en-IN",{
+            day:"2-digit", month:"long", year:"numeric"
+          })
+        : "—";
+      document.getElementById("hero-joined").textContent = `Member since ${joined}`;
+
+      // Report stats
+      const repSnap = await getDocs(query(
+        collection(db,"reports"),
+        where("uploadedBy","==", labUid)
+      ));
+      const reports  = repSnap.docs.map(d => d.data());
+      const pids     = [...new Set(reports.map(r => r.patientId).filter(Boolean))];
+      const today    = new Date(); today.setHours(0,0,0,0);
+      const todayRep = reports.filter(r => {
+        const d = r.uploadedAt?.toDate ? r.uploadedAt.toDate() : new Date(0);
+        return d >= today;
+      });
+
+      document.getElementById("hero-reports").textContent  = reports.length;
+      document.getElementById("hero-patients").textContent = pids.length;
+      document.getElementById("hero-today").textContent    = todayRep.length;
+
+      renderTab();
+
+    } catch(e) {
+      console.error("Profile load error:", e);
+    }
+  }
+
+  function setAvatarUI(url, ini, bg) {
+    const img  = document.getElementById("profile-avatar-img");
+    const span = document.getElementById("profile-avatar-ini");
+    const el   = document.getElementById("profile-avatar");
+    const sbImg  = document.getElementById("sb-avatar-img");
+    const sbIcon = document.getElementById("sb-avatar-icon");
+
+    if (url) {
+      img.src = url; img.classList.remove("hidden"); span.classList.add("hidden");
+      el.style.background = "transparent";
+      sbImg.src = url; sbImg.classList.remove("hidden"); sbIcon.classList.add("hidden");
+    } else {
+      img.classList.add("hidden"); span.classList.remove("hidden");
+      span.textContent    = ini;
+      el.style.background = bg;
+      sbImg.classList.add("hidden"); sbIcon.classList.remove("hidden");
+    }
+  }
+
+  // ── Avatar upload ──────────────────────────────────────────────────
+  window.handleAvatarSelect = async function(file) {
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      showToast("Image must be under 5MB.", "error"); return;
+    }
+    if (!file.type.startsWith("image/")) {
+      showToast("Only image files allowed.", "error"); return;
+    }
+
+    document.getElementById("avatar-upload-wrap").classList.remove("hidden");
+
+    try {
+      const sRef = ref(storage, `avatars/${labUid}/profile.${file.name.split('.').pop()}`);
+      const task = uploadBytesResumable(sRef, file);
+
+      task.on("state_changed",
+        snap => {
+          const pct = Math.round(snap.bytesTransferred / snap.totalBytes * 100);
+          document.getElementById("avatar-pct").textContent = pct + "%";
+          document.getElementById("avatar-bar").style.width  = pct + "%";
+        },
+        err => showToast("Upload failed: " + err.message, "error"),
+        async () => {
+          const url = await getDownloadURL(task.snapshot.ref);
+          await updateDoc(doc(db,"users", labUid), { photoUrl: url });
+          userData.photoUrl = url;
+          const ini = (userData.name||"?").charAt(0).toUpperCase();
+          const bg  = avatarBg(userData.name||"");
+          setAvatarUI(url, ini, bg);
+          document.getElementById("avatar-upload-wrap").classList.add("hidden");
+          showToast("Profile photo updated!", "success");
+        }
+      );
+    } catch(e) {
+      showToast("Error: " + e.message, "error");
+    }
+  };
+
+  // ══════════════════════════════════════
+  //  TABS
+  // ══════════════════════════════════════
+
+  window.switchTab = function(tab, btn) {
+    activeTab = tab;
+    document.querySelectorAll(".profile-tab").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+    renderTab();
+  };
+
+  function renderTab() {
+    const el = document.getElementById("tab-content");
+    if      (activeTab === "info")        el.innerHTML = renderInfoTab();
+    else if (activeTab === "security")    el.innerHTML = renderSecurityTab();
+    else if (activeTab === "activity")    { el.innerHTML = renderActivityTab(); loadActivityLog(); }
+    else if (activeTab === "preferences") el.innerHTML = renderPreferencesTab();
+  }
+
+  // ── TAB 1: Personal Info ───────────────────────────────────────────
+  function renderInfoTab() {
+    return `
+      <form onsubmit="saveProfile(event)" class="space-y-5">
+
+        <div class="card p-6">
+          <h3 class="font-semibold text-sm mb-4 flex items-center gap-2">
+            <i class="fa-solid fa-user text-xs" style="color:var(--color-primary)"></i>
+            Basic Information
+          </h3>
+
+          <div class="grid sm:grid-cols-2 gap-4">
+
+            <div>
+              <label class="field-label">Full Name</label>
+              <input id="f-name" type="text" class="input-field"
+                     value="${userData.name||''}"
+                     placeholder="Your full name" required/>
+            </div>
+
+            <div>
+              <label class="field-label">Display Email</label>
+              <input id="f-display-email" type="email" class="input-field"
+                     value="${userData.email||''}"
+                     placeholder="Display email" disabled/>
+              <p class="text-[11px] mt-1" style="color:var(--color-muted)">
+                Change email in Security tab
+              </p>
+            </div>
+
+            <div>
+              <label class="field-label">Phone Number</label>
+              <input id="f-phone" type="tel" class="input-field"
+                     value="${userData.phone||''}"
+                     placeholder="+91 9876543210"/>
+            </div>
+
+            <div>
+              <label class="field-label">Employee ID</label>
+              <input id="f-emp-id" type="text" class="input-field"
+                     value="${userData.employeeId||''}"
+                     placeholder="LAB-0001"/>
+            </div>
+
+            <div>
+              <label class="field-label">Department</label>
+              <select id="f-department" class="input-field">
+                <option value="">Select department…</option>
+                ${["Haematology","Biochemistry","Microbiology","Pathology",
+                   "Radiology","Cardiology","Immunology","General Lab"]
+                  .map(d => `<option ${userData.department===d?"selected":""}>${d}</option>`)
+                  .join('')}
+              </select>
+            </div>
+
+            <div>
+              <label class="field-label">Qualification</label>
+              <input id="f-qualification" type="text" class="input-field"
+                     value="${userData.qualification||''}"
+                     placeholder="e.g. B.Sc MLT, DMLT"/>
+            </div>
+
+            <div>
+              <label class="field-label">Experience</label>
+              <input id="f-experience" type="text" class="input-field"
+                     value="${userData.experience||''}"
+                     placeholder="e.g. 3 years"/>
+            </div>
+
+            <div>
+              <label class="field-label">Lab Reg. Number</label>
+              <input id="f-reg-no" type="text" class="input-field"
+                     value="${userData.regNumber||''}"
+                     placeholder="Registration / licence no."/>
+            </div>
+
+          </div>
+
+          <!-- Bio -->
+          <div class="mt-4">
+            <label class="field-label">Short Bio
+              <span class="font-normal text-xs ml-1" style="color:var(--color-muted)">(optional)</span>
+            </label>
+            <textarea id="f-bio" class="input-field" rows="3"
+                      placeholder="A short note about yourself…"
+                      style="resize:vertical">${userData.bio||''}</textarea>
+          </div>
+        </div>
+
+        <!-- Save -->
+        <div class="flex justify-end gap-3">
+          <button type="button" onclick="loadProfile()" class="btn-outline">
+            <i class="fa-solid fa-rotate-left text-xs"></i> Reset
+          </button>
+          <button type="submit" id="save-info-btn" class="btn-primary">
+            <i class="fa-solid fa-floppy-disk text-xs"></i>
+            <span id="save-info-text">Save Changes</span>
+            <div id="save-info-spinner"
+                 class="hidden w-4 h-4 border-2 border-white border-t-transparent
+                        rounded-full animate-spin"></div>
+          </button>
+        </div>
+      </form>
+    `;
+  }
+
+  window.saveProfile = async function(e) {
+    e.preventDefault();
+    const btn = document.getElementById("save-info-btn");
+    const txt = document.getElementById("save-info-text");
+    const spn = document.getElementById("save-info-spinner");
+    btn.disabled = true; txt.textContent = "Saving…"; spn.classList.remove("hidden");
+
+    try {
+      const updates = {
+        name:          document.getElementById("f-name").value.trim(),
+        phone:         document.getElementById("f-phone").value.trim(),
+        employeeId:    document.getElementById("f-emp-id").value.trim(),
+        department:    document.getElementById("f-department").value,
+        qualification: document.getElementById("f-qualification").value.trim(),
+        experience:    document.getElementById("f-experience").value.trim(),
+        regNumber:     document.getElementById("f-reg-no").value.trim(),
+        bio:           document.getElementById("f-bio").value.trim(),
+        updatedAt:     serverTimestamp(),
+      };
+
+      await updateDoc(doc(db,"users", labUid), updates);
+      Object.assign(userData, updates);
+
+      document.getElementById("hero-name").textContent = updates.name;
+      document.getElementById("sb-lab-name").textContent = updates.name;
+      const ini = updates.name.charAt(0).toUpperCase();
+      const bg  = avatarBg(updates.name);
+      if (!userData.photoUrl) setAvatarUI(null, ini, bg);
+
+      try { await logActivity("UPDATE_PROFILE", { fields: Object.keys(updates) }); } catch(_) {}
+
+      showToast("Profile saved successfully!", "success");
+    } catch(err) {
+      showToast("Save failed: " + err.message, "error");
+    } finally {
+      btn.disabled = false; txt.textContent = "Save Changes"; spn.classList.add("hidden");
+    }
+  };
+
+  // ── TAB 2: Security ────────────────────────────────────────────────
+  function renderSecurityTab() {
+    return `
+      <div class="space-y-5">
+
+        <!-- Change email -->
+        <div class="card p-6">
+          <h3 class="font-semibold text-sm mb-4 flex items-center gap-2">
+            <i class="fa-solid fa-envelope text-xs" style="color:var(--color-primary)"></i>
+            Change Email Address
+          </h3>
+          <div class="space-y-3">
+            <div>
+              <label class="field-label">Current Email</label>
+              <input type="email" class="input-field" disabled
+                     value="${labUser?.email||'—'}"/>
+            </div>
+            <div>
+              <label class="field-label">New Email</label>
+              <input id="f-new-email" type="email" class="input-field"
+                     placeholder="new@email.com"/>
+            </div>
+            <div>
+              <label class="field-label">Current Password (to confirm)</label>
+              <div class="relative">
+                <input id="f-email-pwd" type="password" class="input-field pr-10"
+                       placeholder="Enter current password"/>
+                <button type="button" onclick="togglePwd('f-email-pwd','ei')"
+                        class="absolute right-3 top-1/2 -translate-y-1/2"
+                        style="color:var(--color-muted)">
+                  <i id="ei-icon" class="fa-solid fa-eye text-xs"></i>
+                </button>
+              </div>
+            </div>
+            <button onclick="changeEmail()" class="btn-primary text-xs px-4 py-2">
+              <i class="fa-solid fa-envelope-circle-check text-xs"></i> Update Email
+            </button>
+          </div>
+        </div>
+
+        <!-- Change password -->
+        <div class="card p-6">
+          <h3 class="font-semibold text-sm mb-4 flex items-center gap-2">
+            <i class="fa-solid fa-lock text-xs" style="color:var(--color-primary)"></i>
+            Change Password
+          </h3>
+          <div class="space-y-3">
+            <div>
+              <label class="field-label">Current Password</label>
+              <div class="relative">
+                <input id="f-cur-pwd" type="password" class="input-field pr-10"
+                       placeholder="Current password"/>
+                <button type="button" onclick="togglePwd('f-cur-pwd','cp')"
+                        class="absolute right-3 top-1/2 -translate-y-1/2"
+                        style="color:var(--color-muted)">
+                  <i id="cp-icon" class="fa-solid fa-eye text-xs"></i>
+                </button>
+              </div>
+            </div>
+            <div>
+              <label class="field-label">New Password</label>
+              <div class="relative">
+                <input id="f-new-pwd" type="password" class="input-field pr-10"
+                       placeholder="Min. 8 characters"
+                       oninput="checkPwdStrength(this.value)"/>
+                <button type="button" onclick="togglePwd('f-new-pwd','np')"
+                        class="absolute right-3 top-1/2 -translate-y-1/2"
+                        style="color:var(--color-muted)">
+                  <i id="np-icon" class="fa-solid fa-eye text-xs"></i>
+                </button>
+              </div>
+              <!-- Strength meter -->
+              <div class="flex gap-1 mt-2">
+                <div id="sb1" class="strength-bar flex-1" style="background:var(--color-border)"></div>
+                <div id="sb2" class="strength-bar flex-1" style="background:var(--color-border)"></div>
+                <div id="sb3" class="strength-bar flex-1" style="background:var(--color-border)"></div>
+                <div id="sb4" class="strength-bar flex-1" style="background:var(--color-border)"></div>
+              </div>
+              <p id="pwd-strength-label" class="text-xs mt-1"
+                 style="color:var(--color-muted)">Password strength</p>
+            </div>
+            <div>
+              <label class="field-label">Confirm New Password</label>
+              <div class="relative">
+                <input id="f-conf-pwd" type="password" class="input-field pr-10"
+                       placeholder="Repeat new password"/>
+                <button type="button" onclick="togglePwd('f-conf-pwd','cnp')"
+                        class="absolute right-3 top-1/2 -translate-y-1/2"
+                        style="color:var(--color-muted)">
+                  <i id="cnp-icon" class="fa-solid fa-eye text-xs"></i>
+                </button>
+              </div>
+            </div>
+            <button onclick="changePassword()" class="btn-primary text-xs px-4 py-2">
+              <i class="fa-solid fa-lock text-xs"></i> Update Password
+            </button>
+          </div>
+        </div>
+
+        <!-- Danger zone -->
+        <div class="danger-zone">
+          <h3 class="font-semibold text-sm mb-1 flex items-center gap-2"
+              style="color:var(--color-error)">
+            <i class="fa-solid fa-triangle-exclamation text-xs"></i>
+            Danger Zone
+          </h3>
+          <p class="text-xs mb-4" style="color:var(--color-muted)">
+            This action is permanent and cannot be undone.
+          </p>
+          <button onclick="signOutAllDevices()"
+                  class="flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs
+                         font-semibold transition-colors"
+                  style="border:1.5px solid color-mix(in srgb,var(--color-error) 25%,transparent);
+                         color:var(--color-error)">
+            <i class="fa-solid fa-arrow-right-from-bracket"></i>
+            Sign out of all devices
+          </button>
+        </div>
+
+      </div>
+    `;
+  }
+
+  window.togglePwd = function(fieldId, iconId) {
+    const f = document.getElementById(fieldId);
+    const i = document.getElementById(iconId + "-icon");
+    const isText = f.type === "text";
+    f.type = isText ? "password" : "text";
+    i.className = isText ? "fa-solid fa-eye text-xs" : "fa-solid fa-eye-slash text-xs";
+  };
+
+  window.checkPwdStrength = function(val) {
+    const bars  = [1,2,3,4].map(n => document.getElementById(`sb${n}`));
+    const label = document.getElementById("pwd-strength-label");
+    let score = 0;
+    if (val.length >= 8)         score++;
+    if (/[A-Z]/.test(val))       score++;
+    if (/[0-9]/.test(val))       score++;
+    if (/[^A-Za-z0-9]/.test(val))score++;
+
+    const colors  = ["#ef4444","#f59e0b","#0ea5e9","#10b981"];
+    const labels  = ["Weak","Fair","Good","Strong"];
+    bars.forEach((b,i) => {
+      b.style.background = i < score ? colors[score-1] : "var(--color-border)";
+    });
+    if (label) {
+      label.textContent = val ? labels[score-1] || "Weak" : "Password strength";
+      label.style.color = val ? colors[score-1] : "var(--color-muted)";
+    }
+  };
+
+  window.changeEmail = async function() {
+    const newEmail = document.getElementById("f-new-email").value.trim();
+    const pwd      = document.getElementById("f-email-pwd").value;
+    if (!newEmail || !pwd) { showToast("Fill in all fields.", "error"); return; }
+
+    try {
+      const cred = EmailAuthProvider.credential(labUser.email, pwd);
+      await reauthenticateWithCredential(labUser, cred);
+      await updateEmail(labUser, newEmail);
+      await updateDoc(doc(db,"users", labUid), { email: newEmail, updatedAt: serverTimestamp() });
+      userData.email = newEmail;
+      document.getElementById("hero-email").textContent    = newEmail;
+      document.getElementById("sb-lab-email").textContent  = newEmail;
+      showToast("Email updated successfully!", "success");
+      renderTab();
+    } catch(err) {
+      showToast(err.code === "auth/wrong-password"
+        ? "Incorrect current password."
+        : err.message, "error");
+    }
+  };
+
+  window.changePassword = async function() {
+    const cur  = document.getElementById("f-cur-pwd").value;
+    const newP = document.getElementById("f-new-pwd").value;
+    const conf = document.getElementById("f-conf-pwd").value;
+    if (!cur || !newP || !conf) { showToast("Fill in all fields.", "error"); return; }
+    if (newP !== conf)          { showToast("Passwords don't match.", "error"); return; }
+    if (newP.length < 8)        { showToast("Password must be 8+ characters.", "error"); return; }
+
+    try {
+      const cred = EmailAuthProvider.credential(labUser.email, cur);
+      await reauthenticateWithCredential(labUser, cred);
+      await updatePassword(labUser, newP);
+      showToast("Password updated successfully!", "success");
+      document.getElementById("f-cur-pwd").value  = "";
+      document.getElementById("f-new-pwd").value  = "";
+      document.getElementById("f-conf-pwd").value = "";
+    } catch(err) {
+      showToast(err.code === "auth/wrong-password"
+        ? "Incorrect current password."
+        : err.message, "error");
+    }
+  };
+
+  window.signOutAllDevices = async function() {
+    if (!confirm("Sign out of all devices? You'll need to log in again.")) return;
+    await signOut(auth);
+    window.location.href = "/auth/staff-login/";
+  };
+
+  // ── TAB 3: Activity Log ────────────────────────────────────────────
+  function renderActivityTab() {
+    return `
+      <div class="card p-6">
+        <h3 class="font-semibold text-sm mb-4 flex items-center gap-2">
+          <i class="fa-solid fa-list-check text-xs" style="color:var(--color-primary)"></i>
+          Recent Activity
+        </h3>
+        <div id="activity-list">
+          <div class="py-6 text-center text-sm" style="color:var(--color-muted)">
+            <i class="fa-solid fa-circle-notch fa-spin mr-2"></i>Loading…
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  async function loadActivityLog() {
+    try {
+      const snap = await getDocs(query(
+        collection(db,"activityLogs"),
+        where("uid","==", labUid),
+        orderBy("timestamp","desc"),
+        limit(30)
+      ));
+
+      const list = document.getElementById("activity-list");
+      if (!list) return;
+
+      if (snap.empty) {
+        list.innerHTML = `
+          <div class="py-6 text-center text-sm" style="color:var(--color-muted)">
+            No activity recorded yet.
+          </div>`;
+        return;
+      }
+
+      const ACTION_CFG = {
+        UPLOAD_REPORT:  { icon:"fa-file-arrow-up",   color:"#2563eb", label:"Uploaded Report" },
+        UPDATE_PROFILE: { icon:"fa-user-pen",         color:"#8b5cf6", label:"Updated Profile" },
+        LOGIN:          { icon:"fa-arrow-right-to-bracket", color:"#10b981", label:"Logged In" },
+        LOGOUT:         { icon:"fa-arrow-right-from-bracket", color:"#f59e0b", label:"Logged Out" },
+        DEFAULT:        { icon:"fa-circle-dot",        color:"#64748b", label:"Action" },
+      };
+
+      list.innerHTML = snap.docs.map(d => {
+        const a    = d.data();
+        const cfg  = ACTION_CFG[a.action] || ACTION_CFG.DEFAULT;
+        const date = a.timestamp?.toDate
+          ? a.timestamp.toDate().toLocaleString("en-IN",{
+              day:"2-digit", month:"short", year:"numeric",
+              hour:"2-digit", minute:"2-digit"
+            })
+          : "—";
+
+        const extra = a.metadata?.testName
+          ? `<span class="font-medium" style="color:var(--color-text)">
+               "${a.metadata.testName}"
+             </span>`
+          : "";
+
+        return `
+          <div class="activity-row">
+            <div class="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
+                 style="background:color-mix(in srgb,${cfg.color} 10%,transparent)">
+              <i class="fa-solid ${cfg.icon} text-xs" style="color:${cfg.color}"></i>
+            </div>
+            <div class="flex-1 min-w-0">
+              <div class="text-sm font-medium">
+                ${cfg.label} ${extra}
+              </div>
+              <div class="text-xs mt-0.5" style="color:var(--color-muted)">${date}</div>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+    } catch(e) {
+      console.error(e);
+      const list = document.getElementById("activity-list");
+      if (list) list.innerHTML = `
+        <div class="py-6 text-center text-sm" style="color:var(--color-error)">
+          Failed to load activity log.
+        </div>`;
+    }
+  }
+
+  // ── TAB 4: Preferences ────────────────────────────────────────────
+  function renderPreferencesTab() {
+    const prefs = userData.preferences || {};
+
+    return `
+      <form onsubmit="savePreferences(event)" class="space-y-5">
+
+        <!-- Notifications -->
+        <div class="card p-6">
+          <h3 class="font-semibold text-sm mb-4 flex items-center gap-2">
+            <i class="fa-solid fa-bell text-xs" style="color:var(--color-primary)"></i>
+            Notification Preferences
+          </h3>
+          <div class="space-y-3">
+            ${prefToggle("notif-urgent",   "Urgent / Critical Alerts",
+              "Get notified when a report is marked urgent or critical.",
+              prefs.notifUrgent !== false)}
+            ${prefToggle("notif-verified", "Report Verified",
+              "Get notified when a doctor verifies your uploaded report.",
+              prefs.notifVerified !== false)}
+            ${prefToggle("notif-rejected", "Report Rejected",
+              "Get notified when a doctor rejects a report.",
+              prefs.notifRejected !== false)}
+          </div>
+        </div>
+
+        <!-- Display -->
+        <div class="card p-6">
+          <h3 class="font-semibold text-sm mb-4 flex items-center gap-2">
+            <i class="fa-solid fa-display text-xs" style="color:var(--color-primary)"></i>
+            Display Preferences
+          </h3>
+          <div class="space-y-4">
+
+            <div>
+              <label class="field-label">Default Report Sort</label>
+              <select id="pref-sort" class="input-field">
+                ${[["uploadedAt_desc","Newest First"],["uploadedAt_asc","Oldest First"],
+                   ["patient_asc","Patient A–Z"],["status_asc","By Status"]]
+                  .map(([v,l]) =>
+                    `<option value="${v}" ${(prefs.defaultSort||"uploadedAt_desc")===v?"selected":""}>${l}</option>`
+                  ).join('')}
+              </select>
+            </div>
+
+            <div>
+              <label class="field-label">Reports Per Page</label>
+              <select id="pref-page-size" class="input-field">
+                ${[10,15,25,50].map(n =>
+                  `<option value="${n}" ${(prefs.pageSize||15)===n?"selected":""}>${n} per page</option>`
+                ).join('')}
+              </select>
+            </div>
+
+            <div>
+              <label class="field-label">Date Format</label>
+              <select id="pref-date-fmt" class="input-field">
+                ${[["DD MMM YYYY","10 Mar 2026"],["DD/MM/YYYY","10/03/2026"],
+                   ["MM/DD/YYYY","03/10/2026"],["YYYY-MM-DD","2026-03-10"]]
+                  .map(([v,eg]) =>
+                    `<option value="${v}" ${(prefs.dateFormat||"DD MMM YYYY")===v?"selected":""}>
+                       ${v} (${eg})
+                     </option>`
+                  ).join('')}
+              </select>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- Save -->
+        <div class="flex justify-end">
+          <button type="submit" id="save-pref-btn" class="btn-primary">
+            <i class="fa-solid fa-floppy-disk text-xs"></i>
+            <span id="save-pref-text">Save Preferences</span>
+            <div id="save-pref-spinner"
+                 class="hidden w-4 h-4 border-2 border-white border-t-transparent
+                        rounded-full animate-spin"></div>
+          </button>
+        </div>
+
+      </form>
+    `;
+  }
+
+  function prefToggle(id, label, desc, checked) {
+    return `
+      <div class="flex items-start justify-between gap-4">
+        <div>
+          <div class="text-sm font-medium">${label}</div>
+          <div class="text-xs mt-0.5" style="color:var(--color-muted)">${desc}</div>
+        </div>
+        <label class="relative inline-flex items-center cursor-pointer shrink-0 mt-0.5">
+          <input type="checkbox" id="${id}" class="sr-only peer" ${checked?"checked":""}>
+          <div class="w-10 h-5 rounded-full peer transition-colors
+                      bg-gray-200 dark:bg-gray-700
+                      peer-checked:bg-blue-600 peer-focus:ring-2
+                      peer-focus:ring-blue-300 relative">
+            <div class="absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full
+                        shadow transition-transform peer-checked:translate-x-5"
+                 style="transition:transform 0.2s"></div>
+          </div>
+        </label>
+      </div>
+    `;
+  }
+
+  // Custom toggle rendering with proper Tailwind peer
+  // (re-render with JS toggle for compatibility)
+  window.savePreferences = async function(e) {
+    e.preventDefault();
+    const btn = document.getElementById("save-pref-btn");
+    const txt = document.getElementById("save-pref-text");
+    const spn = document.getElementById("save-pref-spinner");
+    btn.disabled = true; txt.textContent = "Saving…"; spn.classList.remove("hidden");
+
+    try {
+      const prefs = {
+        notifUrgent:   document.getElementById("notif-urgent").checked,
+        notifVerified: document.getElementById("notif-verified").checked,
+        notifRejected: document.getElementById("notif-rejected").checked,
+        defaultSort:   document.getElementById("pref-sort").value,
+        pageSize:      parseInt(document.getElementById("pref-page-size").value),
+        dateFormat:    document.getElementById("pref-date-fmt").value,
+      };
+      await updateDoc(doc(db,"users", labUid), {
+        preferences: prefs, updatedAt: serverTimestamp()
+      });
+      userData.preferences = prefs;
+      showToast("Preferences saved!", "success");
+    } catch(err) {
+      showToast("Save failed: " + err.message, "error");
+    } finally {
+      btn.disabled = false; txt.textContent = "Save Preferences"; spn.classList.add("hidden");
+    }
+  };
+
+  // ── Toast ──────────────────────────────────────────────────────────
+  window.showToast = function(msg, type = "info") {
+    const toast = document.getElementById("toast");
+    const icons = {
+      success:"fa-solid fa-circle-check",
+      error:"fa-solid fa-circle-exclamation",
+      info:"fa-solid fa-circle-info",
+      warning:"fa-solid fa-triangle-exclamation"
+    };
+    document.getElementById("toast-msg").textContent = msg;
+    document.getElementById("toast-icon").className  = icons[type] || icons.info;
+    toast.className = `show ${type}`;
+    clearTimeout(window._tt);
+    window._tt = setTimeout(() => { toast.className = type; }, 3500);
+  };
+
+  // ── Logout ─────────────────────────────────────────────────────────
+  window.labLogout = async function() {
+    await signOut(auth);
+    window.location.href = "/auth/staff-login/";
+  };
+
+  // ── Init ───────────────────────────────────────────────────────────
+  guardPage(["lab"], async (user, uData) => {
+    labUid   = user.uid;
+    labUser  = user;
+    userData = { id:labUid, ...uData };
+
+    document.getElementById("sb-lab-name").textContent  = uData.name  || "Lab Staff";
+    document.getElementById("sb-lab-email").textContent = uData.email || user.email || "—";
+
+    await loadSettings();
+    await loadProfile();
+    renderTab();
+
+    const loader = document.getElementById("page-loader");
+    loader.classList.add("hidden");
+    setTimeout(() => loader.remove(), 500);
+  });
+
+</script>
+</body>
+</html>

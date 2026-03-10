@@ -52,8 +52,8 @@ function redirectToLogin() {
   // Detect current path to redirect to correct login page
   const path = window.location.pathname;
   if (path.startsWith("/admin") || path.startsWith("/doctor") || path.startsWith("/lab")) {
-    window.location.href = "/auth/staff-login.html";
+    window.location.href = "/auth/staff-login/?role="+( path.startsWith("/admin") ? "admin" : path.startsWith("/doctor") ? "doctor" : "lab" );
   } else {
-    window.location.href = "/auth/patient-login.html";
+    window.location.href = "/auth/patient-login/";
   }
 }

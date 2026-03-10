@@ -1,0 +1,1007 @@
+<!DOCTYPE html>
+<html lang="en" id="html-root">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Doctor Dashboard — MediCore</title>
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+
+  <style>
+    :root {
+      --color-primary:      #2563eb;
+      --color-primary-dark: #1d4ed8;
+      --color-secondary:    #0ea5e9;
+      --color-bg:           #f8fafc;
+      --color-surface:      #ffffff;
+      --color-text:         #0f172a;
+      --color-muted:        #64748b;
+      --color-border:       #e2e8f0;
+      --color-success:      #10b981;
+      --color-warning:      #f59e0b;
+      --color-error:        #ef4444;
+      --font-family:        'Inter', sans-serif;
+    }
+    [data-theme="dark"] {
+      --color-bg:      #0f172a;
+      --color-surface: #1e293b;
+      --color-text:    #f1f5f9;
+      --color-muted:   #94a3b8;
+      --color-border:  #334155;
+    }
+    * { font-family:var(--font-family); box-sizing:border-box; margin:0; padding:0; }
+    body { background:var(--color-bg); color:var(--color-text); transition:background 0.3s,color 0.3s; }
+
+    .main-content { margin-left:0; padding-top:64px; transition:margin 0.3s; }
+    @media(min-width:1024px) { .main-content { margin-left:260px; } }
+
+    /* Loader */
+    #page-loader {
+      position:fixed; inset:0; z-index:9999;
+      background:var(--color-bg);
+      display:flex; align-items:center; justify-content:center;
+      transition:opacity 0.4s;
+    }
+    #page-loader.hidden { opacity:0; pointer-events:none; }
+    .spinner {
+      width:36px; height:36px;
+      border:3px solid var(--color-border);
+      border-top-color:var(--color-primary);
+      border-radius:50%; animation:spin 0.75s linear infinite;
+    }
+    @keyframes spin { to { transform:rotate(360deg); } }
+
+    /* Cards */
+    .card { background:var(--color-surface); border:1px solid var(--color-border); border-radius:1rem; }
+
+    .stat-card {
+      background:var(--color-surface);
+      border:1px solid var(--color-border);
+      border-radius:1rem; padding:1.25rem;
+      transition:transform 0.2s, box-shadow 0.2s;
+    }
+    .stat-card:hover { transform:translateY(-3px); box-shadow:0 10px 28px rgba(0,0,0,0.07); }
+
+    /* Sidebar */
+    #sidebar {
+      position:fixed; top:0; left:0; height:100%;
+      width:260px; z-index:40;
+      background:var(--color-surface);
+      border-right:1px solid var(--color-border);
+      display:flex; flex-direction:column;
+      transform:translateX(-100%);
+      transition:transform 0.3s;
+    }
+    #sidebar.open { transform:translateX(0); }
+    @media(min-width:1024px) { #sidebar { transform:translateX(0); } }
+
+    #sidebar-overlay {
+      position:fixed; inset:0; z-index:30;
+      background:rgba(0,0,0,0.4); backdrop-filter:blur(3px);
+      display:none;
+    }
+    #sidebar-overlay.show { display:block; }
+
+    .nav-link {
+      display:flex; align-items:center; gap:12px;
+      padding:10px 14px; border-radius:12px;
+      font-size:0.85rem; font-weight:500;
+      color:var(--color-muted); cursor:pointer;
+      transition:all 0.15s; text-decoration:none;
+    }
+    .nav-link:hover { background:color-mix(in srgb,var(--color-primary) 8%,transparent); color:var(--color-primary); }
+    .nav-link.active {
+      background:color-mix(in srgb,var(--color-primary) 12%,transparent);
+      color:var(--color-primary); font-weight:600;
+    }
+    .nav-link i { width:18px; text-align:center; font-size:0.9rem; }
+
+    /* Topbar */
+    #topbar {
+      position:fixed; top:0; right:0; left:0; z-index:20;
+      height:64px;
+      background:var(--color-surface);
+      border-bottom:1px solid var(--color-border);
+      display:flex; align-items:center; justify-content:space-between;
+      padding:0 20px;
+      transition:left 0.3s;
+    }
+    @media(min-width:1024px) { #topbar { left:260px; } }
+
+    /* Input */
+    .input-field {
+      padding:9px 14px;
+      background:var(--color-bg);
+      border:1.5px solid var(--color-border);
+      border-radius:10px; color:var(--color-text);
+      font-size:0.85rem; outline:none;
+      transition:border-color 0.2s, box-shadow 0.2s;
+    }
+    .input-field:focus {
+      border-color:var(--color-primary);
+      box-shadow:0 0 0 3px color-mix(in srgb,var(--color-primary) 15%,transparent);
+    }
+
+    /* Status badge */
+    .status-badge {
+      display:inline-flex; align-items:center; gap:5px;
+      padding:3px 10px; border-radius:99px;
+      font-size:0.7rem; font-weight:600;
+    }
+
+    /* Appointment row */
+    .appt-row {
+      display:grid;
+      grid-template-columns: 2fr 1.5fr 1fr 1fr auto;
+      align-items:center; gap:12px;
+      padding:12px 16px;
+      border-bottom:1px solid var(--color-border);
+      font-size:0.83rem;
+      transition:background 0.15s;
+    }
+    .appt-row:hover { background:color-mix(in srgb,var(--color-primary) 3%,transparent); }
+    .appt-row:last-child { border-bottom:none; }
+
+    /* Patient card (upcoming list) */
+    .patient-card {
+      display:flex; align-items:center; gap:12px; padding:12px;
+      border-radius:12px; border:1px solid var(--color-border);
+      transition:border-color 0.2s, box-shadow 0.15s;
+      cursor:pointer;
+    }
+    .patient-card:hover {
+      border-color:var(--color-primary);
+      box-shadow:0 4px 14px rgba(0,0,0,0.06);
+    }
+
+    /* Avatar */
+    .avatar {
+      width:38px; height:38px; border-radius:12px;
+      display:flex; align-items:center; justify-content:center;
+      font-size:0.85rem; font-weight:700; color:#fff; flex-shrink:0;
+    }
+
+    /* Quick action btn */
+    .quick-btn {
+      display:flex; flex-direction:column; align-items:center; gap:8px;
+      padding:16px 12px; border-radius:14px;
+      border:1.5px solid var(--color-border);
+      background:var(--color-surface); cursor:pointer;
+      transition:all 0.2s; text-decoration:none;
+    }
+    .quick-btn:hover {
+      border-color:var(--color-primary);
+      background:color-mix(in srgb,var(--color-primary) 5%,transparent);
+      transform:translateY(-2px);
+    }
+    .quick-btn i { font-size:1.3rem; }
+    .quick-btn span { font-size:0.72rem; font-weight:600; color:var(--color-muted); }
+
+    /* Toast */
+    #toast {
+      position:fixed; bottom:28px; left:50%;
+      transform:translateX(-50%) translateY(70px);
+      padding:11px 20px; border-radius:12px;
+      font-size:0.85rem; font-weight:500;
+      display:flex; align-items:center; gap:10px;
+      z-index:9999; opacity:0; white-space:nowrap;
+      transition:transform 0.35s cubic-bezier(0.34,1.56,0.64,1), opacity 0.3s;
+      box-shadow:0 8px 24px rgba(0,0,0,0.15);
+    }
+    #toast.show    { transform:translateX(-50%) translateY(0); opacity:1; }
+    #toast.success { background:var(--color-success); color:#fff; }
+    #toast.error   { background:var(--color-error);   color:#fff; }
+    #toast.info    { background:var(--color-primary);  color:#fff; }
+
+    /* Detail modal */
+    #detail-modal {
+      position:fixed; inset:0; z-index:100;
+      background:rgba(0,0,0,0.45); backdrop-filter:blur(4px);
+      display:flex; align-items:center; justify-content:center;
+      padding:16px; opacity:0; pointer-events:none;
+      transition:opacity 0.25s;
+    }
+    #detail-modal.show { opacity:1; pointer-events:all; }
+    #detail-box {
+      background:var(--color-surface); border:1px solid var(--color-border);
+      border-radius:1.25rem; padding:1.75rem;
+      width:100%; max-width:460px; max-height:90vh; overflow-y:auto;
+      transform:translateY(20px); transition:transform 0.25s;
+    }
+    #detail-modal.show #detail-box { transform:translateY(0); }
+
+    /* Bar chart */
+    .chart-bar {
+      flex:1; border-radius:5px 5px 0 0; min-height:4px;
+      background:color-mix(in srgb,var(--color-primary) 60%,transparent);
+      transition:height 0.6s ease, background 0.2s; cursor:pointer;
+      position:relative;
+    }
+    .chart-bar:hover { background:var(--color-primary); }
+    .chart-bar .bar-tip {
+      position:absolute; bottom:calc(100%+5px); left:50%;
+      transform:translateX(-50%);
+      background:var(--color-text); color:var(--color-bg);
+      font-size:0.65rem; padding:2px 6px; border-radius:5px;
+      white-space:nowrap; pointer-events:none;
+      opacity:0; transition:opacity 0.15s;
+    }
+    .chart-bar:hover .bar-tip { opacity:1; }
+
+    .fade-up    { animation:fadeUp 0.5s ease forwards; opacity:0; }
+    .fade-up.d1 { animation-delay:0.1s; }
+    .fade-up.d2 { animation-delay:0.2s; }
+    .fade-up.d3 { animation-delay:0.3s; }
+    @keyframes fadeUp { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:none} }
+  </style>
+</head>
+<body>
+
+<div id="page-loader"><div class="spinner"></div></div>
+<div id="toast"><i id="toast-icon" class="fa-solid fa-circle-check"></i><span id="toast-msg"></span></div>
+
+<!-- ── Sidebar overlay (mobile) ── -->
+<div id="sidebar-overlay" onclick="toggleSidebar()"></div>
+
+<!-- ══════════════════════════════
+     SIDEBAR
+══════════════════════════════ -->
+<aside id="sidebar">
+
+  <!-- Brand -->
+  <div class="flex items-center gap-3 px-5 py-5"
+       style="border-bottom:1px solid var(--color-border)">
+    <div id="sb-logo-wrap"
+         class="w-9 h-9 rounded-xl flex items-center justify-center text-white text-sm font-bold shrink-0 overflow-hidden"
+         style="background:var(--color-primary)">
+      <img id="sb-logo-img" src="" alt="" class="w-full h-full object-cover hidden"/>
+      <i id="sb-logo-icon" class="fa-solid fa-hospital text-sm"></i>
+    </div>
+    <div>
+      <div id="sb-hospital-name" class="text-sm font-semibold leading-tight">MediCore</div>
+      <div class="text-xs" style="color:var(--color-muted)">Doctor Portal</div>
+    </div>
+  </div>
+
+  <!-- Nav -->
+  <nav class="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
+    <a href="/doctor/dashboard/" class="nav-link active">
+      <i class="fa-solid fa-gauge-high"></i> Dashboard
+    </a>
+    <a href="/doctor/appointments/" class="nav-link">
+      <i class="fa-solid fa-calendar-check"></i> Appointments
+    </a>
+    <a href="/doctor/reports/" class="nav-link">
+      <i class="fa-solid fa-file-waveform"></i> Lab Reports
+    </a>
+    <a href="/doctor/patients/" class="nav-link">
+      <i class="fa-solid fa-users"></i> My Patients
+    </a>
+
+    <div class="pt-3 pb-1 px-3">
+      <p class="text-[10px] font-semibold uppercase tracking-wider"
+         style="color:var(--color-muted)">Account</p>
+    </div>
+    <a href="/doctor/profile/" class="nav-link">
+      <i class="fa-solid fa-circle-user"></i> My Profile
+    </a>
+    <a href="/doctor/availability/" class="nav-link">
+      <i class="fa-solid fa-clock"></i> My Availability
+    </a>
+  </nav>
+
+  <!-- Doctor info + logout -->
+  <div class="px-3 py-4" style="border-top:1px solid var(--color-border)">
+    <div class="flex items-center gap-3 px-3 py-2.5 rounded-xl mb-1"
+         style="background:color-mix(in srgb,var(--color-primary) 6%,transparent)">
+      <div class="w-8 h-8 rounded-full flex items-center justify-center
+                  text-white text-xs shrink-0"
+           style="background:var(--color-primary)">
+        <i class="fa-solid fa-user-doctor text-xs"></i>
+      </div>
+      <div class="overflow-hidden">
+        <div id="sb-doctor-name" class="text-xs font-semibold truncate">Doctor</div>
+        <div id="sb-doctor-spec" class="text-xs truncate" style="color:var(--color-muted)">—</div>
+      </div>
+    </div>
+    <button onclick="doctorLogout()"
+            class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl
+                   text-sm transition-colors hover:text-red-500"
+            style="color:var(--color-muted)">
+      <i class="fa-solid fa-right-from-bracket w-4 text-center"></i>
+      <span>Logout</span>
+    </button>
+  </div>
+
+</aside>
+
+<!-- ══════════════════════════════
+     TOPBAR
+══════════════════════════════ -->
+<header id="topbar">
+  <div class="flex items-center gap-3">
+    <button class="lg:hidden w-9 h-9 rounded-xl border flex items-center
+                   justify-center transition-colors"
+            style="border-color:var(--color-border);color:var(--color-muted)"
+            onclick="toggleSidebar()">
+      <i class="fa-solid fa-bars text-sm"></i>
+    </button>
+    <div>
+      <h1 class="text-sm font-semibold">Dashboard</h1>
+      <p id="topbar-date" class="text-xs" style="color:var(--color-muted)"></p>
+    </div>
+  </div>
+
+  <div class="flex items-center gap-2">
+    <!-- Notifications -->
+    <button id="notif-btn"
+            class="relative w-9 h-9 rounded-xl border flex items-center
+                   justify-center transition-colors hover:text-primary"
+            style="border-color:var(--color-border);color:var(--color-muted)">
+      <i class="fa-solid fa-bell text-sm"></i>
+      <span id="notif-dot"
+            class="hidden absolute top-1.5 right-1.5 w-2 h-2 rounded-full"
+            style="background:var(--color-error)"></span>
+    </button>
+    <!-- Theme -->
+    <button id="theme-toggle"
+            class="w-9 h-9 rounded-xl border flex items-center
+                   justify-center transition-colors hover:text-primary"
+            style="border-color:var(--color-border);color:var(--color-muted)">
+      <i id="theme-icon" class="fa-solid fa-moon text-sm"></i>
+    </button>
+  </div>
+</header>
+
+<!-- ══════════════════════════════
+     APPOINTMENT DETAIL MODAL
+══════════════════════════════ -->
+<div id="detail-modal">
+  <div id="detail-box">
+    <div class="flex items-center justify-between mb-5">
+      <h3 class="font-bold text-sm">Appointment Details</h3>
+      <button onclick="closeDetail()"
+              class="w-8 h-8 rounded-lg border flex items-center justify-center
+                     text-muted hover:text-primary transition-colors"
+              style="border-color:var(--color-border)">
+        <i class="fa-solid fa-xmark text-sm"></i>
+      </button>
+    </div>
+    <div id="detail-content"></div>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════
+     MAIN CONTENT
+══════════════════════════════ -->
+<div class="main-content min-h-screen">
+  <div class="p-6 max-w-7xl mx-auto">
+
+    <!-- ── Welcome banner ── -->
+    <div class="rounded-2xl p-6 mb-6 fade-up relative overflow-hidden"
+         style="background:linear-gradient(135deg,var(--color-primary),var(--color-secondary))">
+      <div style="position:absolute;inset:0;opacity:0.05;
+                  background-image:radial-gradient(circle,#fff 1px,transparent 1px);
+                  background-size:20px 20px;"></div>
+      <div class="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <p class="text-white/70 text-sm mb-1">Good <span id="greeting-time"></span>,</p>
+          <h2 id="welcome-name" class="text-white text-2xl font-bold">Doctor</h2>
+          <p id="welcome-spec" class="text-white/70 text-sm mt-1"></p>
+        </div>
+        <div class="flex gap-3">
+          <div class="bg-white/15 rounded-xl px-4 py-3 text-center">
+            <div id="banner-today" class="text-white text-xl font-bold">—</div>
+            <div class="text-white/70 text-xs mt-0.5">Today's Appts</div>
+          </div>
+          <div class="bg-white/15 rounded-xl px-4 py-3 text-center">
+            <div id="banner-pending" class="text-white text-xl font-bold">—</div>
+            <div class="text-white/70 text-xs mt-0.5">Pending Reports</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Stat cards ── -->
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6 fade-up">
+
+      <div class="stat-card">
+        <div class="flex items-center justify-between mb-3">
+          <div class="w-10 h-10 rounded-xl flex items-center justify-center text-white"
+               style="background:var(--color-primary)">
+            <i class="fa-solid fa-calendar-check text-sm"></i>
+          </div>
+          <span class="text-xs px-2 py-0.5 rounded-full"
+                style="background:color-mix(in srgb,var(--color-primary) 10%,transparent);
+                       color:var(--color-primary)">Today</span>
+        </div>
+        <div id="stat-today" class="text-2xl font-bold mb-0.5">—</div>
+        <div class="text-xs" style="color:var(--color-muted)">Appointments Today</div>
+      </div>
+
+      <div class="stat-card">
+        <div class="flex items-center justify-between mb-3">
+          <div class="w-10 h-10 rounded-xl flex items-center justify-center text-white"
+               style="background:#8b5cf6">
+            <i class="fa-solid fa-calendar-days text-sm"></i>
+          </div>
+          <span class="text-xs px-2 py-0.5 rounded-full"
+                style="background:color-mix(in srgb,#8b5cf6 10%,transparent);color:#8b5cf6">
+            This Week</span>
+        </div>
+        <div id="stat-week" class="text-2xl font-bold mb-0.5">—</div>
+        <div class="text-xs" style="color:var(--color-muted)">Appointments This Week</div>
+      </div>
+
+      <div class="stat-card">
+        <div class="flex items-center justify-between mb-3">
+          <div class="w-10 h-10 rounded-xl flex items-center justify-center text-white"
+               style="background:var(--color-warning)">
+            <i class="fa-solid fa-file-waveform text-sm"></i>
+          </div>
+          <span class="text-xs px-2 py-0.5 rounded-full"
+                style="background:color-mix(in srgb,var(--color-warning) 10%,transparent);
+                       color:var(--color-warning)">Pending</span>
+        </div>
+        <div id="stat-reports" class="text-2xl font-bold mb-0.5">—</div>
+        <div class="text-xs" style="color:var(--color-muted)">Reports to Review</div>
+      </div>
+
+      <div class="stat-card">
+        <div class="flex items-center justify-between mb-3">
+          <div class="w-10 h-10 rounded-xl flex items-center justify-center text-white"
+               style="background:var(--color-success)">
+            <i class="fa-solid fa-users text-sm"></i>
+          </div>
+          <span class="text-xs px-2 py-0.5 rounded-full"
+                style="background:color-mix(in srgb,var(--color-success) 10%,transparent);
+                       color:var(--color-success)">Total</span>
+        </div>
+        <div id="stat-patients" class="text-2xl font-bold mb-0.5">—</div>
+        <div class="text-xs" style="color:var(--color-muted)">Total Patients</div>
+      </div>
+
+    </div>
+
+    <!-- ── Middle row: Chart + Quick actions ── -->
+    <div class="grid lg:grid-cols-3 gap-4 mb-6 fade-up d1">
+
+      <!-- 7-day appointments chart -->
+      <div class="card p-5 lg:col-span-2">
+        <div class="flex items-center justify-between mb-5">
+          <div>
+            <h3 class="font-semibold text-sm">Appointment Trend</h3>
+            <p class="text-xs mt-0.5" style="color:var(--color-muted)">Last 7 days</p>
+          </div>
+          <div class="w-8 h-8 rounded-lg flex items-center justify-center"
+               style="background:color-mix(in srgb,var(--color-primary) 10%,transparent)">
+            <i class="fa-solid fa-chart-column text-sm" style="color:var(--color-primary)"></i>
+          </div>
+        </div>
+        <div class="flex items-end gap-2 h-28" id="appt-chart"></div>
+        <div class="flex gap-2 mt-2" id="appt-chart-labels"></div>
+      </div>
+
+      <!-- Quick actions -->
+      <div class="card p-5">
+        <h3 class="font-semibold text-sm mb-4">Quick Actions</h3>
+        <div class="grid grid-cols-2 gap-3">
+          <a href="/doctor/appointments/" class="quick-btn">
+            <i class="fa-solid fa-calendar-plus" style="color:var(--color-primary)"></i>
+            <span>Appointments</span>
+          </a>
+          <a href="/doctor/reports/" class="quick-btn">
+            <i class="fa-solid fa-file-waveform" style="color:var(--color-warning)"></i>
+            <span>Lab Reports</span>
+          </a>
+          <a href="/doctor/patients/" class="quick-btn">
+            <i class="fa-solid fa-users" style="color:var(--color-success)"></i>
+            <span>Patients</span>
+          </a>
+          <a href="/doctor/availability/" class="quick-btn">
+            <i class="fa-solid fa-clock" style="color:#8b5cf6"></i>
+            <span>Availability</span>
+          </a>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ── Bottom row: Today's appointments + Pending reports ── -->
+    <div class="grid lg:grid-cols-2 gap-4 fade-up d2">
+
+      <!-- Today's appointments -->
+      <div class="card">
+        <div class="flex items-center justify-between p-5"
+             style="border-bottom:1px solid var(--color-border)">
+          <div>
+            <h3 class="font-semibold text-sm">Today's Appointments</h3>
+            <p class="text-xs mt-0.5" style="color:var(--color-muted)" id="today-date-label"></p>
+          </div>
+          <a href="/doctor/appointments/"
+             class="text-xs font-medium hover:underline"
+             style="color:var(--color-primary)">View all</a>
+        </div>
+        <div id="today-appointments" class="divide-y" style="--tw-divide-opacity:1">
+          <div class="p-8 text-center text-sm" style="color:var(--color-muted)">
+            <i class="fa-solid fa-circle-notch fa-spin mr-2"></i> Loading…
+          </div>
+        </div>
+      </div>
+
+      <!-- Pending lab reports -->
+      <div class="card">
+        <div class="flex items-center justify-between p-5"
+             style="border-bottom:1px solid var(--color-border)">
+          <div>
+            <h3 class="font-semibold text-sm">Pending Lab Reports</h3>
+            <p class="text-xs mt-0.5" style="color:var(--color-muted)">Awaiting your review</p>
+          </div>
+          <a href="/doctor/reports/"
+             class="text-xs font-medium hover:underline"
+             style="color:var(--color-primary)">View all</a>
+        </div>
+        <div id="pending-reports" class="divide-y">
+          <div class="p-8 text-center text-sm" style="color:var(--color-muted)">
+            <i class="fa-solid fa-circle-notch fa-spin mr-2"></i> Loading…
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════
+     SCRIPTS
+══════════════════════════════ -->
+<script type="module">
+  import { auth, db }  from "../../assets/js/firebase-config.js";
+  import { guardPage } from "../../assets/js/auth-guard.js";
+  import {
+    collection, query, where, getDocs,
+    doc, getDoc, orderBy, limit, Timestamp
+  } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-firestore.js";
+  import { signOut } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-auth.js";
+
+  let doctorData = {};
+  let doctorUid  = "";
+
+  // ── Theme ──────────────────────────────────────────────────────────
+  const htmlEl = document.getElementById("html-root");
+  function applyTheme(dark) {
+    htmlEl.setAttribute("data-theme", dark ? "dark" : "light");
+    document.getElementById("theme-icon").className =
+      dark ? "fa-solid fa-sun text-sm" : "fa-solid fa-moon text-sm";
+    localStorage.setItem("theme", dark ? "dark" : "light");
+  }
+  applyTheme(localStorage.getItem("theme") === "dark");
+  document.getElementById("theme-toggle").addEventListener("click", () => {
+    applyTheme(htmlEl.getAttribute("data-theme") !== "dark");
+  });
+
+  // ── Sidebar toggle (mobile) ────────────────────────────────────────
+  window.toggleSidebar = function() {
+    document.getElementById("sidebar").classList.toggle("open");
+    document.getElementById("sidebar-overlay").classList.toggle("show");
+  };
+
+  // ── Load settings ──────────────────────────────────────────────────
+  async function loadSettings() {
+    try {
+      const snap = await getDoc(doc(db, "settings", "hospital"));
+      if (!snap.exists()) return;
+      const s = snap.data(); const t = s.theme || {};
+      const r = document.documentElement;
+      if (t.primary)    r.style.setProperty("--color-primary",      t.primary);
+      if (t.primaryDark)r.style.setProperty("--color-primary-dark", t.primaryDark);
+      if (t.secondary)  r.style.setProperty("--color-secondary",    t.secondary);
+      if (t.fontFamily) r.style.setProperty("--font-family",        t.fontFamily);
+      const sbName = document.getElementById("sb-hospital-name");
+      if (sbName) sbName.textContent = s.hospitalName || "MediCore";
+      if (s.logoUrl) {
+        const img  = document.getElementById("sb-logo-img");
+        const icon = document.getElementById("sb-logo-icon");
+        if (img)  { img.src = s.logoUrl; img.classList.remove("hidden"); }
+        if (icon) icon.classList.add("hidden");
+      }
+    } catch(e) { console.error(e); }
+  }
+
+  // ── Greeting ───────────────────────────────────────────────────────
+  function setGreeting() {
+    const h = new Date().getHours();
+    const g = h < 12 ? "Morning" : h < 17 ? "Afternoon" : "Evening";
+    document.getElementById("greeting-time").textContent = g;
+
+    const now = new Date();
+    document.getElementById("topbar-date").textContent =
+      now.toLocaleDateString("en-IN", { weekday:"long", day:"numeric", month:"long", year:"numeric" });
+    document.getElementById("today-date-label").textContent =
+      now.toLocaleDateString("en-IN", { weekday:"long", day:"numeric", month:"long" });
+  }
+
+  // ── Load doctor profile ────────────────────────────────────────────
+  async function loadProfile(uid) {
+    const snap = await getDoc(doc(db, "users", uid));
+    if (!snap.exists()) return {};
+    const data = snap.data();
+
+    document.getElementById("welcome-name").textContent =
+      `${data.name || "Doctor"}`;
+    document.getElementById("welcome-spec").textContent =
+      data.specialization || data.department || "";
+    document.getElementById("sb-doctor-name").textContent =
+      `${data.name || "Doctor"}`;
+    document.getElementById("sb-doctor-spec").textContent =
+      data.specialization || "Doctor";
+
+    return data;
+  }
+
+  // ── Load stats ─────────────────────────────────────────────────────
+  async function loadStats(uid) {
+    try {
+      const now       = new Date();
+      const todayStart= new Date(now); todayStart.setHours(0,0,0,0);
+      const todayEnd  = new Date(now); todayEnd.setHours(23,59,59,999);
+      const weekStart = new Date(now); weekStart.setDate(now.getDate() - now.getDay());
+      weekStart.setHours(0,0,0,0);
+
+      // All appointments for this doctor
+      const apptSnap = await getDocs(query(
+        collection(db, "appointments"),
+        where("doctorId", "==", uid)
+      ));
+      const appts = apptSnap.docs.map(d => ({ id:d.id, ...d.data() }));
+
+      const todayAppts = appts.filter(a => {
+        const d = a.date?.toDate ? a.date.toDate() : new Date(a.date);
+        return d >= todayStart && d <= todayEnd;
+      });
+
+      const weekAppts = appts.filter(a => {
+        const d = a.date?.toDate ? a.date.toDate() : new Date(a.date);
+        return d >= weekStart;
+      });
+
+      // Pending reports for this doctor's patients
+      const reportSnap = await getDocs(query(
+        collection(db, "reports"),
+        where("doctorId", "==", uid),
+        where("status",   "==", "pending_review")
+      ));
+
+      // Unique patients
+      const patientIds = [...new Set(appts.map(a => a.patientId).filter(Boolean))];
+
+      // Update UI
+      document.getElementById("stat-today").textContent    = todayAppts.length;
+      document.getElementById("stat-week").textContent     = weekAppts.length;
+      document.getElementById("stat-reports").textContent  = reportSnap.size;
+      document.getElementById("stat-patients").textContent = patientIds.length;
+      document.getElementById("banner-today").textContent  = todayAppts.length;
+      document.getElementById("banner-pending").textContent= reportSnap.size;
+
+      // Check notification dot
+      if (reportSnap.size > 0 || todayAppts.length > 0) {
+        document.getElementById("notif-dot").classList.remove("hidden");
+      }
+
+      return { appts, todayAppts, reportSnap };
+    } catch(e) {
+      console.error("Stats error:", e);
+      return { appts:[], todayAppts:[], reportSnap:{ docs:[] } };
+    }
+  }
+
+  // ── 7-day chart ────────────────────────────────────────────────────
+  function renderChart(appts) {
+    const days   = [];
+    const labels = [];
+    const counts = new Array(7).fill(0);
+
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      d.setHours(0,0,0,0);
+      days.push(d);
+      labels.push(i === 0 ? "Today" : d.toLocaleDateString("en",{ weekday:"short" }));
+    }
+
+    appts.forEach(a => {
+      const ad = a.date?.toDate ? a.date.toDate() : new Date(a.date);
+      const day = new Date(ad); day.setHours(0,0,0,0);
+      const idx = days.findIndex(d => d.getTime() === day.getTime());
+      if (idx !== -1) counts[idx]++;
+    });
+
+    const maxVal = Math.max(...counts, 1);
+    document.getElementById("appt-chart").innerHTML = counts.map((c,i) => `
+      <div class="flex-1 flex flex-col items-center" style="position:relative">
+        <div class="chart-bar w-full"
+             style="height:${Math.round((c/maxVal)*100)}px">
+          <div class="bar-tip">${c} appt${c!==1?"s":""}</div>
+        </div>
+      </div>
+    `).join('');
+
+    document.getElementById("appt-chart-labels").innerHTML = labels.map(l => `
+      <div style="flex:1;text-align:center;font-size:0.62rem;color:var(--color-muted)">${l}</div>
+    `).join('');
+  }
+
+  // ── Today's appointments list ──────────────────────────────────────
+  async function renderTodayAppointments(todayAppts) {
+    const container = document.getElementById("today-appointments");
+
+    if (todayAppts.length === 0) {
+      container.innerHTML = `
+        <div class="p-8 text-center">
+          <div class="w-12 h-12 rounded-2xl mx-auto mb-3 flex items-center justify-center"
+               style="background:color-mix(in srgb,var(--color-primary) 10%,transparent)">
+            <i class="fa-solid fa-calendar-xmark" style="color:var(--color-primary)"></i>
+          </div>
+          <p class="text-sm font-medium">No appointments today</p>
+          <p class="text-xs mt-1" style="color:var(--color-muted)">Enjoy your free day!</p>
+        </div>`;
+      return;
+    }
+
+    // Sort by slot time
+    const sorted = [...todayAppts].sort((a,b) => {
+      return (a.slot || "").localeCompare(b.slot || "");
+    });
+
+    // Fetch patient names
+    const patientNames = {};
+    await Promise.all([...new Set(sorted.map(a => a.patientId))].map(async pid => {
+      try {
+        const snap = await getDoc(doc(db, "users", pid));
+        if (snap.exists()) patientNames[pid] = snap.data().name || "Patient";
+      } catch(_) {}
+    }));
+
+    const statusConfig = {
+      confirmed: { bg:"color-mix(in srgb,#10b981 12%,transparent)", color:"#10b981",            label:"Confirmed" },
+      pending:   { bg:"color-mix(in srgb,var(--color-warning) 12%,transparent)", color:"var(--color-warning)", label:"Pending" },
+      completed: { bg:"color-mix(in srgb,var(--color-muted) 12%,transparent)",   color:"var(--color-muted)",   label:"Done"    },
+      cancelled: { bg:"color-mix(in srgb,var(--color-error) 12%,transparent)",   color:"var(--color-error)",   label:"Cancelled"},
+    };
+
+    container.innerHTML = sorted.map(a => {
+      const name = patientNames[a.patientId] || "Patient";
+      const sc   = statusConfig[a.status] || statusConfig.pending;
+      const ini  = name.charAt(0).toUpperCase();
+      const colors = ["#2563eb","#0ea5e9","#8b5cf6","#10b981","#f59e0b","#ec4899"];
+      const bg     = colors[name.charCodeAt(0) % colors.length];
+
+      return `
+        <div class="p-4 flex items-center gap-3 hover:bg-opacity-50 cursor-pointer
+                    transition-colors"
+             style="border-bottom:1px solid var(--color-border)"
+             onclick="showApptDetail(${JSON.stringify(a).replace(/"/g,'&quot;')},
+                      '${name}')">
+
+          <div class="avatar shrink-0" style="background:${bg}">${ini}</div>
+
+          <div class="flex-1 min-w-0">
+            <div class="text-sm font-semibold truncate">${name}</div>
+            <div class="text-xs truncate" style="color:var(--color-muted)">
+              <i class="fa-regular fa-clock mr-1"></i>${a.slot || "—"}
+              ${a.reason ? `· ${a.reason.slice(0,30)}` : ""}
+            </div>
+          </div>
+
+          <span class="status-badge shrink-0"
+                style="background:${sc.bg};color:${sc.color}">
+            ${sc.label}
+          </span>
+        </div>
+      `;
+    }).join('');
+  }
+
+  // ── Pending reports list ───────────────────────────────────────────
+  async function renderPendingReports(reportDocs) {
+    const container = document.getElementById("pending-reports");
+
+    if (reportDocs.length === 0) {
+      container.innerHTML = `
+        <div class="p-8 text-center">
+          <div class="w-12 h-12 rounded-2xl mx-auto mb-3 flex items-center justify-center"
+               style="background:color-mix(in srgb,var(--color-success) 10%,transparent)">
+            <i class="fa-solid fa-circle-check" style="color:var(--color-success)"></i>
+          </div>
+          <p class="text-sm font-medium">All caught up!</p>
+          <p class="text-xs mt-1" style="color:var(--color-muted)">No reports pending review</p>
+        </div>`;
+      return;
+    }
+
+    // Fetch patient names
+    const patientNames = {};
+    await Promise.all([...new Set(reportDocs.map(d => d.data().patientId))].map(async pid => {
+      if (!pid) return;
+      try {
+        const snap = await getDoc(doc(db, "users", pid));
+        if (snap.exists()) patientNames[pid] = snap.data().name || "Patient";
+      } catch(_) {}
+    }));
+
+    container.innerHTML = reportDocs.slice(0, 6).map(d => {
+      const r    = d.data();
+      const name = patientNames[r.patientId] || "Patient";
+      const ts   = r.uploadedAt?.toDate
+        ? r.uploadedAt.toDate().toLocaleDateString("en-IN",{ day:"2-digit", month:"short" })
+        : "—";
+      const ini    = name.charAt(0).toUpperCase();
+      const colors = ["#2563eb","#0ea5e9","#8b5cf6","#10b981","#f59e0b","#ec4899"];
+      const bg     = colors[name.charCodeAt(0) % colors.length];
+
+      return `
+        <a href="/doctor/reports/?id=${d.id}"
+           class="p-4 flex items-center gap-3 transition-colors hover:bg-opacity-50"
+           style="border-bottom:1px solid var(--color-border);
+                  text-decoration:none;color:inherit;display:flex">
+
+          <div class="avatar shrink-0" style="background:${bg}">${ini}</div>
+
+          <div class="flex-1 min-w-0">
+            <div class="text-sm font-semibold truncate">${name}</div>
+            <div class="text-xs truncate" style="color:var(--color-muted)">
+              <i class="fa-solid fa-file-waveform mr-1"></i>
+              ${r.testName || r.type || "Lab Report"} · ${ts}
+            </div>
+          </div>
+
+          <div class="shrink-0">
+            <span class="status-badge"
+                  style="background:color-mix(in srgb,var(--color-warning) 12%,transparent);
+                         color:var(--color-warning)">
+              <i class="fa-solid fa-clock text-[9px]"></i> Review
+            </span>
+          </div>
+        </a>
+      `;
+    }).join('');
+  }
+
+  // ── Appointment detail modal ───────────────────────────────────────
+  window.showApptDetail = function(appt, patientName) {
+    const statusConfig = {
+      confirmed: { color:"#10b981", label:"Confirmed" },
+      pending:   { color:"var(--color-warning)", label:"Pending" },
+      completed: { color:"var(--color-muted)",   label:"Completed" },
+      cancelled: { color:"var(--color-error)",   label:"Cancelled" },
+    };
+    const sc  = statusConfig[appt.status] || statusConfig.pending;
+    const ini = patientName.charAt(0).toUpperCase();
+    const colors = ["#2563eb","#0ea5e9","#8b5cf6","#10b981","#f59e0b","#ec4899"];
+    const bg  = colors[patientName.charCodeAt(0) % colors.length];
+    const date = appt.date?.seconds
+      ? new Date(appt.date.seconds * 1000).toLocaleDateString("en-IN",{
+          weekday:"long", day:"numeric", month:"long", year:"numeric"
+        })
+      : appt.date || "—";
+
+    document.getElementById("detail-content").innerHTML = `
+      <div class="flex items-center gap-4 mb-6 p-4 rounded-xl"
+           style="background:color-mix(in srgb,var(--color-primary) 6%,transparent)">
+        <div class="avatar w-14 h-14 rounded-2xl text-lg" style="background:${bg}">${ini}</div>
+        <div>
+          <div class="font-bold">${patientName}</div>
+          <div class="text-xs mt-0.5" style="color:var(--color-muted)">Patient</div>
+          <span class="status-badge mt-1 inline-flex"
+                style="background:color-mix(in srgb,${sc.color} 12%,transparent);
+                       color:${sc.color}">
+            ${sc.label}
+          </span>
+        </div>
+      </div>
+
+      <div class="space-y-3">
+        <div class="flex justify-between py-2.5 text-sm"
+             style="border-bottom:1px solid var(--color-border)">
+          <span style="color:var(--color-muted)">Date</span>
+          <span class="font-medium">${date}</span>
+        </div>
+        <div class="flex justify-between py-2.5 text-sm"
+             style="border-bottom:1px solid var(--color-border)">
+          <span style="color:var(--color-muted)">Time Slot</span>
+          <span class="font-medium">${appt.slot || "—"}</span>
+        </div>
+        <div class="flex justify-between py-2.5 text-sm"
+             style="border-bottom:1px solid var(--color-border)">
+          <span style="color:var(--color-muted)">Reason</span>
+          <span class="font-medium text-right max-w-[60%]">${appt.reason || "Not specified"}</span>
+        </div>
+        <div class="flex justify-between py-2.5 text-sm"
+             style="border-bottom:1px solid var(--color-border)">
+          <span style="color:var(--color-muted)">Appointment ID</span>
+          <span class="font-mono text-xs">${appt.id || "—"}</span>
+        </div>
+        ${appt.notes ? `
+          <div class="pt-1">
+            <div class="text-xs font-semibold mb-2" style="color:var(--color-muted)">NOTES</div>
+            <p class="text-sm p-3 rounded-xl" style="background:var(--color-bg)">${appt.notes}</p>
+          </div>
+        ` : ""}
+      </div>
+
+      <div class="flex gap-3 mt-6">
+        <a href="/doctor/appointments/?id=${appt.id}"
+           class="flex-1 py-2.5 rounded-xl text-sm font-medium text-center
+                  text-white transition-colors"
+           style="background:var(--color-primary)">
+          <i class="fa-solid fa-eye mr-2"></i>Full View
+        </a>
+        <button onclick="closeDetail()"
+                class="flex-1 py-2.5 rounded-xl text-sm font-medium transition-colors"
+                style="border:1.5px solid var(--color-border);color:var(--color-muted)">
+          Close
+        </button>
+      </div>
+    `;
+    document.getElementById("detail-modal").classList.add("show");
+  };
+
+  window.closeDetail = () =>
+    document.getElementById("detail-modal").classList.remove("show");
+
+  // ── Toast ──────────────────────────────────────────────────────────
+  window.showToast = function(msg, type = "info") {
+    const toast = document.getElementById("toast");
+    const icons = {
+      success:"fa-solid fa-circle-check",
+      error:"fa-solid fa-circle-exclamation",
+      info:"fa-solid fa-circle-info"
+    };
+    document.getElementById("toast-msg").textContent = msg;
+    document.getElementById("toast-icon").className  = icons[type];
+    toast.className = `show ${type}`;
+    clearTimeout(window._tt);
+    window._tt = setTimeout(() => { toast.className = type; }, 3500);
+  };
+
+  // ── Logout ─────────────────────────────────────────────────────────
+  window.doctorLogout = async function() {
+    await signOut(auth);
+    window.location.href = "/auth/staff-login/?role=doctor";
+  };
+
+  // ── Init ───────────────────────────────────────────────────────────
+  guardPage(["doctor"], async (user, userData) => {
+    doctorUid  = user.uid;
+    doctorData = userData;
+
+    setGreeting();
+    await loadSettings();
+
+    // Load profile + stats in parallel
+    const [_, { appts, todayAppts, reportSnap }] = await Promise.all([
+      loadProfile(doctorUid),
+      loadStats(doctorUid),
+    ]);
+
+    // Render chart + lists
+    renderChart(appts);
+    await Promise.all([
+      renderTodayAppointments(todayAppts),
+      renderPendingReports(reportSnap.docs),
+    ]);
+
+    // Hide loader
+    const loader = document.getElementById("page-loader");
+    loader.classList.add("hidden");
+    setTimeout(() => loader.remove(), 500);
+  });
+</script>
+
+</body>
+</html>

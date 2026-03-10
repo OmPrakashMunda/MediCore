@@ -361,7 +361,7 @@
   // ── Load activity feed ─────────────────────────────────────────────
   async function loadActivity() {
     try {
-      const q    = query(collection(db,"activityLogs"), orderBy("timestamp","desc"), limit(8));
+      const q    = query(collection(db,"activity_logs"), orderBy("timestamp","desc"), limit(8));
       const snap = await getDocs(q);
       const feed = document.getElementById("activity-feed");
 

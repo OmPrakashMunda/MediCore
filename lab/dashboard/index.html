@@ -1,0 +1,1192 @@
+<!DOCTYPE html>
+<html lang="en" id="html-root">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Lab Dashboard</title>
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+
+  <style>
+    :root {
+      --color-primary:      #2563eb;
+      --color-primary-dark: #1d4ed8;
+      --color-secondary:    #0ea5e9;
+      --color-bg:           #f8fafc;
+      --color-surface:      #ffffff;
+      --color-text:         #0f172a;
+      --color-muted:        #64748b;
+      --color-border:       #e2e8f0;
+      --color-success:      #10b981;
+      --color-warning:      #f59e0b;
+      --color-error:        #ef4444;
+      --font-family:        'Inter', sans-serif;
+    }
+    [data-theme="dark"] {
+      --color-bg:      #0f172a;
+      --color-surface: #1e293b;
+      --color-text:    #f1f5f9;
+      --color-muted:   #94a3b8;
+      --color-border:  #334155;
+    }
+    * { font-family:var(--font-family); box-sizing:border-box; margin:0; padding:0; }
+    body { background:var(--color-bg); color:var(--color-text); transition:background 0.3s,color 0.3s; }
+
+    .main-content { margin-left:0; padding-top:64px; }
+    @media(min-width:1024px) { .main-content { margin-left:260px; } }
+
+    #page-loader {
+      position:fixed; inset:0; z-index:9999;
+      background:var(--color-bg);
+      display:flex; align-items:center; justify-content:center;
+      transition:opacity 0.4s;
+    }
+    #page-loader.hidden { opacity:0; pointer-events:none; }
+    .spinner {
+      width:36px; height:36px;
+      border:3px solid var(--color-border);
+      border-top-color:var(--color-primary);
+      border-radius:50%; animation:spin 0.75s linear infinite;
+    }
+    @keyframes spin { to{transform:rotate(360deg)} }
+
+    .card { background:var(--color-surface); border:1px solid var(--color-border); border-radius:1rem; }
+
+    /* Sidebar */
+    #sidebar {
+      position:fixed; top:0; left:0; height:100%; width:260px; z-index:40;
+      background:var(--color-surface); border-right:1px solid var(--color-border);
+      display:flex; flex-direction:column;
+      transform:translateX(-100%); transition:transform 0.3s;
+    }
+    #sidebar.open { transform:translateX(0); }
+    @media(min-width:1024px) { #sidebar { transform:translateX(0); } }
+    #sidebar-overlay {
+      position:fixed; inset:0; z-index:30;
+      background:rgba(0,0,0,0.4); backdrop-filter:blur(3px); display:none;
+    }
+    #sidebar-overlay.show { display:block; }
+    .nav-link {
+      display:flex; align-items:center; gap:12px;
+      padding:10px 14px; border-radius:12px;
+      font-size:0.85rem; font-weight:500;
+      color:var(--color-muted); text-decoration:none; transition:all 0.15s;
+    }
+    .nav-link:hover { background:color-mix(in srgb,var(--color-primary) 8%,transparent); color:var(--color-primary); }
+    .nav-link.active { background:color-mix(in srgb,var(--color-primary) 12%,transparent); color:var(--color-primary); font-weight:600; }
+    .nav-link i { width:18px; text-align:center; }
+
+    /* Topbar */
+    #topbar {
+      position:fixed; top:0; right:0; left:0; z-index:20; height:64px;
+      background:var(--color-surface); border-bottom:1px solid var(--color-border);
+      display:flex; align-items:center; justify-content:space-between; padding:0 20px;
+    }
+    @media(min-width:1024px) { #topbar { left:260px; } }
+
+    /* Stat card */
+    .stat-card {
+      background:var(--color-surface); border:1px solid var(--color-border);
+      border-radius:14px; padding:18px;
+      transition:box-shadow 0.2s, transform 0.15s;
+    }
+    .stat-card:hover { box-shadow:0 6px 20px rgba(0,0,0,0.07); transform:translateY(-2px); }
+
+    /* Status badge */
+    .status-badge {
+      display:inline-flex; align-items:center; gap:4px;
+      padding:3px 9px; border-radius:99px; font-size:0.7rem; font-weight:600;
+    }
+
+    /* Avatar */
+    .avatar {
+      display:flex; align-items:center; justify-content:center;
+      font-weight:700; color:#fff; flex-shrink:0;
+    }
+
+    /* Upload modal */
+    #upload-modal {
+      position:fixed; inset:0; z-index:100;
+      background:rgba(0,0,0,0.45); backdrop-filter:blur(4px);
+      display:flex; align-items:center; justify-content:center;
+      padding:16px; opacity:0; pointer-events:none; transition:opacity 0.25s;
+    }
+    #upload-modal.show { opacity:1; pointer-events:all; }
+    #upload-box {
+      background:var(--color-surface); border:1px solid var(--color-border);
+      border-radius:1.25rem; padding:1.75rem;
+      width:100%; max-width:520px; max-height:92vh; overflow-y:auto;
+      transform:translateY(20px); transition:transform 0.25s;
+    }
+    #upload-modal.show #upload-box { transform:translateY(0); }
+
+    /* Drop zone */
+    #drop-zone {
+      border:2px dashed var(--color-border); border-radius:14px;
+      padding:32px; text-align:center; cursor:pointer;
+      transition:border-color 0.2s, background 0.2s;
+    }
+    #drop-zone.drag-over {
+      border-color:var(--color-primary);
+      background:color-mix(in srgb,var(--color-primary) 4%,transparent);
+    }
+    #drop-zone:hover {
+      border-color:var(--color-primary);
+      background:color-mix(in srgb,var(--color-primary) 3%,transparent);
+    }
+
+    /* Input */
+    .input-field {
+      padding:9px 14px; background:var(--color-bg);
+      border:1.5px solid var(--color-border); border-radius:10px;
+      color:var(--color-text); font-size:0.85rem; outline:none;
+      transition:border-color 0.2s, box-shadow 0.2s; width:100%;
+    }
+    .input-field:focus {
+      border-color:var(--color-primary);
+      box-shadow:0 0 0 3px color-mix(in srgb,var(--color-primary) 15%,transparent);
+    }
+    .field-label { display:block; font-size:0.8rem; font-weight:500; margin-bottom:6px; color:var(--color-muted); }
+
+    /* Progress bar */
+    #upload-progress-bar {
+      height:4px; border-radius:99px;
+      background:var(--color-primary);
+      width:0%; transition:width 0.3s;
+    }
+
+    /* Recent report row */
+    .report-row {
+      display:flex; align-items:center; gap:12px;
+      padding:12px 16px; border-bottom:1px solid var(--color-border);
+      transition:background 0.15s; font-size:0.83rem; cursor:pointer;
+    }
+    .report-row:hover { background:color-mix(in srgb,var(--color-primary) 3%,transparent); }
+    .report-row:last-child { border-bottom:none; }
+
+    /* Btn */
+    .btn-primary {
+      padding:10px 18px; background:var(--color-primary); color:#fff;
+      font-size:0.85rem; font-weight:600; border:none; border-radius:10px;
+      cursor:pointer; display:inline-flex; align-items:center; gap:8px;
+      transition:background 0.2s, transform 0.15s;
+    }
+    .btn-primary:hover { background:var(--color-primary-dark); transform:translateY(-1px); }
+    .btn-primary:disabled { opacity:0.55; cursor:not-allowed; transform:none; }
+
+    /* Toast */
+    #toast {
+      position:fixed; bottom:28px; left:50%;
+      transform:translateX(-50%) translateY(70px);
+      padding:11px 20px; border-radius:12px; font-size:0.85rem; font-weight:500;
+      display:flex; align-items:center; gap:10px;
+      z-index:9999; opacity:0; white-space:nowrap;
+      transition:transform 0.35s cubic-bezier(0.34,1.56,0.64,1), opacity 0.3s;
+      box-shadow:0 8px 24px rgba(0,0,0,0.15);
+    }
+    #toast.show    { transform:translateX(-50%) translateY(0); opacity:1; }
+    #toast.success { background:var(--color-success); color:#fff; }
+    #toast.error   { background:var(--color-error);   color:#fff; }
+    #toast.info    { background:var(--color-primary);  color:#fff; }
+
+    .fade-up    { animation:fadeUp 0.5s ease forwards; opacity:0; }
+    .fade-up.d1 { animation-delay:0.1s; }
+    .fade-up.d2 { animation-delay:0.2s; }
+    .fade-up.d3 { animation-delay:0.3s; }
+    @keyframes fadeUp { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:none} }
+  </style>
+</head>
+<body>
+
+<div id="page-loader"><div class="spinner"></div></div>
+<div id="toast"><i id="toast-icon"></i><span id="toast-msg"></span></div>
+<div id="sidebar-overlay" onclick="toggleSidebar()"></div>
+<input type="file" id="file-input" accept=".pdf,.jpg,.jpeg,.png" class="hidden"
+       onchange="handleFileSelect(this.files[0])"/>
+
+<!-- ══════════════════════════════
+     SIDEBAR
+══════════════════════════════ -->
+<aside id="sidebar">
+  <div class="flex items-center gap-3 px-5 py-5"
+       style="border-bottom:1px solid var(--color-border)">
+    <div class="w-9 h-9 rounded-xl flex items-center justify-center
+                text-white text-sm font-bold shrink-0 overflow-hidden"
+         style="background:var(--color-primary)">
+      <img id="sb-logo-img" src="" alt="" class="w-full h-full object-cover hidden"/>
+      <i id="sb-logo-icon" class="fa-solid fa-hospital text-sm"></i>
+    </div>
+    <div>
+      <div id="sb-hospital-name" class="text-sm font-semibold">MediCore</div>
+      <div class="text-xs" style="color:var(--color-muted)">Lab Portal</div>
+    </div>
+  </div>
+
+  <nav class="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
+    <a href="/lab/dashboard/"  class="nav-link active"><i class="fa-solid fa-gauge-high"></i> Dashboard</a>
+    <a href="/lab/reports/"    class="nav-link"><i class="fa-solid fa-file-waveform"></i> All Reports</a>
+    <a href="/lab/upload/"     class="nav-link"><i class="fa-solid fa-file-arrow-up"></i> Upload Report</a>
+    <a href="/lab/patients/"   class="nav-link"><i class="fa-solid fa-users"></i> Patients</a>
+    <div class="pt-3 pb-1 px-3">
+      <p class="text-[10px] font-semibold uppercase tracking-wider"
+         style="color:var(--color-muted)">Account</p>
+    </div>
+    <a href="/lab/profile/"    class="nav-link"><i class="fa-solid fa-circle-user"></i> My Profile</a>
+  </nav>
+
+  <div class="px-3 py-4" style="border-top:1px solid var(--color-border)">
+    <div class="flex items-center gap-3 px-3 py-2.5 rounded-xl mb-1"
+         style="background:color-mix(in srgb,var(--color-primary) 6%,transparent)">
+      <div class="w-8 h-8 rounded-xl flex items-center justify-center
+                  text-white text-xs shrink-0"
+           style="background:var(--color-primary)">
+        <i class="fa-solid fa-flask text-xs"></i>
+      </div>
+      <div class="overflow-hidden">
+        <div id="sb-lab-name"  class="text-xs font-semibold truncate">Lab Staff</div>
+        <div id="sb-lab-email" class="text-xs truncate" style="color:var(--color-muted)">—</div>
+      </div>
+    </div>
+    <button onclick="labLogout()"
+            class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl
+                   text-sm transition-colors hover:text-red-500"
+            style="color:var(--color-muted)">
+      <i class="fa-solid fa-right-from-bracket w-4 text-center"></i> Logout
+    </button>
+  </div>
+</aside>
+
+<!-- ══════════════════════════════
+     TOPBAR
+══════════════════════════════ -->
+<header id="topbar">
+  <div class="flex items-center gap-3">
+    <button class="lg:hidden w-9 h-9 rounded-xl border flex items-center justify-center"
+            style="border-color:var(--color-border)" onclick="toggleSidebar()">
+      <i class="fa-solid fa-bars text-sm" style="color:var(--color-muted)"></i>
+    </button>
+    <div>
+      <h1 class="text-sm font-semibold">Lab Dashboard</h1>
+      <p id="topbar-greeting" class="text-xs" style="color:var(--color-muted)">Welcome back</p>
+    </div>
+  </div>
+  <div class="flex items-center gap-2">
+    <button onclick="openUploadModal()"
+            class="btn-primary text-xs px-4 py-2">
+      <i class="fa-solid fa-file-arrow-up text-xs"></i>
+      <span class="hidden sm:inline">Upload Report</span>
+    </button>
+    <button id="theme-toggle"
+            class="w-9 h-9 rounded-xl border flex items-center justify-center"
+            style="border-color:var(--color-border);color:var(--color-muted)">
+      <i id="theme-icon" class="fa-solid fa-moon text-sm"></i>
+    </button>
+  </div>
+</header>
+
+<!-- ══════════════════════════════
+     UPLOAD MODAL
+══════════════════════════════ -->
+<div id="upload-modal">
+  <div id="upload-box">
+
+    <div class="flex items-center justify-between mb-5">
+      <div>
+        <h3 class="font-bold text-sm">Upload Lab Report</h3>
+        <p class="text-xs mt-0.5" style="color:var(--color-muted)">PDF, JPG or PNG · max 10MB</p>
+      </div>
+      <button onclick="closeUploadModal()"
+              class="w-8 h-8 rounded-lg border flex items-center justify-center
+                     hover:text-red-500 transition-colors"
+              style="border-color:var(--color-border);color:var(--color-muted)">
+        <i class="fa-solid fa-xmark text-sm"></i>
+      </button>
+    </div>
+
+    <!-- Drop zone -->
+    <div id="drop-zone"
+         onclick="document.getElementById('file-input').click()"
+         ondragover="handleDragOver(event)"
+         ondragleave="handleDragLeave(event)"
+         ondrop="handleDrop(event)"
+         class="mb-5">
+      <div id="drop-content">
+        <div class="w-12 h-12 rounded-2xl mx-auto mb-3 flex items-center justify-center"
+             style="background:color-mix(in srgb,var(--color-primary) 8%,transparent)">
+          <i class="fa-solid fa-file-arrow-up text-xl" style="color:var(--color-primary)"></i>
+        </div>
+        <p class="text-sm font-semibold">Drag & drop or click to browse</p>
+        <p class="text-xs mt-1" style="color:var(--color-muted)">PDF, JPG, PNG up to 10MB</p>
+      </div>
+    </div>
+
+    <!-- Upload progress -->
+    <div id="upload-progress-wrap" class="hidden mb-4">
+      <div class="flex justify-between text-xs mb-1.5" style="color:var(--color-muted)">
+        <span id="upload-filename">file.pdf</span>
+        <span id="upload-pct">0%</span>
+      </div>
+      <div class="h-1 rounded-full" style="background:var(--color-border)">
+        <div id="upload-progress-bar"></div>
+      </div>
+    </div>
+
+    <!-- Form fields -->
+    <div class="space-y-4">
+
+      <div class="grid sm:grid-cols-2 gap-4">
+        <!-- Patient search -->
+        <div class="sm:col-span-2">
+          <label class="field-label">Patient</label>
+          <div class="relative">
+            <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2
+                      text-xs" style="color:var(--color-muted)"></i>
+            <input id="patient-search" type="text" placeholder="Search patient by name or email…"
+                   class="input-field pl-9" oninput="searchPatients(this.value)"
+                   autocomplete="off"/>
+          </div>
+          <div id="patient-dropdown"
+               class="hidden mt-1 rounded-xl border overflow-hidden z-50"
+               style="border-color:var(--color-border);background:var(--color-surface);
+                      box-shadow:0 8px 24px rgba(0,0,0,0.1)"></div>
+          <div id="selected-patient-badge" class="hidden mt-2 flex items-center gap-2
+               px-3 py-2 rounded-xl text-xs font-medium"
+               style="background:color-mix(in srgb,var(--color-success) 10%,transparent);
+                      color:var(--color-success)">
+            <i class="fa-solid fa-circle-check"></i>
+            <span id="selected-patient-name"></span>
+            <button onclick="clearPatient()"
+                    class="ml-auto hover:text-red-500 transition-colors">
+              <i class="fa-solid fa-xmark text-xs"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- Doctor select -->
+        <div class="sm:col-span-2">
+          <label class="field-label">Assigned Doctor</label>
+          <select id="doctor-select" class="input-field">
+            <option value="">Select doctor…</option>
+          </select>
+        </div>
+
+        <!-- Test name -->
+        <div>
+          <label class="field-label">Test Name</label>
+          <input id="test-name" type="text" class="input-field"
+                 placeholder="e.g. Complete Blood Count"/>
+        </div>
+
+        <!-- Test type -->
+        <div>
+          <label class="field-label">Test Category</label>
+          <select id="test-category" class="input-field">
+            <option value="">Select category…</option>
+            <option>Haematology</option>
+            <option>Biochemistry</option>
+            <option>Microbiology</option>
+            <option>Pathology</option>
+            <option>Radiology</option>
+            <option>Cardiology</option>
+            <option>Urine Analysis</option>
+            <option>Immunology</option>
+            <option>Other</option>
+          </select>
+        </div>
+
+        <!-- Date -->
+        <div>
+          <label class="field-label">Test Date</label>
+          <input id="test-date" type="date" class="input-field"/>
+        </div>
+
+        <!-- Priority -->
+        <div>
+          <label class="field-label">Priority</label>
+          <select id="test-priority" class="input-field">
+            <option value="normal">Normal</option>
+            <option value="urgent">Urgent</option>
+            <option value="critical">Critical</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Notes -->
+      <div>
+        <label class="field-label">Lab Notes <span class="opacity-50">(optional)</span></label>
+        <textarea id="lab-notes" class="input-field" rows="2"
+                  placeholder="Additional notes for the doctor…"
+                  style="min-height:60px;resize:vertical"></textarea>
+      </div>
+
+      <!-- Submit -->
+      <button id="upload-submit-btn" onclick="submitReport()" class="w-full btn-primary justify-center"
+              disabled>
+        <i class="fa-solid fa-file-arrow-up"></i>
+        <span id="upload-submit-text">Upload Report</span>
+        <div id="upload-submit-spinner"
+             class="hidden w-4 h-4 border-2 border-white border-t-transparent
+                    rounded-full animate-spin"></div>
+      </button>
+
+    </div>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════
+     MAIN
+══════════════════════════════ -->
+<div class="main-content min-h-screen">
+  <div class="p-6 max-w-7xl mx-auto">
+
+    <!-- Stat cards -->
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6 fade-up">
+      <div class="stat-card flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl flex items-center justify-center text-white shrink-0"
+             style="background:var(--color-primary)">
+          <i class="fa-solid fa-file-waveform text-sm"></i>
+        </div>
+        <div>
+          <div id="stat-total" class="font-bold text-xl">—</div>
+          <div class="text-xs" style="color:var(--color-muted)">Total Reports</div>
+        </div>
+      </div>
+      <div class="stat-card flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl flex items-center justify-center text-white shrink-0"
+             style="background:var(--color-warning)">
+          <i class="fa-solid fa-clock text-sm"></i>
+        </div>
+        <div>
+          <div id="stat-pending" class="font-bold text-xl">—</div>
+          <div class="text-xs" style="color:var(--color-muted)">Pending Review</div>
+        </div>
+      </div>
+      <div class="stat-card flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl flex items-center justify-center text-white shrink-0"
+             style="background:var(--color-success)">
+          <i class="fa-solid fa-circle-check text-sm"></i>
+        </div>
+        <div>
+          <div id="stat-verified" class="font-bold text-xl">—</div>
+          <div class="text-xs" style="color:var(--color-muted)">Verified</div>
+        </div>
+      </div>
+      <div class="stat-card flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl flex items-center justify-center text-white shrink-0"
+             style="background:#8b5cf6">
+          <i class="fa-solid fa-calendar-day text-sm"></i>
+        </div>
+        <div>
+          <div id="stat-today" class="font-bold text-xl">—</div>
+          <div class="text-xs" style="color:var(--color-muted)">Uploaded Today</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid lg:grid-cols-3 gap-6">
+
+      <!-- ── Recent reports ──────────────────────────────────────── -->
+      <div class="lg:col-span-2 space-y-5">
+
+        <!-- Urgent / critical banner -->
+        <div id="urgent-banner" class="hidden rounded-2xl p-4 fade-up"
+             style="background:color-mix(in srgb,var(--color-error) 8%,transparent);
+                    border:1px solid color-mix(in srgb,var(--color-error) 20%,transparent)">
+          <div class="flex items-center gap-2 mb-1">
+            <i class="fa-solid fa-triangle-exclamation" style="color:var(--color-error)"></i>
+            <span class="font-semibold text-sm" style="color:var(--color-error)">
+              Urgent / Critical Reports
+            </span>
+          </div>
+          <div id="urgent-list" class="space-y-1"></div>
+        </div>
+
+        <!-- Recent reports card -->
+        <div class="card fade-up d1">
+          <div class="flex items-center justify-between px-5 py-4"
+               style="border-bottom:1px solid var(--color-border)">
+            <h3 class="font-semibold text-sm">Recent Reports</h3>
+            <a href="/lab/reports/"
+               class="text-xs font-medium hover:underline"
+               style="color:var(--color-primary)">View all →</a>
+          </div>
+          <div id="recent-reports">
+            <div class="p-6 text-center text-sm" style="color:var(--color-muted)">
+              <i class="fa-solid fa-circle-notch fa-spin mr-2"></i>Loading…
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- ── Right column ────────────────────────────────────────── -->
+      <div class="space-y-5">
+
+        <!-- Quick upload CTA -->
+        <div class="rounded-2xl p-5 fade-up"
+             style="background:linear-gradient(135deg,var(--color-primary),var(--color-secondary));
+                    color:#fff">
+          <div class="w-10 h-10 rounded-xl bg-white/20 flex items-center
+                      justify-center mb-3">
+            <i class="fa-solid fa-flask text-lg"></i>
+          </div>
+          <h3 class="font-bold text-sm mb-1">Upload New Report</h3>
+          <p class="text-xs opacity-80 mb-4">
+            Upload patient lab results for doctor review instantly.
+          </p>
+          <button onclick="openUploadModal()"
+                  class="w-full py-2.5 rounded-xl text-xs font-bold
+                         bg-white transition-colors"
+                  style="color:var(--color-primary)">
+            <i class="fa-solid fa-file-arrow-up mr-2"></i> Upload Now
+          </button>
+        </div>
+
+        <!-- Today's summary -->
+        <div class="card p-5 fade-up d1">
+          <h3 class="font-semibold text-sm mb-4 flex items-center gap-2">
+            <i class="fa-solid fa-calendar-day text-xs" style="color:var(--color-primary)"></i>
+            Today's Activity
+          </h3>
+          <div class="space-y-3">
+            <div class="flex justify-between items-center">
+              <span class="text-xs" style="color:var(--color-muted)">Reports uploaded</span>
+              <span id="today-uploaded" class="font-bold text-sm"
+                    style="color:var(--color-primary)">0</span>
+            </div>
+            <div class="flex justify-between items-center">
+              <span class="text-xs" style="color:var(--color-muted)">Pending review</span>
+              <span id="today-pending" class="font-bold text-sm"
+                    style="color:var(--color-warning)">0</span>
+            </div>
+            <div class="flex justify-between items-center">
+              <span class="text-xs" style="color:var(--color-muted)">Verified today</span>
+              <span id="today-verified" class="font-bold text-sm"
+                    style="color:var(--color-success)">0</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- By category -->
+        <div class="card p-5 fade-up d2">
+          <h3 class="font-semibold text-sm mb-4 flex items-center gap-2">
+            <i class="fa-solid fa-chart-pie text-xs" style="color:var(--color-primary)"></i>
+            Reports by Category
+          </h3>
+          <div id="category-breakdown" class="space-y-2"></div>
+        </div>
+
+        <!-- Top doctors -->
+        <div class="card p-5 fade-up d3">
+          <h3 class="font-semibold text-sm mb-4 flex items-center gap-2">
+            <i class="fa-solid fa-user-doctor text-xs" style="color:var(--color-primary)"></i>
+            Reports by Doctor
+          </h3>
+          <div id="doctor-breakdown" class="space-y-2"></div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<script type="module">
+  import { auth, db }    from "../../assets/js/firebase-config.js";
+  import { guardPage }   from "../../assets/js/auth-guard.js";
+  import { logActivity } from "../../assets/js/activity-logger.js";
+  import {
+    collection, query, where, getDocs, addDoc,
+    doc, getDoc, serverTimestamp, orderBy, limit
+  } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-firestore.js";
+  import {
+    getStorage, ref, uploadBytesResumable, getDownloadURL
+  } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-storage.js";
+  import { signOut } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-auth.js";
+
+  const storage = getStorage();
+
+  let labUid      = "";
+  let labUserData = {};
+  let allPatients = [];
+  let allDoctors  = [];
+  let selectedPatientId = null;
+  let uploadedFileUrl   = null;
+  let uploadedFileName  = null;
+  let allReports  = [];
+
+  const COLORS = ["#2563eb","#0ea5e9","#8b5cf6","#10b981","#f59e0b","#ec4899"];
+  const avatarBg = name => COLORS[(name||"?").charCodeAt(0) % COLORS.length];
+
+  // ── Theme ──────────────────────────────────────────────────────────
+  const htmlEl = document.getElementById("html-root");
+  function applyTheme(dark) {
+    htmlEl.setAttribute("data-theme", dark ? "dark" : "light");
+    document.getElementById("theme-icon").className =
+      dark ? "fa-solid fa-sun text-sm" : "fa-solid fa-moon text-sm";
+    localStorage.setItem("theme", dark ? "dark" : "light");
+  }
+  applyTheme(localStorage.getItem("theme") === "dark");
+  document.getElementById("theme-toggle").addEventListener("click", () =>
+    applyTheme(htmlEl.getAttribute("data-theme") !== "dark")
+  );
+
+  window.toggleSidebar = () => {
+    document.getElementById("sidebar").classList.toggle("open");
+    document.getElementById("sidebar-overlay").classList.toggle("show");
+  };
+
+  // ── Settings ───────────────────────────────────────────────────────
+  async function loadSettings() {
+    try {
+      const snap = await getDoc(doc(db,"settings","hospital"));
+      if (!snap.exists()) return;
+      const s = snap.data(); const t = s.theme || {};
+      const r = document.documentElement;
+      if (t.primary)    r.style.setProperty("--color-primary",      t.primary);
+      if (t.primaryDark)r.style.setProperty("--color-primary-dark", t.primaryDark);
+      if (t.secondary)  r.style.setProperty("--color-secondary",    t.secondary);
+      if (t.fontFamily) r.style.setProperty("--font-family",        t.fontFamily);
+      const sbName = document.getElementById("sb-hospital-name");
+      if (sbName) sbName.textContent = s.hospitalName || "MediCore";
+      if (s.logoUrl) {
+        const img  = document.getElementById("sb-logo-img");
+        const icon = document.getElementById("sb-logo-icon");
+        if (img)  { img.src = s.logoUrl; img.classList.remove("hidden"); }
+        if (icon) icon.classList.add("hidden");
+      }
+    } catch(e) { console.error(e); }
+  }
+
+  // ── Greeting ───────────────────────────────────────────────────────
+  function setGreeting(name) {
+    const h = new Date().getHours();
+    const g = h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening";
+    document.getElementById("topbar-greeting").textContent =
+      `${g}, ${name} 👋`;
+  }
+
+  // ── Load dashboard data ────────────────────────────────────────────
+  async function loadDashboard() {
+    try {
+      // All reports uploaded by this lab user
+      const snap = await getDocs(query(
+        collection(db,"reports"),
+        where("uploadedBy","==", labUid),
+        orderBy("uploadedAt","desc"),
+        limit(100)
+      ));
+      allReports = snap.docs.map(d => ({ id:d.id, ...d.data() }));
+
+      // Pre-fetch patient & doctor names
+      const pids = [...new Set(allReports.map(r => r.patientId).filter(Boolean))];
+      const dids = [...new Set(allReports.map(r => r.doctorId).filter(Boolean))];
+
+      const [patientSnaps, doctorSnaps] = await Promise.all([
+        Promise.all(pids.map(async id => {
+          const s = await getDoc(doc(db,"users",id)); return s.exists() ? {id,...s.data()} : null;
+        })),
+        Promise.all(dids.map(async id => {
+          const s = await getDoc(doc(db,"users",id)); return s.exists() ? {id,...s.data()} : null;
+        }))
+      ]);
+
+      const patientMap = Object.fromEntries(
+        patientSnaps.filter(Boolean).map(p => [p.id, p])
+      );
+      const doctorMap = Object.fromEntries(
+        doctorSnaps.filter(Boolean).map(d => [d.id, d])
+      );
+
+      updateStats(patientMap, doctorMap);
+      renderRecentReports(patientMap, doctorMap);
+      renderUrgentBanner(patientMap);
+      renderCategoryBreakdown();
+      renderDoctorBreakdown(doctorMap);
+
+    } catch(e) {
+      console.error("Dashboard load error:", e);
+    }
+  }
+
+  // ── Stats ──────────────────────────────────────────────────────────
+  function updateStats(patientMap, doctorMap) {
+    const today = new Date(); today.setHours(0,0,0,0);
+
+    const todayReports = allReports.filter(r => {
+      const d = r.uploadedAt?.toDate ? r.uploadedAt.toDate() : new Date(0);
+      return d >= today;
+    });
+
+    document.getElementById("stat-total").textContent    = allReports.length;
+    document.getElementById("stat-pending").textContent  = allReports.filter(r => r.status === "pending_review").length;
+    document.getElementById("stat-verified").textContent = allReports.filter(r => r.status === "verified").length;
+    document.getElementById("stat-today").textContent    = todayReports.length;
+
+    document.getElementById("today-uploaded").textContent = todayReports.length;
+    document.getElementById("today-pending").textContent  =
+      todayReports.filter(r => r.status === "pending_review").length;
+    document.getElementById("today-verified").textContent =
+      todayReports.filter(r => r.status === "verified").length;
+  }
+
+  // ── Recent reports ─────────────────────────────────────────────────
+  function renderRecentReports(patientMap, doctorMap) {
+    const container = document.getElementById("recent-reports");
+    const recent    = allReports.slice(0, 12);
+
+    if (recent.length === 0) {
+      container.innerHTML = `
+        <div class="p-8 text-center text-sm" style="color:var(--color-muted)">
+          <i class="fa-solid fa-file-circle-plus mr-2"></i>
+          No reports uploaded yet. Upload your first report!
+        </div>`;
+      return;
+    }
+
+    const STATUS = {
+      pending_review: { bg:"color-mix(in srgb,var(--color-warning) 12%,transparent)", color:"var(--color-warning)", label:"Pending" },
+      verified:       { bg:"color-mix(in srgb,var(--color-success) 12%,transparent)", color:"var(--color-success)", label:"Verified"},
+      rejected:       { bg:"color-mix(in srgb,var(--color-error)   12%,transparent)", color:"var(--color-error)",   label:"Rejected"},
+    };
+
+    container.innerHTML = recent.map(r => {
+      const sc      = STATUS[r.status] || STATUS.pending_review;
+      const patient = patientMap[r.patientId];
+      const pName   = patient?.name || "Unknown";
+      const doctor  = doctorMap[r.doctorId];
+      const dName   = doctor?.name  ? `Dr. ${doctor.name}` : "—";
+      const ini     = pName.charAt(0).toUpperCase();
+      const bg      = avatarBg(pName);
+      const date    = r.uploadedAt?.toDate
+        ? r.uploadedAt.toDate().toLocaleDateString("en-IN",{
+            day:"2-digit", month:"short"
+          })
+        : "—";
+
+      const priorityBadge = r.priority && r.priority !== "normal"
+        ? `<span class="text-[10px] font-bold px-1.5 py-0.5 rounded ml-1"
+                style="background:${r.priority==='critical'
+                  ? 'color-mix(in srgb,#ef4444 15%,transparent);color:#ef4444'
+                  : 'color-mix(in srgb,#f59e0b 15%,transparent);color:#f59e0b'}">
+             ${r.priority.toUpperCase()}
+           </span>`
+        : "";
+
+      return `
+        <div class="report-row">
+          <div class="avatar w-9 h-9 rounded-xl shrink-0 text-sm"
+               style="background:${bg}">${ini}</div>
+          <div class="flex-1 min-w-0">
+            <div class="font-medium truncate text-sm">
+              ${pName}${priorityBadge}
+            </div>
+            <div class="text-xs truncate" style="color:var(--color-muted)">
+              ${r.testName || "Lab Report"} · ${dName}
+            </div>
+          </div>
+          <div class="text-right shrink-0">
+            <span class="status-badge" style="background:${sc.bg};color:${sc.color}">
+              ${sc.label}
+            </span>
+            <div class="text-[10px] mt-1" style="color:var(--color-muted)">${date}</div>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  // ── Urgent banner ──────────────────────────────────────────────────
+  function renderUrgentBanner(patientMap) {
+    const urgent = allReports.filter(r =>
+      (r.priority === "urgent" || r.priority === "critical") &&
+      r.status === "pending_review"
+    );
+    if (urgent.length === 0) return;
+
+    document.getElementById("urgent-banner").classList.remove("hidden");
+    document.getElementById("urgent-list").innerHTML = urgent.slice(0,3).map(r => {
+      const pName = patientMap[r.patientId]?.name || "Unknown";
+      return `
+        <div class="flex items-center gap-2 text-xs" style="color:var(--color-error)">
+          <i class="fa-solid fa-circle-exclamation text-[10px]"></i>
+          <span class="font-semibold">${pName}</span> —
+          ${r.testName || "Report"} ·
+          <span class="font-bold uppercase">${r.priority}</span>
+        </div>
+      `;
+    }).join('');
+  }
+
+  // ── Category breakdown ─────────────────────────────────────────────
+  function renderCategoryBreakdown() {
+    const counts = {};
+    allReports.forEach(r => {
+      const cat = r.category || "Other";
+      counts[cat] = (counts[cat] || 0) + 1;
+    });
+
+    const sorted  = Object.entries(counts).sort((a,b) => b[1]-a[1]).slice(0,6);
+    const max     = sorted[0]?.[1] || 1;
+    const container = document.getElementById("category-breakdown");
+
+    if (sorted.length === 0) {
+      container.innerHTML = `<p class="text-xs" style="color:var(--color-muted)">No data yet.</p>`;
+      return;
+    }
+
+    container.innerHTML = sorted.map(([cat, count]) => `
+      <div>
+        <div class="flex justify-between text-xs mb-1">
+          <span style="color:var(--color-muted)">${cat}</span>
+          <span class="font-semibold">${count}</span>
+        </div>
+        <div class="h-1.5 rounded-full" style="background:var(--color-border)">
+          <div class="h-1.5 rounded-full transition-all"
+               style="width:${(count/max*100).toFixed(1)}%;
+                      background:var(--color-primary)"></div>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  // ── Doctor breakdown ───────────────────────────────────────────────
+  function renderDoctorBreakdown(doctorMap) {
+    const counts = {};
+    allReports.forEach(r => {
+      if (r.doctorId) counts[r.doctorId] = (counts[r.doctorId] || 0) + 1;
+    });
+
+    const sorted  = Object.entries(counts).sort((a,b) => b[1]-a[1]).slice(0,5);
+    const container = document.getElementById("doctor-breakdown");
+
+    if (sorted.length === 0) {
+      container.innerHTML = `<p class="text-xs" style="color:var(--color-muted)">No data yet.</p>`;
+      return;
+    }
+
+    container.innerHTML = sorted.map(([did, count]) => {
+      const d    = doctorMap[did];
+      const name = d?.name ? `Dr. ${d.name}` : "Unknown";
+      const ini  = (d?.name||"?").charAt(0).toUpperCase();
+      const bg   = avatarBg(d?.name||"?");
+      return `
+        <div class="flex items-center gap-3">
+          <div class="avatar w-7 h-7 rounded-lg text-xs shrink-0"
+               style="background:${bg}">${ini}</div>
+          <div class="flex-1 min-w-0">
+            <div class="text-xs font-medium truncate">${name}</div>
+            <div class="text-[10px]" style="color:var(--color-muted)">
+              ${d?.specialization || "—"}
+            </div>
+          </div>
+          <span class="text-xs font-bold" style="color:var(--color-primary)">${count}</span>
+        </div>
+      `;
+    }).join('');
+  }
+
+  // ════════════════════════════════════════
+  //  UPLOAD MODAL
+  // ════════════════════════════════════════
+
+  window.openUploadModal = function() {
+    resetUploadForm();
+    document.getElementById("upload-modal").classList.add("show");
+    loadPatientsAndDoctors();
+  };
+
+  window.closeUploadModal = function() {
+    document.getElementById("upload-modal").classList.remove("show");
+  };
+
+  async function loadPatientsAndDoctors() {
+    try {
+      // Load patients
+      if (allPatients.length === 0) {
+        const snap = await getDocs(query(
+          collection(db,"users"), where("role","==","patient")
+        ));
+        allPatients = snap.docs.map(d => ({ id:d.id, ...d.data() }));
+      }
+
+      // Load doctors
+      const doctorSelect = document.getElementById("doctor-select");
+      if (doctorSelect.options.length <= 1) {
+        const snap = await getDocs(query(
+          collection(db,"users"), where("role","==","doctor")
+        ));
+        snap.docs.forEach(d => {
+          const data = d.data();
+          const opt  = document.createElement("option");
+          opt.value        = d.id;
+          opt.textContent  = `Dr. ${data.name || "—"} · ${data.specialization || ""}`;
+          doctorSelect.appendChild(opt);
+        });
+      }
+    } catch(e) { console.error(e); }
+  }
+
+  // Patient search
+  window.searchPatients = function(val) {
+    const dropdown = document.getElementById("patient-dropdown");
+    if (!val.trim()) { dropdown.classList.add("hidden"); return; }
+
+    const q       = val.toLowerCase();
+    const results = allPatients.filter(p =>
+      (p.name  ||"").toLowerCase().includes(q) ||
+      (p.email ||"").toLowerCase().includes(q)
+    ).slice(0,6);
+
+    if (results.length === 0) {
+      dropdown.classList.remove("hidden");
+      dropdown.innerHTML = `<div class="px-4 py-3 text-xs" style="color:var(--color-muted)">
+        No patients found.
+      </div>`;
+      return;
+    }
+
+    dropdown.classList.remove("hidden");
+    dropdown.innerHTML = results.map(p => `
+      <div onclick="selectPatient('${p.id}','${(p.name||"").replace(/'/g,"")}')"
+           class="flex items-center gap-3 px-4 py-2.5 cursor-pointer text-sm
+                  transition-colors hover:bg-blue-50"
+           style="border-bottom:1px solid var(--color-border)">
+        <div class="avatar w-7 h-7 rounded-lg text-xs shrink-0"
+             style="background:${avatarBg(p.name||"")}">
+          ${(p.name||"?").charAt(0).toUpperCase()}
+        </div>
+        <div>
+          <div class="font-medium text-xs">${p.name || "—"}</div>
+          <div class="text-[10px]" style="color:var(--color-muted)">${p.email||"—"}</div>
+        </div>
+      </div>
+    `).join('');
+  };
+
+  window.selectPatient = function(id, name) {
+    selectedPatientId = id;
+    document.getElementById("patient-search").value = name;
+    document.getElementById("patient-dropdown").classList.add("hidden");
+    document.getElementById("selected-patient-name").textContent = name;
+    document.getElementById("selected-patient-badge").classList.remove("hidden");
+    document.getElementById("selected-patient-badge").style.display = "flex";
+    checkSubmitReady();
+  };
+
+  window.clearPatient = function() {
+    selectedPatientId = null;
+    document.getElementById("patient-search").value = "";
+    document.getElementById("selected-patient-badge").classList.add("hidden");
+    document.getElementById("selected-patient-badge").style.display = "none";
+    checkSubmitReady();
+  };
+
+  // ── Drag & Drop ────────────────────────────────────────────────────
+  window.handleDragOver  = e => { e.preventDefault(); document.getElementById("drop-zone").classList.add("drag-over"); };
+  window.handleDragLeave = () => document.getElementById("drop-zone").classList.remove("drag-over");
+  window.handleDrop      = e => {
+    e.preventDefault();
+    document.getElementById("drop-zone").classList.remove("drag-over");
+    const file = e.dataTransfer.files[0];
+    if (file) handleFileSelect(file);
+  };
+
+  // ── File select & upload to Storage ───────────────────────────────
+  window.handleFileSelect = async function(file) {
+    if (!file) return;
+    if (file.size > 10 * 1024 * 1024) {
+      showToast("File must be under 10MB.", "error"); return;
+    }
+
+    const allowed = ["application/pdf","image/jpeg","image/png","image/jpg"];
+    if (!allowed.includes(file.type)) {
+      showToast("Only PDF, JPG, PNG allowed.", "error"); return;
+    }
+
+    // Show progress
+    uploadedFileUrl  = null;
+    uploadedFileName = file.name;
+    document.getElementById("upload-progress-wrap").classList.remove("hidden");
+    document.getElementById("upload-filename").textContent = file.name;
+    document.getElementById("upload-pct").textContent      = "0%";
+    document.getElementById("upload-progress-bar").style.width = "0%";
+
+    // Show file name in drop zone
+    document.getElementById("drop-content").innerHTML = `
+      <div class="w-10 h-10 rounded-xl mx-auto mb-2 flex items-center justify-center"
+           style="background:color-mix(in srgb,var(--color-success) 12%,transparent)">
+        <i class="fa-solid fa-file-check text-lg" style="color:var(--color-success)"></i>
+      </div>
+      <p class="text-sm font-semibold" style="color:var(--color-success)">${file.name}</p>
+      <p class="text-xs mt-1" style="color:var(--color-muted)">
+        ${(file.size/1024).toFixed(0)} KB · Uploading…
+      </p>
+    `;
+
+    try {
+      const storageRef  = ref(storage, `reports/${Date.now()}_${file.name}`);
+      const uploadTask  = uploadBytesResumable(storageRef, file);
+
+      uploadTask.on("state_changed",
+        snap => {
+          const pct = Math.round(snap.bytesTransferred / snap.totalBytes * 100);
+          document.getElementById("upload-pct").textContent           = pct + "%";
+          document.getElementById("upload-progress-bar").style.width  = pct + "%";
+        },
+        err => {
+          console.error(err);
+          showToast("File upload failed: " + err.message, "error");
+        },
+        async () => {
+          uploadedFileUrl = await getDownloadURL(uploadTask.snapshot.ref);
+          document.getElementById("upload-pct").textContent          = "100%";
+          document.getElementById("upload-progress-bar").style.width = "100%";
+          document.getElementById("drop-content").querySelector("p:last-child").textContent =
+            "File ready ✓";
+          checkSubmitReady();
+        }
+      );
+    } catch(e) {
+      console.error(e);
+      showToast("Upload error: " + e.message, "error");
+    }
+  };
+
+  function checkSubmitReady() {
+    const ready = !!selectedPatientId && !!uploadedFileUrl;
+    document.getElementById("upload-submit-btn").disabled = !ready;
+  }
+
+  // ── Submit report to Firestore ─────────────────────────────────────
+  window.submitReport = async function() {
+    if (!selectedPatientId || !uploadedFileUrl) return;
+
+    const testName  = document.getElementById("test-name").value.trim();
+    const category  = document.getElementById("test-category").value;
+    const testDate  = document.getElementById("test-date").value;
+    const doctorId  = document.getElementById("doctor-select").value;
+    const priority  = document.getElementById("test-priority").value;
+    const labNotes  = document.getElementById("lab-notes").value.trim();
+
+    if (!testName)  { showToast("Enter test name.",         "error"); return; }
+    if (!doctorId)  { showToast("Select assigned doctor.",  "error"); return; }
+    if (!testDate)  { showToast("Select test date.",        "error"); return; }
+
+    const btn = document.getElementById("upload-submit-btn");
+    const txt = document.getElementById("upload-submit-text");
+    const spn = document.getElementById("upload-submit-spinner");
+    btn.disabled = true; txt.textContent = "Saving…"; spn.classList.remove("hidden");
+
+    try {
+      const reportData = {
+        patientId:   selectedPatientId,
+        doctorId,
+        uploadedBy:  labUid,
+        testName,
+        category:    category || "Other",
+        testDate,
+        priority,
+        labNotes,
+        fileUrl:     uploadedFileUrl,
+        fileName:    uploadedFileName,
+        status:      "pending_review",
+        uploadedAt:  serverTimestamp(),
+      };
+
+      const docRef = await addDoc(collection(db,"reports"), reportData);
+
+      try {
+        await logActivity("UPLOAD_REPORT", {
+          reportId: docRef.id, testName, patientId: selectedPatientId
+        });
+      } catch(_) {}
+
+      showToast(`✓ Report "${testName}" uploaded successfully!`, "success");
+      closeUploadModal();
+      await loadDashboard();   // refresh dashboard
+
+    } catch(e) {
+      console.error("Submit report error:", e);
+      showToast("Failed to save report: " + e.message, "error");
+    } finally {
+      btn.disabled = false; txt.textContent = "Upload Report"; spn.classList.add("hidden");
+    }
+  };
+
+  // ── Reset upload form ──────────────────────────────────────────────
+  function resetUploadForm() {
+    selectedPatientId = null;
+    uploadedFileUrl   = null;
+    uploadedFileName  = null;
+
+    document.getElementById("patient-search").value = "";
+    document.getElementById("patient-dropdown").classList.add("hidden");
+    document.getElementById("selected-patient-badge").classList.add("hidden");
+    document.getElementById("selected-patient-badge").style.display = "none";
+    document.getElementById("doctor-select").value   = "";
+    document.getElementById("test-name").value       = "";
+    document.getElementById("test-category").value   = "";
+    document.getElementById("test-date").value       = "";
+    document.getElementById("test-priority").value   = "normal";
+    document.getElementById("lab-notes").value       = "";
+    document.getElementById("upload-progress-wrap").classList.add("hidden");
+    document.getElementById("upload-submit-btn").disabled = true;
+    document.getElementById("drop-content").innerHTML = `
+      <div class="w-12 h-12 rounded-2xl mx-auto mb-3 flex items-center justify-center"
+           style="background:color-mix(in srgb,var(--color-primary) 8%,transparent)">
+        <i class="fa-solid fa-file-arrow-up text-xl" style="color:var(--color-primary)"></i>
+      </div>
+      <p class="text-sm font-semibold">Drag & drop or click to browse</p>
+      <p class="text-xs mt-1" style="color:var(--color-muted)">PDF, JPG, PNG up to 10MB</p>
+    `;
+
+    // Set today's date
+    document.getElementById("test-date").value =
+      new Date().toISOString().slice(0,10);
+  }
+
+  // ── Toast ──────────────────────────────────────────────────────────
+  window.showToast = function(msg, type = "info") {
+    const toast = document.getElementById("toast");
+    const icons = {
+      success:"fa-solid fa-circle-check",
+      error:"fa-solid fa-circle-exclamation",
+      info:"fa-solid fa-circle-info"
+    };
+    document.getElementById("toast-msg").textContent = msg;
+    document.getElementById("toast-icon").className  = icons[type];
+    toast.className = `show ${type}`;
+    clearTimeout(window._tt);
+    window._tt = setTimeout(() => { toast.className = type; }, 3500);
+  };
+
+  // ── Logout ─────────────────────────────────────────────────────────
+  window.labLogout = async function() {
+    await signOut(auth);
+    window.location.href = "/auth/staff-login/";
+  };
+
+  // ── Init ───────────────────────────────────────────────────────────
+  guardPage(["lab"], async (user, userData) => {
+    labUid      = user.uid;
+    labUserData = userData;
+
+    document.getElementById("sb-lab-name").textContent  = userData.name  || "Lab Staff";
+    document.getElementById("sb-lab-email").textContent = userData.email || user.email || "—";
+    setGreeting(userData.name || "Lab Staff");
+
+    await loadSettings();
+    await loadDashboard();
+
+    const loader = document.getElementById("page-loader");
+    loader.classList.add("hidden");
+    setTimeout(() => loader.remove(), 500);
+  });
+
+</script>
+</body>
+</html>

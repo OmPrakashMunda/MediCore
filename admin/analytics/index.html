@@ -497,7 +497,7 @@
   // ── Load all logs ──────────────────────────────────────────────────
   async function loadLogs() {
     try {
-      const q    = query(collection(db,"activityLogs"), orderBy("timestamp","desc"), limit(500));
+      const q    = query(collection(db,"activity_logs"), orderBy("timestamp","desc"), limit(500));
       const snap = await getDocs(q);
       allLogs = snap.docs.map(d => ({
         id: d.id,
