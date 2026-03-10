@@ -1,0 +1,1075 @@
+<!DOCTYPE html>
+<html lang="en" id="html-root">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title id="page-title">Staff Login — MediCore</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet" />
+
+    <style>
+        :root {
+            --color-primary: #2563eb;
+            --color-primary-dark: #1d4ed8;
+            --color-secondary: #0ea5e9;
+            --color-bg: #f8fafc;
+            --color-surface: #ffffff;
+            --color-text: #0f172a;
+            --color-muted: #64748b;
+            --color-border: #e2e8f0;
+            --color-error: #ef4444;
+            --color-success: #10b981;
+            --font-family: 'Inter', sans-serif;
+        }
+
+        [data-theme="dark"] {
+            --color-bg: #0f172a;
+            --color-surface: #1e293b;
+            --color-text: #f1f5f9;
+            --color-muted: #94a3b8;
+            --color-border: #334155;
+        }
+
+        * {
+            font-family: var(--font-family);
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background: var(--color-bg);
+            color: var(--color-text);
+            transition: background 0.3s, color 0.3s;
+            min-height: 100vh;
+        }
+
+        /* Loader */
+        #page-loader {
+            position: fixed;
+            inset: 0;
+            z-index: 9999;
+            background: var(--color-bg);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: opacity 0.4s;
+        }
+
+        #page-loader.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .spinner {
+            width: 36px;
+            height: 36px;
+            border: 3px solid var(--color-border);
+            border-top-color: var(--color-primary);
+            border-radius: 50%;
+            animation: spin 0.75s linear infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* Card */
+        .card {
+            background: var(--color-surface);
+            border: 1px solid var(--color-border);
+            border-radius: 1.25rem;
+        }
+
+        /* Input */
+        .input-field {
+            width: 100%;
+            padding: 12px 14px;
+            background: var(--color-bg);
+            border: 1.5px solid var(--color-border);
+            border-radius: 11px;
+            color: var(--color-text);
+            font-size: 0.875rem;
+            outline: none;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+
+        .input-field:focus {
+            border-color: var(--color-primary);
+            box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 15%, transparent);
+        }
+
+        .input-field::placeholder {
+            color: var(--color-muted);
+        }
+
+        .input-field.error {
+            border-color: var(--color-error);
+            box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-error) 12%, transparent);
+        }
+
+        .field-label {
+            display: block;
+            font-size: 0.8rem;
+            font-weight: 500;
+            margin-bottom: 6px;
+        }
+
+        .field-error {
+            font-size: 0.72rem;
+            color: var(--color-error);
+            margin-top: 4px;
+            display: none;
+        }
+
+        .field-error.show {
+            display: block;
+        }
+
+        /* Role tab selector */
+        .role-tab {
+            flex: 1;
+            padding: 10px 8px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+            border-radius: 10px;
+            cursor: pointer;
+            border: 1.5px solid var(--color-border);
+            color: var(--color-muted);
+            font-size: 0.72rem;
+            font-weight: 600;
+            transition: all 0.15s;
+            user-select: none;
+            background: var(--color-bg);
+        }
+
+        .role-tab:hover {
+            border-color: var(--color-primary);
+            color: var(--color-primary);
+        }
+
+        .role-tab.active {
+            border-color: var(--color-primary);
+            background: color-mix(in srgb, var(--color-primary) 8%, transparent);
+            color: var(--color-primary);
+        }
+
+        .role-tab i {
+            font-size: 1.1rem;
+        }
+
+        /* Submit button */
+        .btn-primary {
+            width: 100%;
+            padding: 13px;
+            background: var(--color-primary);
+            color: #fff;
+            font-size: 0.9rem;
+            font-weight: 600;
+            border: none;
+            border-radius: 11px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 9px;
+            transition: background 0.2s, transform 0.15s, box-shadow 0.2s;
+        }
+
+        .btn-primary:hover {
+            background: var(--color-primary-dark);
+            transform: translateY(-1px);
+            box-shadow: 0 6px 20px color-mix(in srgb, var(--color-primary) 35%, transparent);
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.55;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        /* Forgot password panel */
+        #forgot-panel {
+            display: none;
+        }
+
+        #login-panel {
+            display: block;
+        }
+
+        /* Shake animation for wrong password */
+        .shake {
+            animation: shake 0.4s cubic-bezier(0.36, 0.07, 0.19, 0.97);
+        }
+
+        @keyframes shake {
+
+            10%,
+            90% {
+                transform: translateX(-2px);
+            }
+
+            20%,
+            80% {
+                transform: translateX(4px);
+            }
+
+            30%,
+            50%,
+            70% {
+                transform: translateX(-6px);
+            }
+
+            40%,
+            60% {
+                transform: translateX(6px);
+            }
+        }
+
+        /* Left panel role colors */
+        .panel-doctor {
+            background: linear-gradient(145deg, #0ea5e9, #6366f1);
+        }
+
+        .panel-lab {
+            background: linear-gradient(145deg, #8b5cf6, #ec4899);
+        }
+
+        .panel-admin {
+            background: linear-gradient(145deg, #f59e0b, #ef4444);
+        }
+
+        .panel-staff {
+            background: linear-gradient(145deg, var(--color-primary), var(--color-secondary));
+        }
+
+        /* Blobs */
+        .blob {
+            position: fixed;
+            border-radius: 50%;
+            filter: blur(90px);
+            opacity: 0.06;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        /* Toast */
+        #toast {
+            position: fixed;
+            bottom: 28px;
+            left: 50%;
+            transform: translateX(-50%) translateY(70px);
+            padding: 11px 20px;
+            border-radius: 12px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            z-index: 9999;
+            opacity: 0;
+            white-space: nowrap;
+            transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.3s;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+        }
+
+        #toast.show {
+            transform: translateX(-50%) translateY(0);
+            opacity: 1;
+        }
+
+        #toast.success {
+            background: var(--color-success);
+            color: #fff;
+        }
+
+        #toast.error {
+            background: var(--color-error);
+            color: #fff;
+        }
+
+        #toast.info {
+            background: var(--color-primary);
+            color: #fff;
+        }
+
+        /* Attempt counter */
+        #attempt-warning {
+            display: none;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 14px;
+            border-radius: 10px;
+            font-size: 0.78rem;
+            background: color-mix(in srgb, var(--color-error) 10%, transparent);
+            color: var(--color-error);
+            border: 1px solid color-mix(in srgb, var(--color-error) 25%, transparent);
+        }
+
+        #attempt-warning.show {
+            display: flex;
+        }
+
+        /* Lockout overlay */
+        #lockout-overlay {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 2rem;
+        }
+
+        #lockout-overlay.show {
+            display: flex;
+        }
+
+        .fade-up {
+            animation: fadeUp 0.5s ease forwards;
+            opacity: 0;
+        }
+
+        .fade-up.d1 {
+            animation-delay: 0.1s;
+        }
+
+        .fade-up.d2 {
+            animation-delay: 0.22s;
+        }
+
+        @keyframes fadeUp {
+            from {
+                opacity: 0;
+                transform: translateY(14px)
+            }
+
+            to {
+                opacity: 1;
+                transform: none
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="page-loader">
+        <div class="spinner"></div>
+    </div>
+    <div class="blob" style="width:500px;height:500px;top:-100px;right:-80px;background:var(--color-primary)"></div>
+    <div class="blob" style="width:380px;height:380px;bottom:-60px;left:-60px;background:var(--color-secondary)"></div>
+    <div id="toast"><i id="toast-icon" class="fa-solid fa-circle-check"></i><span id="toast-msg"></span></div>
+
+    <!-- ══════════════════════════════
+     LAYOUT
+══════════════════════════════ -->
+    <div class="min-h-screen flex relative z-10">
+
+        <!-- ── Left decorative panel ── -->
+        <div id="left-panel"
+            class="hidden lg:flex lg:w-5/12 flex-col justify-between p-12 relative overflow-hidden panel-staff">
+
+            <!-- Dot pattern -->
+            <div style="position:absolute;inset:0;opacity:0.05;
+                background-image:radial-gradient(circle,#fff 1px,transparent 1px);
+                background-size:24px 24px;"></div>
+
+            <!-- Brand -->
+            <div class="relative z-10 flex items-center gap-3">
+                <div id="side-logo-wrap"
+                    class="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center text-white font-bold overflow-hidden">
+                    <img id="side-logo-img" src="" alt="" class="w-full h-full object-cover hidden" />
+                    <i id="side-logo-icon" class="fa-solid fa-hospital"></i>
+                </div>
+                <span id="side-hospital-name" class="text-white font-semibold text-lg">MediCore</span>
+            </div>
+
+            <!-- Role-specific content (updates dynamically) -->
+            <div class="relative z-10">
+                <div id="side-role-icon"
+                    class="w-16 h-16 rounded-2xl bg-white/15 flex items-center justify-center text-white text-3xl mb-6">
+                    <i class="fa-solid fa-user-lock"></i>
+                </div>
+                <h2 id="side-heading" class="text-white text-3xl font-bold leading-tight mb-4">
+                    Staff Portal
+                </h2>
+                <p id="side-subheading" class="text-white/70 text-sm leading-relaxed mb-8">
+                    Secure access for hospital staff. Sign in with your credentials provided by your administrator.
+                </p>
+
+                <!-- Role-specific feature pills -->
+                <div id="side-features" class="space-y-3">
+                    <div class="flex items-center gap-3 bg-white/10 rounded-xl px-4 py-3">
+                        <i class="fa-solid fa-shield-halved text-white/80 w-4 text-center"></i>
+                        <span class="text-white/90 text-sm">Role-based secure access</span>
+                    </div>
+                    <div class="flex items-center gap-3 bg-white/10 rounded-xl px-4 py-3">
+                        <i class="fa-solid fa-key text-white/80 w-4 text-center"></i>
+                        <span class="text-white/90 text-sm">Credentials set by admin</span>
+                    </div>
+                    <div class="flex items-center gap-3 bg-white/10 rounded-xl px-4 py-3">
+                        <i class="fa-solid fa-lock text-white/80 w-4 text-center"></i>
+                        <span class="text-white/90 text-sm">Change password after first login</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bottom -->
+            <div class="relative z-10">
+                <p class="text-white/40 text-xs">
+                    <i class="fa-regular fa-copyright mr-1"></i>
+                    <span id="side-year"></span>
+                    <span id="side-name">MediCore</span>. All rights reserved.
+                </p>
+            </div>
+        </div>
+
+        <!-- ── Right: Login form ── -->
+        <div class="flex-1 flex flex-col items-center justify-center px-6 py-12">
+
+            <!-- Top bar -->
+            <div class="w-full max-w-md flex items-center justify-between mb-8 fade-up">
+                <a href="../../"
+                    class="flex items-center gap-2 text-sm text-muted hover:text-primary transition-colors">
+                    <i class="fa-solid fa-arrow-left text-xs"></i> Back to Home
+                </a>
+                <button id="theme-toggle"
+                    class="w-9 h-9 rounded-xl border flex items-center justify-center text-muted hover:text-primary transition-colors"
+                    style="border-color:var(--color-border)">
+                    <i id="theme-icon" class="fa-solid fa-moon text-sm"></i>
+                </button>
+            </div>
+
+            <!-- Card -->
+            <div class="card p-8 w-full max-w-md fade-up d1" id="main-card">
+
+                <!-- ══ LOGIN PANEL ══ -->
+                <div id="login-panel">
+
+                    <!-- Header -->
+                    <div class="text-center mb-7">
+                        <div id="card-role-icon"
+                            class="w-14 h-14 rounded-2xl mx-auto mb-4 flex items-center justify-center text-white text-xl"
+                            style="background:var(--color-primary)">
+                            <i id="card-icon-inner" class="fa-solid fa-user-lock"></i>
+                        </div>
+                        <h1 class="text-xl font-bold mb-1" id="card-title">Staff Sign In</h1>
+                        <p class="text-muted text-sm" id="card-subtitle">Select your role to continue</p>
+                    </div>
+
+                    <!-- Role tabs -->
+                    <div class="flex gap-2 mb-6" id="role-tabs">
+                        <div class="role-tab" data-role="doctor" onclick="selectRole('doctor',this)">
+                            <i class="fa-solid fa-user-doctor"></i>
+                            Doctor
+                        </div>
+                        <div class="role-tab" data-role="lab" onclick="selectRole('lab',this)">
+                            <i class="fa-solid fa-microscope"></i>
+                            Lab
+                        </div>
+                        <div class="role-tab" data-role="admin" onclick="selectRole('admin',this)">
+                            <i class="fa-solid fa-user-shield"></i>
+                            Admin
+                        </div>
+                    </div>
+
+                    <!-- Attempt warning -->
+                    <div id="attempt-warning" class="mb-4">
+                        <i class="fa-solid fa-triangle-exclamation shrink-0"></i>
+                        <span id="attempt-msg">Too many failed attempts.</span>
+                    </div>
+
+                    <!-- Form -->
+                    <form id="login-form" onsubmit="handleLogin(event)" novalidate>
+
+                        <!-- Email -->
+                        <div class="mb-4">
+                            <label class="field-label">
+                                <i class="fa-solid fa-envelope mr-1.5" style="color:var(--color-primary)"></i>
+                                Email Address
+                            </label>
+                            <input id="login-email" type="email" class="input-field" placeholder="staff@hospital.com"
+                                autocomplete="email" oninput="clearFieldError('email')" />
+                            <p class="field-error" id="err-email">Please enter a valid email.</p>
+                        </div>
+
+                        <!-- Password -->
+                        <div class="mb-5">
+                            <div class="flex items-center justify-between mb-1.5">
+                                <label class="field-label mb-0">
+                                    <i class="fa-solid fa-lock mr-1.5" style="color:var(--color-primary)"></i>
+                                    Password
+                                </label>
+                                <button type="button" onclick="showForgot()" class="text-xs hover:underline"
+                                    style="color:var(--color-primary)">
+                                    Forgot password?
+                                </button>
+                            </div>
+                            <div class="relative">
+                                <input id="login-password" type="password" class="input-field pr-11"
+                                    placeholder="Enter your password" autocomplete="current-password"
+                                    oninput="clearFieldError('password')" />
+                                <button type="button" onclick="togglePassword('login-password','pwd-toggle-icon')"
+                                    class="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-primary transition-colors">
+                                    <i id="pwd-toggle-icon" class="fa-solid fa-eye text-sm"></i>
+                                </button>
+                            </div>
+                            <p class="field-error" id="err-password">Please enter your password.</p>
+                        </div>
+
+                        <!-- Remember me -->
+                        <div class="flex items-center gap-2.5 mb-5">
+                            <input type="checkbox" id="remember-me"
+                                class="w-4 h-4 rounded accent-blue-600 cursor-pointer" />
+                            <label for="remember-me" class="text-sm cursor-pointer" style="color:var(--color-muted)">
+                                Remember me on this device
+                            </label>
+                        </div>
+
+                        <!-- Submit -->
+                        <button type="submit" id="login-btn" class="btn-primary">
+                            <i class="fa-solid fa-right-to-bracket"></i>
+                            <span id="login-btn-text">Sign In</span>
+                            <i id="login-spinner" class="fa-solid fa-circle-notch fa-spin hidden"></i>
+                        </button>
+
+                    </form>
+
+                    <!-- Lockout screen -->
+                    <div id="lockout-overlay">
+                        <div class="w-16 h-16 rounded-2xl flex items-center justify-center text-white text-2xl mb-4"
+                            style="background:var(--color-error)">
+                            <i class="fa-solid fa-ban"></i>
+                        </div>
+                        <h3 class="font-bold text-base mb-2">Account Temporarily Locked</h3>
+                        <p class="text-sm text-muted mb-4">
+                            Too many failed attempts. Try again in
+                            <span id="lockout-timer" class="font-bold" style="color:var(--color-error)">5:00</span>
+                        </p>
+                        <p class="text-xs text-muted">
+                            Contact your administrator if you need immediate access.
+                        </p>
+                    </div>
+
+                </div>
+
+                <!-- ══ FORGOT PASSWORD PANEL ══ -->
+                <div id="forgot-panel">
+
+                    <div class="text-center mb-7">
+                        <div class="w-14 h-14 rounded-2xl mx-auto mb-4 flex items-center justify-center text-white text-xl"
+                            style="background:#f59e0b">
+                            <i class="fa-solid fa-envelope-circle-check"></i>
+                        </div>
+                        <h1 class="text-xl font-bold mb-1">Reset Password</h1>
+                        <p class="text-muted text-sm">Enter your email to receive a reset link</p>
+                    </div>
+
+                    <!-- Success state (shown after email sent) -->
+                    <div id="reset-success" class="hidden text-center py-4">
+                        <div class="w-14 h-14 rounded-2xl mx-auto mb-4 flex items-center justify-center text-white text-xl"
+                            style="background:var(--color-success)">
+                            <i class="fa-solid fa-circle-check"></i>
+                        </div>
+                        <h3 class="font-semibold mb-2">Check Your Inbox</h3>
+                        <p class="text-sm text-muted mb-5">
+                            A password reset link has been sent to
+                            <span id="reset-email-display" class="font-semibold"
+                                style="color:var(--color-primary)"></span>
+                        </p>
+                        <button onclick="showLogin()" class="text-sm font-medium hover:underline"
+                            style="color:var(--color-primary)">
+                            <i class="fa-solid fa-arrow-left mr-1"></i> Back to Sign In
+                        </button>
+                    </div>
+
+                    <!-- Reset form -->
+                    <div id="reset-form-wrap">
+                        <div class="mb-5">
+                            <label class="field-label">
+                                <i class="fa-solid fa-envelope mr-1.5" style="color:#f59e0b"></i>
+                                Email Address
+                            </label>
+                            <input id="reset-email" type="email" class="input-field" placeholder="staff@hospital.com" />
+                        </div>
+
+                        <button id="reset-btn" class="btn-primary mb-4" onclick="sendResetEmail()"
+                            style="background:#f59e0b" onmouseover="this.style.background='#d97706'"
+                            onmouseout="this.style.background='#f59e0b'">
+                            <i class="fa-solid fa-paper-plane"></i>
+                            <span id="reset-btn-text">Send Reset Link</span>
+                            <i id="reset-spinner" class="fa-solid fa-circle-notch fa-spin hidden"></i>
+                        </button>
+
+                        <div class="text-center">
+                            <button onclick="showLogin()"
+                                class="text-sm text-muted hover:text-primary transition-colors">
+                                <i class="fa-solid fa-arrow-left text-xs mr-1"></i> Back to Sign In
+                            </button>
+                        </div>
+                    </div>
+
+                </div>
+
+            </div>
+
+            <!-- Patient note -->
+            <p class="text-xs text-muted mt-6 text-center fade-up d2">
+                Are you a patient?
+                <a href="../patient-login/" class="hover:underline ml-1" style="color:var(--color-primary)">
+                    Patient Login
+                </a>
+            </p>
+
+        </div>
+    </div>
+
+
+    <!-- ══════════════════════════════
+     SCRIPTS
+══════════════════════════════ -->
+    <script type="module">
+        import { auth, db } from "../../assets/js/firebase-config.js";
+        import { logActivity } from "../../assets/js/activity-logger.js";
+        import {
+            signInWithEmailAndPassword,
+            sendPasswordResetEmail,
+            onAuthStateChanged,
+            setPersistence,
+            browserLocalPersistence,
+            browserSessionPersistence
+        } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-auth.js";
+        import {
+            doc, getDoc
+        } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-firestore.js";
+
+        // ── State ──────────────────────────────────────────────────────────
+        let selectedRole = "";
+        let failedAttempts = 0;
+        let isLockedOut = false;
+        let lockoutTimer = null;
+        const MAX_ATTEMPTS = 5;
+        const LOCKOUT_SECS = 300; // 5 minutes
+
+        // ── Role config ────────────────────────────────────────────────────
+        const ROLE_CONFIG = {
+            doctor: {
+                icon: "fa-user-doctor",
+                title: "Doctor Sign In",
+                subtitle: "Access patient records and appointments",
+                panelClass: "panel-doctor",
+                heading: "Welcome, Doctor",
+                subheading: "Manage your patients, view test results, and review AI-assisted treatment suggestions.",
+                features: [
+                    { icon: "fa-calendar-check", text: "View & manage appointments" },
+                    { icon: "fa-file-waveform", text: "Access lab reports & AI analysis" },
+                    { icon: "fa-stethoscope", text: "Verify and finalize patient reports" },
+                ],
+                redirect: "/doctor/dashboard/",
+            },
+            lab: {
+                icon: "fa-microscope",
+                title: "Lab Engineer Sign In",
+                subtitle: "Upload and manage test reports",
+                panelClass: "panel-lab",
+                heading: "Welcome, Lab Engineer",
+                subheading: "Upload test images and reports for AI processing and doctor review.",
+                features: [
+                    { icon: "fa-flask", text: "View assigned tests" },
+                    { icon: "fa-file-arrow-up", text: "Upload reports & scan images" },
+                    { icon: "fa-brain", text: "Reports processed by AI automatically" },
+                ],
+                redirect: "/lab/dashboard/",
+            },
+            admin: {
+                icon: "fa-user-shield",
+                title: "Admin Sign In",
+                subtitle: "Full hospital system access",
+                panelClass: "panel-admin",
+                heading: "Admin Access",
+                subheading: "Manage staff, configure availability, monitor analytics, and customize the system.",
+                features: [
+                    { icon: "fa-users-gear", text: "Manage all staff accounts" },
+                    { icon: "fa-chart-line", text: "Full analytics & activity logs" },
+                    { icon: "fa-sliders", text: "System settings & theme control" },
+                ],
+                redirect: "/admin/dashboard/",
+            },
+        };
+
+        // ── Theme ──────────────────────────────────────────────────────────
+        const htmlEl = document.getElementById("html-root");
+        function applyTheme(dark) {
+            htmlEl.setAttribute("data-theme", dark ? "dark" : "light");
+            document.getElementById("theme-icon").className =
+                dark ? "fa-solid fa-sun text-sm" : "fa-solid fa-moon text-sm";
+            localStorage.setItem("theme", dark ? "dark" : "light");
+        }
+        applyTheme(localStorage.getItem("theme") === "dark");
+        document.getElementById("theme-toggle").addEventListener("click", () => {
+            applyTheme(htmlEl.getAttribute("data-theme") !== "dark");
+        });
+
+        // ── Load settings (colors, logo, font) ────────────────────────────
+        async function loadSettings() {
+            try {
+                const snap = await getDoc(doc(db, "settings", "hospital"));
+                if (!snap.exists()) return;
+                const s = snap.data(); const t = s.theme || {};
+                const r = document.documentElement;
+                if (t.primary) r.style.setProperty("--color-primary", t.primary);
+                if (t.primaryDark) r.style.setProperty("--color-primary-dark", t.primaryDark);
+                if (t.secondary) r.style.setProperty("--color-secondary", t.secondary);
+                if (t.fontFamily) r.style.setProperty("--font-family", t.fontFamily);
+
+                // Hospital name
+                const name = s.hospitalName || "MediCore";
+                document.getElementById("side-hospital-name").textContent = name;
+                document.getElementById("side-name").textContent = name;
+                document.getElementById("page-title").textContent = `Staff Login — ${name}`;
+
+                // Logo
+                if (s.logoUrl) {
+                    const img = document.getElementById("side-logo-img");
+                    const icon = document.getElementById("side-logo-icon");
+                    img.src = s.logoUrl; img.classList.remove("hidden");
+                    icon.classList.add("hidden");
+                }
+
+            } catch (e) { console.error(e); }
+        }
+
+        // ── Select role ────────────────────────────────────────────────────
+        window.selectRole = function (role, btn) {
+            selectedRole = role;
+            const cfg = ROLE_CONFIG[role];
+
+            // Update tab styles
+            document.querySelectorAll(".role-tab").forEach(t => t.classList.remove("active"));
+            btn.classList.add("active");
+
+            // Update card header
+            document.getElementById("card-icon-inner").className = `fa-solid ${cfg.icon}`;
+            document.getElementById("card-title").textContent = cfg.title;
+            document.getElementById("card-subtitle").textContent = cfg.subtitle;
+
+            // Update left panel
+            const panel = document.getElementById("left-panel");
+            panel.className = `hidden lg:flex lg:w-5/12 flex-col justify-between p-12 relative overflow-hidden ${cfg.panelClass}`;
+
+            document.getElementById("side-role-icon").innerHTML =
+                `<i class="fa-solid ${cfg.icon}"></i>`;
+            document.getElementById("side-heading").textContent = cfg.heading;
+            document.getElementById("side-subheading").textContent = cfg.subheading;
+
+            document.getElementById("side-features").innerHTML = cfg.features.map(f => `
+      <div class="flex items-center gap-3 bg-white/10 rounded-xl px-4 py-3">
+        <i class="fa-solid ${f.icon} text-white/80 w-4 text-center"></i>
+        <span class="text-white/90 text-sm">${f.text}</span>
+      </div>
+    `).join('');
+
+            // Update card icon bg per role
+            const colors = { doctor: "var(--color-secondary)", lab: "#8b5cf6", admin: "#f59e0b" };
+            document.getElementById("card-role-icon").style.background = colors[role];
+        };
+
+        // ── Auto-select from URL param ─────────────────────────────────────
+        const urlRole = new URLSearchParams(location.search).get("role");
+        if (urlRole && ROLE_CONFIG[urlRole]) {
+            const tab = document.querySelector(`.role-tab[data-role="${urlRole}"]`);
+            if (tab) selectRole(urlRole, tab);
+        } else {
+            // Default to doctor
+            const defaultTab = document.querySelector('.role-tab[data-role="doctor"]');
+            if (defaultTab) selectRole("doctor", defaultTab);
+        }
+
+        // ── Password toggle ────────────────────────────────────────────────
+        window.togglePassword = function (inputId, iconId) {
+            const input = document.getElementById(inputId);
+            const icon = document.getElementById(iconId);
+            const hidden = input.type === "password";
+            input.type = hidden ? "text" : "password";
+            icon.className = hidden ? "fa-solid fa-eye-slash text-sm" : "fa-solid fa-eye text-sm";
+        };
+
+        // ── Field error helpers ────────────────────────────────────────────
+        function showFieldError(field, msg) {
+            const input = document.getElementById(`login-${field}`);
+            const err = document.getElementById(`err-${field}`);
+            input.classList.add("error");
+            if (msg) err.textContent = msg;
+            err.classList.add("show");
+        }
+
+        window.clearFieldError = function (field) {
+            document.getElementById(`login-${field}`)?.classList.remove("error");
+            document.getElementById(`err-${field}`)?.classList.remove("show");
+        };
+
+        // ── Lockout logic ──────────────────────────────────────────────────
+        function triggerLockout() {
+            isLockedOut = true;
+            const form = document.getElementById("login-form");
+            const lockout = document.getElementById("lockout-overlay");
+            form.style.display = "none";
+            lockout.classList.add("show");
+            document.getElementById("attempt-warning").classList.remove("show");
+
+            let remaining = LOCKOUT_SECS;
+            updateLockoutTimer(remaining);
+
+            lockoutTimer = setInterval(() => {
+                remaining--;
+                updateLockoutTimer(remaining);
+                if (remaining <= 0) {
+                    clearInterval(lockoutTimer);
+                    isLockedOut = false;
+                    failedAttempts = 0;
+                    lockout.classList.remove("show");
+                    form.style.display = "block";
+                }
+            }, 1000);
+        }
+
+        function updateLockoutTimer(secs) {
+            const m = Math.floor(secs / 60).toString().padStart(2, "0");
+            const s = (secs % 60).toString().padStart(2, "0");
+            document.getElementById("lockout-timer").textContent = `${m}:${s}`;
+        }
+
+        // ── Handle login ───────────────────────────────────────────────────
+        window.handleLogin = async function (e) {
+            e.preventDefault();
+            if (isLockedOut) return;
+
+            const email = document.getElementById("login-email").value.trim();
+            const password = document.getElementById("login-password").value;
+            const remember = document.getElementById("remember-me").checked;
+
+            // Validate
+            let valid = true;
+            if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+                showFieldError("email", "Please enter a valid email address.");
+                valid = false;
+            }
+            if (!password) {
+                showFieldError("password", "Please enter your password.");
+                valid = false;
+            }
+            if (!valid) return;
+
+            // Check role selected
+            if (!selectedRole) {
+                showToast("Please select your role first.", "error"); return;
+            }
+
+            const btn = document.getElementById("login-btn");
+            const txt = document.getElementById("login-btn-text");
+            const spn = document.getElementById("login-spinner");
+            btn.disabled = true; txt.textContent = "Signing in…"; spn.classList.remove("hidden");
+
+            try {
+                // Set persistence based on remember me
+                await setPersistence(
+                    auth,
+                    remember ? browserLocalPersistence : browserSessionPersistence
+                );
+
+                // Firebase sign in
+                const cred = await signInWithEmailAndPassword(auth, email, password);
+                const uid = cred.user.uid;
+
+                // Fetch user doc
+                const userSnap = await getDoc(doc(db, "users", uid));
+                if (!userSnap.exists()) {
+                    throw { code: "auth/user-doc-not-found" };
+                }
+
+                const userData = userSnap.data();
+
+                // ── Role mismatch check ──
+                if (userData.role !== selectedRole) {
+                    await auth.signOut();
+                    const roleLabels = { doctor: "Doctor", lab: "Lab Engineer", admin: "Admin" };
+                    showFieldError("email",
+                        `This account is registered as "${roleLabels[userData.role] || userData.role}". ` +
+                        `Please select the correct role tab.`
+                    );
+                    shakeCard();
+                    failedAttempts++;
+                    checkAttempts();
+                    return;
+                }
+
+                // ── Account disabled check ──
+                if (userData.isActive === false) {
+                    await auth.signOut();
+                    showFieldError("email", "Your account has been disabled. Contact your administrator.");
+                    shakeCard();
+                    return;
+                }
+
+                // ── Maintenance mode check (non-admin) ──
+                if (userData.role !== "admin") {
+                    const settingsSnap = await getDoc(doc(db, "settings", "hospital"));
+                    if (settingsSnap.exists() && settingsSnap.data().preferences?.maintenance) {
+                        await auth.signOut();
+                        showToast("System is in maintenance mode. Contact your admin.", "error");
+                        shakeCard();
+                        return;
+                    }
+                }
+
+                // ── Success ──
+                failedAttempts = 0;
+                await logActivity("LOGIN", { role: selectedRole });
+
+                showToast(`Welcome back, ${userData.name || "Staff"}!`, "success");
+
+                // Redirect after brief delay
+                const redirect = ROLE_CONFIG[selectedRole].redirect;
+                setTimeout(() => { window.location.href = redirect; }, 900);
+
+            } catch (err) {
+                console.error(err);
+                btn.disabled = false; txt.textContent = "Sign In"; spn.classList.add("hidden");
+
+                const messages = {
+                    "auth/invalid-credential": "Incorrect email or password.",
+                    "auth/user-not-found": "No account found with this email.",
+                    "auth/wrong-password": "Incorrect password. Please try again.",
+                    "auth/too-many-requests": "Too many attempts. Try again later.",
+                    "auth/user-disabled": "This account has been disabled.",
+                    "auth/user-doc-not-found": "Account not found in the system. Contact admin.",
+                    "auth/network-request-failed": "Network error. Check your connection.",
+                };
+
+                const msg = messages[err.code] || "Sign in failed. Please try again.";
+                showFieldError("password", msg);
+                shakeCard();
+
+                failedAttempts++;
+                checkAttempts();
+            }
+        };
+
+        function checkAttempts() {
+            const remaining = MAX_ATTEMPTS - failedAttempts;
+            const warning = document.getElementById("attempt-warning");
+            const msgEl = document.getElementById("attempt-msg");
+
+            if (failedAttempts >= MAX_ATTEMPTS) {
+                triggerLockout();
+                return;
+            }
+            if (failedAttempts >= 2) {
+                msgEl.textContent = `${remaining} attempt${remaining !== 1 ? "s" : ""} remaining before lockout.`;
+                warning.classList.add("show");
+            }
+        }
+
+        function shakeCard() {
+            const card = document.getElementById("main-card");
+            card.classList.remove("shake");
+            void card.offsetWidth; // reflow
+            card.classList.add("shake");
+            setTimeout(() => card.classList.remove("shake"), 500);
+        }
+
+        // ── Panel switching ────────────────────────────────────────────────
+        window.showForgot = function () {
+            document.getElementById("login-panel").style.display = "none";
+            document.getElementById("forgot-panel").style.display = "block";
+            // Pre-fill reset email from login email field
+            const loginEmail = document.getElementById("login-email").value.trim();
+            if (loginEmail) document.getElementById("reset-email").value = loginEmail;
+        };
+
+        window.showLogin = function () {
+            document.getElementById("forgot-panel").style.display = "none";
+            document.getElementById("login-panel").style.display = "block";
+            document.getElementById("reset-success").classList.add("hidden");
+            document.getElementById("reset-form-wrap").style.display = "block";
+        };
+
+        // ── Send reset email ───────────────────────────────────────────────
+        window.sendResetEmail = async function () {
+            const email = document.getElementById("reset-email").value.trim();
+            if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+                showToast("Please enter a valid email.", "error"); return;
+            }
+
+            const btn = document.getElementById("reset-btn");
+            const txt = document.getElementById("reset-btn-text");
+            const spn = document.getElementById("reset-spinner");
+            btn.disabled = true; txt.textContent = "Sending…"; spn.classList.remove("hidden");
+
+            try {
+                await sendPasswordResetEmail(auth, email);
+                document.getElementById("reset-email-display").textContent = email;
+                document.getElementById("reset-form-wrap").style.display = "none";
+                document.getElementById("reset-success").classList.remove("hidden");
+            } catch (err) {
+                console.error(err);
+                const msg = err.code === "auth/user-not-found"
+                    ? "No account found with this email."
+                    : "Failed to send reset email. Try again.";
+                showToast(msg, "error");
+            } finally {
+                btn.disabled = false; txt.textContent = "Send Reset Link"; spn.classList.add("hidden");
+            }
+        };
+
+        // ── Toast ──────────────────────────────────────────────────────────
+        window.showToast = function (msg, type = "info") {
+            const toast = document.getElementById("toast");
+            const icons = {
+                success: "fa-solid fa-circle-check",
+                error: "fa-solid fa-circle-exclamation",
+                info: "fa-solid fa-circle-info"
+            };
+            document.getElementById("toast-msg").textContent = msg;
+            document.getElementById("toast-icon").className = icons[type];
+            toast.className = `show ${type}`;
+            clearTimeout(window._tt);
+            window._tt = setTimeout(() => { toast.className = type; }, 3500);
+        };
+
+        // ── Auth state: redirect if already logged in ──────────────────────
+        onAuthStateChanged(auth, async user => {
+            if (user) {
+                try {
+                    const snap = await getDoc(doc(db, "users", user.uid));
+                    if (snap.exists()) {
+                        const role = snap.data().role;
+                        const redirect = ROLE_CONFIG[role]?.redirect;
+                        if (redirect) { window.location.href = redirect; return; }
+                    }
+                } catch (e) { console.error(e); }
+            }
+
+            // Not logged in → hide loader
+            const loader = document.getElementById("page-loader");
+            loader.classList.add("hidden");
+            setTimeout(() => loader.remove(), 500);
+            document.getElementById("side-year").textContent = new Date().getFullYear();
+        });
+
+        // ── Init ───────────────────────────────────────────────────────────
+        await loadSettings();
+    </script>
+
+</body>
+
+</html>
