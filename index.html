@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="en" id="html-root">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title id="page-title">MediCore</title>
+
+  <!-- Tailwind -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Font Awesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+
+  <style>
+    :root {
+      --color-primary:      #2563eb;
+      --color-primary-dark: #1d4ed8;
+      --color-secondary:    #0ea5e9;
+      --color-bg:           #f8fafc;
+      --color-surface:      #ffffff;
+      --color-text:         #0f172a;
+      --color-muted:        #64748b;
+      --color-border:       #e2e8f0;
+      --font-family:        'Inter', sans-serif;
+    }
+
+    [data-theme="dark"] {
+      --color-bg:      #0f172a;
+      --color-surface: #1e293b;
+      --color-text:    #f1f5f9;
+      --color-muted:   #94a3b8;
+      --color-border:  #334155;
+    }
+
+    * { font-family: var(--font-family); box-sizing: border-box; }
+
+    body {
+      background-color: var(--color-bg);
+      color: var(--color-text);
+      transition: background 0.3s, color 0.3s;
+      margin: 0;
+    }
+
+    /* ── Loader ── */
+    #page-loader {
+      position: fixed; inset: 0; z-index: 9999;
+      background: var(--color-bg);
+      display: flex; align-items: center; justify-content: center;
+      transition: opacity 0.4s ease;
+    }
+    #page-loader.hidden { opacity: 0; pointer-events: none; }
+    .spinner {
+      width: 38px; height: 38px;
+      border: 3px solid var(--color-border);
+      border-top-color: var(--color-primary);
+      border-radius: 50%;
+      animation: spin 0.75s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Reusables ── */
+    .btn-primary {
+      background-color: var(--color-primary);
+      color: #fff;
+      transition: background 0.2s, transform 0.15s;
+    }
+    .btn-primary:hover {
+      background-color: var(--color-primary-dark);
+      transform: translateY(-1px);
+    }
+    .btn-outline {
+      background: transparent;
+      border: 1.5px solid var(--color-border);
+      color: var(--color-muted);
+      transition: border-color 0.2s, color 0.2s, transform 0.15s;
+    }
+    .btn-outline:hover {
+      border-color: var(--color-primary);
+      color: var(--color-primary);
+      transform: translateY(-1px);
+    }
+    .surface {
+      background-color: var(--color-surface);
+      border: 1px solid var(--color-border);
+    }
+    .text-muted  { color: var(--color-muted); }
+    .text-primary { color: var(--color-primary); }
+
+    /* ── Navbar ── */
+    #navbar { transition: background 0.3s, box-shadow 0.3s; }
+    #navbar.scrolled {
+      background-color: var(--color-surface);
+      box-shadow: 0 1px 16px rgba(0,0,0,0.07);
+    }
+
+    /* ── Hero gradient ── */
+    .hero-gradient {
+      background:
+        radial-gradient(ellipse at 65% 0%,   color-mix(in srgb, var(--color-primary)   13%, transparent), transparent 68%),
+        radial-gradient(ellipse at 10% 85%,  color-mix(in srgb, var(--color-secondary) 10%, transparent), transparent 60%);
+    }
+
+    /* ── Animations ── */
+    .fade-up           { animation: fadeUp 0.6s ease forwards; opacity: 0; }
+    .fade-up.d1        { animation-delay: 0.1s; }
+    .fade-up.d2        { animation-delay: 0.25s; }
+    .fade-up.d3        { animation-delay: 0.4s; }
+    @keyframes fadeUp  { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: none; } }
+
+    /* ── Feature cards ── */
+    .feature-card {
+      background-color: var(--color-surface);
+      border: 1px solid var(--color-border);
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .feature-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 16px 40px rgba(0,0,0,0.08);
+    }
+
+    /* ── Role cards ── */
+    .role-card {
+      background-color: var(--color-surface);
+      border: 2px solid var(--color-border);
+      cursor: pointer;
+      transition: border-color 0.2s, transform 0.2s, box-shadow 0.2s;
+    }
+    .role-card:hover {
+      border-color: var(--color-primary);
+      transform: translateY(-3px);
+      box-shadow: 0 10px 28px rgba(0,0,0,0.08);
+    }
+
+    /* ── Mock report card ── */
+    .report-pill {
+      border-radius: 12px;
+      padding: 10px 14px;
+      font-size: 0.8rem;
+    }
+
+    /* ── Divider ── */
+    .divider {
+      border: none;
+      border-top: 1px solid var(--color-border);
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- ════════════════════════════════════
+       PAGE LOADER
+  ════════════════════════════════════ -->
+  <div id="page-loader">
+    <div class="spinner"></div>
+  </div>
+
+
+  <!-- ════════════════════════════════════
+       NAVBAR
+  ════════════════════════════════════ -->
+  <nav id="navbar" class="fixed top-0 left-0 right-0 z-50 py-4 px-6 md:px-12">
+    <div class="max-w-6xl mx-auto flex items-center justify-between">
+
+      <!-- Brand -->
+      <div class="flex items-center gap-3">
+        <!-- Logo: shows image if set, else initials fallback -->
+        <div id="nav-logo-wrap"
+             class="h-9 w-9 rounded-xl overflow-hidden flex items-center justify-center text-white text-sm font-bold shrink-0"
+             style="background-color: var(--color-primary)">
+          <img id="nav-logo-img" src="" alt="Logo" class="h-full w-full object-cover hidden" />
+          <span id="nav-logo-initial">M</span>
+        </div>
+        <span id="nav-title" class="text-base font-semibold tracking-tight">MediCore</span>
+      </div>
+
+      <!-- Actions -->
+      <div class="flex items-center gap-2">
+
+        <!-- Theme toggle -->
+        <button id="theme-toggle"
+                class="w-9 h-9 rounded-xl border flex items-center justify-center text-muted transition-colors hover:text-primary"
+                style="border-color: var(--color-border)" title="Toggle theme">
+          <i id="theme-icon" class="fa-solid fa-moon text-sm"></i>
+        </button>
+
+        <!-- CTA -->
+        <button onclick="scrollToLogin()"
+                class="btn-primary text-sm font-medium px-5 py-2 rounded-xl">
+          Login
+        </button>
+      </div>
+    </div>
+  </nav>
+
+
+  <!-- ════════════════════════════════════
+       HERO
+  ════════════════════════════════════ -->
+  <section class="hero-gradient min-h-screen flex items-center pt-28 pb-20 px-6 md:px-12">
+    <div class="max-w-6xl mx-auto w-full grid md:grid-cols-2 gap-16 items-center">
+
+      <!-- Left -->
+      <div>
+        <!-- Badge -->
+        <div class="fade-up inline-flex items-center gap-2 text-xs font-medium px-3 py-1.5 rounded-full mb-6"
+             style="background: color-mix(in srgb, var(--color-primary) 12%, transparent); color: var(--color-primary)">
+          <i class="fa-solid fa-circle-dot text-[10px] animate-pulse"></i>
+          Smart Healthcare Platform
+        </div>
+
+        <h1 class="fade-up d1 text-4xl md:text-[2.75rem] font-bold leading-tight tracking-tight mb-5">
+          Modern Care,<br />
+          <span class="text-primary">Intelligently Delivered</span>
+        </h1>
+
+        <p id="hero-subtitle"
+           class="fade-up d2 text-muted text-lg leading-relaxed mb-8 max-w-md">
+          Book appointments, get AI‑powered diagnostics, and access your health records — all in one place.
+        </p>
+
+        <div class="fade-up d2 flex flex-wrap gap-3">
+          <button onclick="scrollToLogin()"
+                  class="btn-primary font-medium px-7 py-3 rounded-xl text-sm flex items-center gap-2">
+            <i class="fa-solid fa-arrow-right-to-bracket"></i> Get Started
+          </button>
+          <button onclick="scrollToFeatures()"
+                  class="btn-outline font-medium px-7 py-3 rounded-xl text-sm flex items-center gap-2">
+            <i class="fa-solid fa-circle-info"></i> Learn More
+          </button>
+        </div>
+
+        <!-- Stats -->
+        <div class="fade-up d3 flex flex-wrap gap-10 mt-12">
+          <div>
+            <div id="stat-doctors" class="text-2xl font-bold text-primary">—</div>
+            <div class="text-xs text-muted mt-0.5">Doctors</div>
+          </div>
+          <div>
+            <div id="stat-patients" class="text-2xl font-bold">—</div>
+            <div class="text-xs text-muted mt-0.5">Patients Served</div>
+          </div>
+          <div>
+            <div id="stat-departments" class="text-2xl font-bold">—</div>
+            <div class="text-xs text-muted mt-0.5">Departments</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right: Mock card -->
+      <div class="fade-up d2 hidden md:flex justify-center">
+        <div class="surface rounded-2xl p-6 w-80 shadow-2xl">
+
+          <!-- Header -->
+          <div class="flex items-center gap-3 mb-5">
+            <div class="w-10 h-10 rounded-xl flex items-center justify-center text-white shrink-0"
+                 style="background-color: var(--color-primary)">
+              <i class="fa-solid fa-brain text-sm"></i>
+            </div>
+            <div>
+              <div class="text-sm font-semibold">AI Diagnostics Ready</div>
+              <div class="text-xs text-muted">Report analyzed · Just now</div>
+            </div>
+            <div class="ml-auto w-2 h-2 rounded-full bg-green-400 shrink-0"></div>
+          </div>
+
+          <!-- Results -->
+          <div class="space-y-2.5 mb-5">
+            <div class="report-pill flex items-center justify-between"
+                 style="background: color-mix(in srgb, var(--color-primary) 8%, transparent)">
+              <span class="text-muted flex items-center gap-2">
+                <i class="fa-solid fa-lungs text-primary"></i> Chest X-Ray
+              </span>
+              <span class="font-medium text-green-500 text-xs">
+                <i class="fa-solid fa-circle-check"></i> Normal
+              </span>
+            </div>
+            <div class="report-pill flex items-center justify-between"
+                 style="background: color-mix(in srgb, var(--color-secondary) 8%, transparent)">
+              <span class="text-muted flex items-center gap-2">
+                <i class="fa-solid fa-droplet" style="color: var(--color-secondary)"></i> Blood Test
+              </span>
+              <span class="font-medium text-xs" style="color: var(--color-primary)">
+                <i class="fa-solid fa-clock"></i> Pending
+              </span>
+            </div>
+            <div class="report-pill flex items-center justify-between"
+                 style="background: color-mix(in srgb, #8b5cf6 8%, transparent)">
+              <span class="text-muted flex items-center gap-2">
+                <i class="fa-solid fa-radiation" style="color: #8b5cf6"></i> CT Scan
+              </span>
+              <span class="font-medium text-yellow-500 text-xs">
+                <i class="fa-solid fa-eye"></i> Reviewing
+              </span>
+            </div>
+          </div>
+
+          <hr class="divider mb-4" />
+
+          <!-- Doctor status -->
+          <div class="flex items-center gap-2.5">
+            <div class="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs shrink-0"
+                 style="background: linear-gradient(135deg, #3b82f6, #06b6d4)">
+              <i class="fa-solid fa-user-doctor text-xs"></i>
+            </div>
+            <span class="text-xs text-muted">Dr. Smith is reviewing your report…</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+
+  <!-- ════════════════════════════════════
+       FEATURES
+  ════════════════════════════════════ -->
+  <section id="features" class="py-24 px-6 md:px-12">
+    <div class="max-w-6xl mx-auto">
+
+      <div class="text-center mb-14">
+        <h2 class="text-3xl font-bold mb-3">Everything in One Place</h2>
+        <p class="text-muted max-w-lg mx-auto text-sm leading-relaxed">
+          From booking to diagnosis — every role has a dedicated, seamless experience.
+        </p>
+      </div>
+
+      <div class="grid md:grid-cols-3 gap-6">
+
+        <div class="feature-card rounded-2xl p-7">
+          <div class="w-12 h-12 rounded-xl flex items-center justify-center text-white mb-5"
+               style="background-color: var(--color-primary)">
+            <i class="fa-solid fa-calendar-check text-lg"></i>
+          </div>
+          <h3 class="font-semibold mb-2">Smart Appointments</h3>
+          <p class="text-muted text-sm leading-relaxed">
+            Real-time slot availability per doctor. Patients book only open slots — no conflicts, no confusion.
+          </p>
+        </div>
+
+        <div class="feature-card rounded-2xl p-7">
+          <div class="w-12 h-12 rounded-xl flex items-center justify-center text-white mb-5"
+               style="background-color: var(--color-secondary)">
+            <i class="fa-solid fa-microchip text-lg"></i>
+          </div>
+          <h3 class="font-semibold mb-2">AI‑Powered Diagnostics</h3>
+          <p class="text-muted text-sm leading-relaxed">
+            ML models analyze X-rays and CT scans instantly. Gemini AI generates treatment suggestions for doctors.
+          </p>
+        </div>
+
+        <div class="feature-card rounded-2xl p-7">
+          <div class="w-12 h-12 rounded-xl flex items-center justify-center text-white mb-5"
+               style="background-color: #8b5cf6">
+            <i class="fa-solid fa-shield-halved text-lg"></i>
+          </div>
+          <h3 class="font-semibold mb-2">Verified & Secure</h3>
+          <p class="text-muted text-sm leading-relaxed">
+            Doctors approve all AI results before patients see them. Role-based access keeps every record protected.
+          </p>
+        </div>
+
+        <div class="feature-card rounded-2xl p-7">
+          <div class="w-12 h-12 rounded-xl flex items-center justify-center text-white mb-5"
+               style="background-color: #f59e0b">
+            <i class="fa-solid fa-flask text-lg"></i>
+          </div>
+          <h3 class="font-semibold mb-2">Lab Integration</h3>
+          <p class="text-muted text-sm leading-relaxed">
+            Lab engineers upload reports directly. Images flow automatically into the AI pipeline.
+          </p>
+        </div>
+
+        <div class="feature-card rounded-2xl p-7">
+          <div class="w-12 h-12 rounded-xl flex items-center justify-center text-white mb-5"
+               style="background-color: #ec4899">
+            <i class="fa-solid fa-chart-line text-lg"></i>
+          </div>
+          <h3 class="font-semibold mb-2">Admin Analytics</h3>
+          <p class="text-muted text-sm leading-relaxed">
+            Full activity logs, staff performance, appointment trends — all visible to the admin in real time.
+          </p>
+        </div>
+
+        <div class="feature-card rounded-2xl p-7">
+          <div class="w-12 h-12 rounded-xl flex items-center justify-center text-white mb-5"
+               style="background-color: #10b981">
+            <i class="fa-solid fa-palette text-lg"></i>
+          </div>
+          <h3 class="font-semibold mb-2">Customizable UI</h3>
+          <p class="text-muted text-sm leading-relaxed">
+            Admin can change theme colors, logo, hospital name, and tagline — live, no redeployment needed.
+          </p>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ════════════════════════════════════
+       LOGIN / ROLE SELECT
+  ════════════════════════════════════ -->
+  <section id="login-section" class="py-24 px-6 md:px-12"
+           style="background: color-mix(in srgb, var(--color-primary) 4%, var(--color-bg))">
+    <div class="max-w-6xl mx-auto">
+
+      <div class="text-center mb-12">
+        <h2 class="text-3xl font-bold mb-3">Access Your Portal</h2>
+        <p class="text-muted text-sm">Select your role to sign in</p>
+      </div>
+
+      <div class="grid sm:grid-cols-2 md:grid-cols-4 gap-5 max-w-3xl mx-auto">
+
+        <!-- Patient -->
+        <div class="role-card rounded-2xl p-7 text-center" onclick="goTo('patient')">
+          <div class="w-14 h-14 rounded-2xl mx-auto mb-4 flex items-center justify-center text-white text-xl"
+               style="background: linear-gradient(135deg, var(--color-primary), var(--color-secondary))">
+            <i class="fa-solid fa-user-injured"></i>
+          </div>
+          <div class="font-semibold text-sm mb-1">Patient</div>
+          <div class="text-xs text-muted">Book & track appointments</div>
+        </div>
+
+        <!-- Doctor -->
+        <div class="role-card rounded-2xl p-7 text-center" onclick="goTo('doctor')">
+          <div class="w-14 h-14 rounded-2xl mx-auto mb-4 flex items-center justify-center text-white text-xl"
+               style="background: linear-gradient(135deg, #0ea5e9, #6366f1)">
+            <i class="fa-solid fa-user-doctor"></i>
+          </div>
+          <div class="font-semibold text-sm mb-1">Doctor</div>
+          <div class="text-xs text-muted">Manage patients & reports</div>
+        </div>
+
+        <!-- Lab -->
+        <div class="role-card rounded-2xl p-7 text-center" onclick="goTo('lab')">
+          <div class="w-14 h-14 rounded-2xl mx-auto mb-4 flex items-center justify-center text-white text-xl"
+               style="background: linear-gradient(135deg, #8b5cf6, #ec4899)">
+            <i class="fa-solid fa-microscope"></i>
+          </div>
+          <div class="font-semibold text-sm mb-1">Lab Engineer</div>
+          <div class="text-xs text-muted">Upload test results</div>
+        </div>
+
+        <!-- Admin -->
+        <div class="role-card rounded-2xl p-7 text-center" onclick="goTo('admin')">
+          <div class="w-14 h-14 rounded-2xl mx-auto mb-4 flex items-center justify-center text-white text-xl"
+               style="background: linear-gradient(135deg, #f59e0b, #ef4444)">
+            <i class="fa-solid fa-user-shield"></i>
+          </div>
+          <div class="font-semibold text-sm mb-1">Admin</div>
+          <div class="text-xs text-muted">Manage hospital system</div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ════════════════════════════════════
+       FOOTER
+  ════════════════════════════════════ -->
+  <footer class="py-8 px-6 md:px-12" style="border-top: 1px solid var(--color-border)">
+    <div class="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
+
+      <div class="flex items-center gap-2.5">
+        <div id="footer-logo-wrap"
+             class="h-7 w-7 rounded-lg overflow-hidden flex items-center justify-center text-white text-xs font-bold shrink-0"
+             style="background-color: var(--color-primary)">
+          <img id="footer-logo-img" src="" alt="" class="h-full w-full object-cover hidden" />
+          <span id="footer-logo-initial">M</span>
+        </div>
+        <span id="footer-title" class="text-sm font-semibold">MediCore</span>
+      </div>
+
+      <p id="footer-tagline" class="text-xs text-muted text-center">
+        Empowering healthcare with intelligent technology.
+      </p>
+
+      <p class="text-xs text-muted">
+        <i class="fa-regular fa-copyright mr-1"></i>
+        <span id="footer-year"></span> All rights reserved.
+      </p>
+    </div>
+  </footer>
+
+
+  <!-- ════════════════════════════════════
+       SCRIPTS
+  ════════════════════════════════════ -->
+  <script type="module">
+    import { db } from "/assets/js/firebase-config.js";
+    import { doc, getDoc } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-firestore.js";
+
+    // ── 1. Load hospital settings & apply theme ──────────────────────
+    async function loadSettings() {
+      try {
+        const snap = await getDoc(doc(db, "settings", "hospital"));
+        if (!snap.exists()) return;
+
+        const s     = snap.data();
+        const theme = s.theme || {};
+
+        // Inject CSS variables
+        const root = document.documentElement;
+        if (theme.primary)       root.style.setProperty("--color-primary",      theme.primary);
+        if (theme.primaryDark)   root.style.setProperty("--color-primary-dark", theme.primaryDark);
+        if (theme.secondary)     root.style.setProperty("--color-secondary",    theme.secondary);
+        if (theme.fontFamily)    root.style.setProperty("--font-family",        theme.fontFamily);
+
+        // Hospital name & logo
+        const name = s.hospitalName || "MediCore";
+        document.getElementById("page-title").textContent    = name;
+        document.getElementById("nav-title").textContent     = name;
+        document.getElementById("footer-title").textContent  = name;
+
+        const initial = name.charAt(0).toUpperCase();
+        document.getElementById("nav-logo-initial").textContent    = initial;
+        document.getElementById("footer-logo-initial").textContent = initial;
+
+        if (s.logoUrl) {
+          ["nav-logo-img", "footer-logo-img"].forEach(id => {
+            const img = document.getElementById(id);
+            img.src = s.logoUrl;
+            img.classList.remove("hidden");
+          });
+          document.getElementById("nav-logo-initial").classList.add("hidden");
+          document.getElementById("footer-logo-initial").classList.add("hidden");
+        }
+
+        // Tagline
+        if (s.tagline) {
+          document.getElementById("hero-subtitle").textContent  = s.tagline;
+          document.getElementById("footer-tagline").textContent = s.tagline;
+        }
+
+        // Stats
+        if (s.stats) {
+          if (s.stats.doctors)     document.getElementById("stat-doctors").textContent     = s.stats.doctors;
+          if (s.stats.patients)    document.getElementById("stat-patients").textContent    = s.stats.patients;
+          if (s.stats.departments) document.getElementById("stat-departments").textContent = s.stats.departments;
+        }
+
+      } catch (err) {
+        console.error("Settings load error:", err);
+      }
+    }
+
+    // ── 2. Dark / Light toggle ───────────────────────────────────────
+    const htmlEl    = document.getElementById("html-root");
+    const themeIcon = document.getElementById("theme-icon");
+
+    function applyTheme(dark) {
+      htmlEl.setAttribute("data-theme", dark ? "dark" : "light");
+      themeIcon.className = dark ? "fa-solid fa-sun text-sm" : "fa-solid fa-moon text-sm";
+      localStorage.setItem("theme", dark ? "dark" : "light");
+    }
+
+    // Restore saved theme
+    const savedTheme = localStorage.getItem("theme");
+    applyTheme(savedTheme === "dark");
+
+    document.getElementById("theme-toggle").addEventListener("click", () => {
+      applyTheme(htmlEl.getAttribute("data-theme") !== "dark");
+    });
+
+    // ── 3. Navbar scroll effect ──────────────────────────────────────
+    window.addEventListener("scroll", () => {
+      document.getElementById("navbar").classList.toggle("scrolled", window.scrollY > 20);
+    });
+
+    // ── 4. Footer year ───────────────────────────────────────────────
+    document.getElementById("footer-year").textContent = new Date().getFullYear();
+
+    // ── 5. Init ──────────────────────────────────────────────────────
+    await loadSettings();
+
+    // Hide loader
+    const loader = document.getElementById("page-loader");
+    loader.classList.add("hidden");
+    setTimeout(() => loader.remove(), 500);
+  </script>
+
+  <script>
+    // ── Navigation helpers (non-module, globally accessible) ──────────
+    function scrollToLogin()    { document.getElementById("login-section").scrollIntoView({ behavior: "smooth" }); }
+    function scrollToFeatures() { document.getElementById("features").scrollIntoView({ behavior: "smooth" }); }
+
+    function goTo(role) {
+      const routes = {
+        patient: "/auth/patient-login/",
+        doctor:  "/auth/staff-login/?role=doctor",
+        lab:     "/auth/staff-login/?role=lab",
+        admin:   "/auth/staff-login/?role=admin"
+      };
+      window.location.href = routes[role];
+    }
+  </script>
+
+</body>
+</html>

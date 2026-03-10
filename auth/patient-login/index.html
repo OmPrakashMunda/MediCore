@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="en" id="html-root">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title id="page-title">Patient Login — MediCore</title>
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+
+  <style>
+    :root {
+      --color-primary:      #2563eb;
+      --color-primary-dark: #1d4ed8;
+      --color-secondary:    #0ea5e9;
+      --color-bg:           #f8fafc;
+      --color-surface:      #ffffff;
+      --color-text:         #0f172a;
+      --color-muted:        #64748b;
+      --color-border:       #e2e8f0;
+      --color-error:        #ef4444;
+      --color-success:      #10b981;
+      --font-family:        'Inter', sans-serif;
+    }
+    [data-theme="dark"] {
+      --color-bg:      #0f172a;
+      --color-surface: #1e293b;
+      --color-text:    #f1f5f9;
+      --color-muted:   #94a3b8;
+      --color-border:  #334155;
+    }
+
+    * { font-family: var(--font-family); box-sizing: border-box; margin: 0; padding: 0; }
+    body { background-color: var(--color-bg); color: var(--color-text); transition: background 0.3s, color 0.3s; min-height: 100vh; }
+
+    /* ── Loader ── */
+    #page-loader {
+      position: fixed; inset: 0; z-index: 9999;
+      background: var(--color-bg);
+      display: flex; align-items: center; justify-content: center;
+      transition: opacity 0.4s;
+    }
+    #page-loader.hidden { opacity: 0; pointer-events: none; }
+    .spinner {
+      width: 36px; height: 36px;
+      border: 3px solid var(--color-border);
+      border-top-color: var(--color-primary);
+      border-radius: 50%;
+      animation: spin 0.75s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Card ── */
+    .card {
+      background-color: var(--color-surface);
+      border: 1px solid var(--color-border);
+      border-radius: 1.25rem;
+    }
+
+    /* ── Google button ── */
+    .btn-google {
+      width: 100%;
+      display: flex; align-items: center; justify-content: center; gap: 12px;
+      padding: 13px 20px;
+      border: 1.5px solid var(--color-border);
+      border-radius: 12px;
+      background-color: var(--color-surface);
+      color: var(--color-text);
+      font-size: 0.9rem; font-weight: 500;
+      cursor: pointer;
+      transition: border-color 0.2s, box-shadow 0.2s, transform 0.15s;
+    }
+    .btn-google:hover {
+      border-color: var(--color-primary);
+      box-shadow: 0 4px 16px rgba(0,0,0,0.07);
+      transform: translateY(-1px);
+    }
+    .btn-google:disabled { opacity: 0.55; cursor: not-allowed; transform: none; pointer-events: none; }
+
+    /* ── Info box ── */
+    .info-box {
+      background: color-mix(in srgb, var(--color-primary) 6%, transparent);
+      border-radius: 12px;
+      padding: 14px;
+    }
+    .info-item {
+      display: flex; align-items: flex-start; gap: 10px;
+      font-size: 0.8rem; color: var(--color-muted);
+      padding: 5px 0;
+    }
+
+    /* ── Divider ── */
+    .or-divider {
+      display: flex; align-items: center; gap: 12px;
+      color: var(--color-muted); font-size: 0.75rem; margin: 20px 0;
+    }
+    .or-divider::before, .or-divider::after {
+      content: ''; flex: 1; border-top: 1px solid var(--color-border);
+    }
+
+    /* ── BG blobs ── */
+    .blob {
+      position: fixed; border-radius: 50%;
+      filter: blur(90px); opacity: 0.06;
+      pointer-events: none; z-index: 0;
+    }
+
+    /* ── Toast ── */
+    #toast {
+      position: fixed; bottom: 28px; left: 50%;
+      transform: translateX(-50%) translateY(70px);
+      padding: 11px 20px; border-radius: 12px;
+      font-size: 0.85rem; font-weight: 500;
+      display: flex; align-items: center; gap: 10px;
+      z-index: 9999; opacity: 0; white-space: nowrap;
+      transition: transform 0.35s cubic-bezier(0.34,1.56,0.64,1), opacity 0.3s;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+    }
+    #toast.show  { transform: translateX(-50%) translateY(0); opacity: 1; }
+    #toast.success { background: var(--color-success); color: #fff; }
+    #toast.error   { background: var(--color-error);   color: #fff; }
+    #toast.info    { background: var(--color-primary);  color: #fff; }
+
+    /* ── Animations ── */
+    .fade-up     { animation: fadeUp 0.5s ease forwards; opacity: 0; }
+    .fade-up.d1  { animation-delay: 0.1s; }
+    .fade-up.d2  { animation-delay: 0.22s; }
+    .fade-up.d3  { animation-delay: 0.34s; }
+    @keyframes fadeUp { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+  </style>
+</head>
+
+<body>
+
+  <!-- Loader -->
+  <div id="page-loader"><div class="spinner"></div></div>
+
+  <!-- BG Blobs -->
+  <div class="blob" style="width:480px;height:480px;top:-100px;right:-80px;background:var(--color-primary)"></div>
+  <div class="blob" style="width:380px;height:380px;bottom:-60px;left:-60px;background:var(--color-secondary)"></div>
+
+  <!-- Toast -->
+  <div id="toast"><i id="toast-icon" class="fa-solid fa-circle-check"></i> <span id="toast-msg"></span></div>
+
+  <!-- ── Main Layout ── -->
+  <div class="min-h-screen flex relative z-10">
+
+    <!-- ── Left panel (decorative, hidden on mobile) ── -->
+    <div class="hidden lg:flex lg:w-5/12 flex-col justify-between p-12 relative overflow-hidden"
+         style="background: linear-gradient(145deg, var(--color-primary), var(--color-secondary))">
+
+      <!-- Pattern overlay -->
+      <div style="position:absolute;inset:0;opacity:0.05;background-image:radial-gradient(circle, #fff 1px, transparent 1px);background-size:24px 24px;"></div>
+
+      <!-- Top brand -->
+      <div class="relative z-10 flex items-center gap-3">
+        <div id="side-logo-wrap"
+             class="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center text-white font-bold text-sm overflow-hidden">
+          <img id="side-logo-img" src="" alt="" class="w-full h-full object-cover hidden" />
+          <i id="side-logo-icon" class="fa-solid fa-hospital"></i>
+        </div>
+        <span id="side-hospital-name" class="text-white font-semibold text-lg">MediCore</span>
+      </div>
+
+      <!-- Middle content -->
+      <div class="relative z-10">
+        <h2 class="text-white text-3xl font-bold leading-tight mb-4">
+          Your health,<br />our priority.
+        </h2>
+        <p class="text-white/70 text-sm leading-relaxed mb-10">
+          Access appointments, lab reports, and AI-assisted health insights — all in one secure place.
+        </p>
+
+        <!-- Feature pills -->
+        <div class="space-y-3">
+          <div class="flex items-center gap-3 bg-white/10 rounded-xl px-4 py-3">
+            <i class="fa-solid fa-calendar-check text-white/80 w-4 text-center"></i>
+            <span class="text-white/90 text-sm">Book appointments in seconds</span>
+          </div>
+          <div class="flex items-center gap-3 bg-white/10 rounded-xl px-4 py-3">
+            <i class="fa-solid fa-file-waveform text-white/80 w-4 text-center"></i>
+            <span class="text-white/90 text-sm">View lab reports & AI analysis</span>
+          </div>
+          <div class="flex items-center gap-3 bg-white/10 rounded-xl px-4 py-3">
+            <i class="fa-solid fa-lock text-white/80 w-4 text-center"></i>
+            <span class="text-white/90 text-sm">Private, secure & verified records</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Bottom -->
+      <div class="relative z-10">
+        <p class="text-white/40 text-xs">
+          <i class="fa-regular fa-copyright mr-1"></i>
+          <span id="side-year"></span> <span id="side-name">MediCore</span>. All rights reserved.
+        </p>
+      </div>
+    </div>
+
+    <!-- ── Right panel (login form) ── -->
+    <div class="flex-1 flex flex-col items-center justify-center px-6 py-12">
+
+      <!-- Top bar -->
+      <div class="w-full max-w-md flex items-center justify-between mb-8 fade-up">
+        <a href="../../" class="flex items-center gap-2 text-sm text-muted hover:text-primary transition-colors">
+          <i class="fa-solid fa-arrow-left text-xs"></i> Back to Home
+        </a>
+        <button id="theme-toggle"
+                class="w-9 h-9 rounded-xl border flex items-center justify-center text-muted hover:text-primary transition-colors"
+                style="border-color:var(--color-border)">
+          <i id="theme-icon" class="fa-solid fa-moon text-sm"></i>
+        </button>
+      </div>
+
+      <!-- Card -->
+      <div class="card p-8 w-full max-w-md fade-up d1">
+
+        <!-- Header -->
+        <div class="text-center mb-8">
+          <div class="w-14 h-14 rounded-2xl mx-auto mb-4 flex items-center justify-center text-white text-xl font-bold lg:hidden"
+               style="background-color: var(--color-primary)">
+            <i class="fa-solid fa-hospital"></i>
+          </div>
+          <h1 class="text-xl font-bold mb-1">Patient Sign In</h1>
+          <p class="text-muted text-sm">Use your Google account to continue</p>
+        </div>
+
+        <!-- Google Button -->
+        <button id="google-btn" class="btn-google" onclick="signInWithGoogle()">
+          <i class="fa-brands fa-google" style="color:#4285F4; font-size:1rem"></i>
+          <span id="google-btn-text">Continue with Google</span>
+          <i id="google-btn-spinner" class="fa-solid fa-circle-notch fa-spin ml-auto hidden" style="color:var(--color-muted)"></i>
+        </button>
+
+        <div class="or-divider">What to expect</div>
+
+        <!-- Info steps -->
+        <div class="info-box mb-6">
+          <div class="info-item">
+            <i class="fa-solid fa-mobile-screen-button mt-0.5 shrink-0" style="color:var(--color-primary);font-size:0.75rem"></i>
+            <span>You'll verify your phone number once for account security.</span>
+          </div>
+          <div class="info-item">
+            <i class="fa-solid fa-user-pen mt-0.5 shrink-0" style="color:var(--color-secondary);font-size:0.75rem"></i>
+            <span>New users fill a quick profile (age, blood group, etc.).</span>
+          </div>
+          <div class="info-item">
+            <i class="fa-solid fa-circle-check mt-0.5 shrink-0" style="color:var(--color-success);font-size:0.75rem"></i>
+            <span>Then you're in — book appointments and track reports.</span>
+          </div>
+        </div>
+
+        <!-- Terms -->
+        <p class="text-center text-xs text-muted">
+          By signing in, you agree to our
+          <a href="#" class="text-primary hover:underline">Terms of Service</a>
+          and
+          <a href="#" class="text-primary hover:underline">Privacy Policy</a>.
+        </p>
+
+      </div>
+
+      <!-- Staff note -->
+      <p class="text-xs text-muted mt-6 text-center fade-up d2">
+        Are you a doctor, lab engineer, or admin?
+        <a href="../staff-login/" class="text-primary hover:underline ml-1">Staff Login</a>
+      </p>
+
+    </div>
+  </div>
+
+
+  <!-- ══════════════════════════════════════════
+       SCRIPTS
+  ══════════════════════════════════════════ -->
+  <script type="module">
+    import { auth, db, googleProvider } from "../../assets/js/firebase-config.js";
+    import { logActivity }              from "../../assets/js/activity-logger.js";
+    import {
+      signInWithPopup,
+      onAuthStateChanged
+    } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-auth.js";
+    import {
+      doc, getDoc, setDoc, serverTimestamp
+    } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-firestore.js";
+
+    // ── Load hospital settings ───────────────────────────────────────
+    async function loadSettings() {
+      try {
+        const snap = await getDoc(doc(db, "settings", "hospital"));
+        if (!snap.exists()) return;
+        const s = snap.data();
+        const theme = s.theme || {};
+
+        const root = document.documentElement;
+        if (theme.primary)     root.style.setProperty("--color-primary",      theme.primary);
+        if (theme.primaryDark) root.style.setProperty("--color-primary-dark", theme.primaryDark);
+        if (theme.secondary)   root.style.setProperty("--color-secondary",    theme.secondary);
+        if (theme.fontFamily)  root.style.setProperty("--font-family",        theme.fontFamily);
+
+        const name = s.hospitalName || "MediCore";
+        document.getElementById("page-title").textContent        = `Patient Login — ${name}`;
+        document.getElementById("side-hospital-name").textContent = name;
+        document.getElementById("side-name").textContent          = name;
+
+        if (s.logoUrl) {
+          const img = document.getElementById("side-logo-img");
+          img.src = s.logoUrl; img.classList.remove("hidden");
+          document.getElementById("side-logo-icon").classList.add("hidden");
+        }
+      } catch (e) { console.error("Settings error:", e); }
+    }
+
+    // ── Auth state: redirect if already logged in ────────────────────
+    onAuthStateChanged(auth, async (user) => {
+      if (!user) return;
+
+      const userSnap = await getDoc(doc(db, "users", user.uid));
+      if (!userSnap.exists()) return;
+
+      const data = userSnap.data();
+      if (data.role !== "patient") return;
+
+      // Already verified → dashboard
+      if (data.phoneVerified) {
+        window.location.href = "/patient/dashboard/";
+      } else {
+        // Not verified → phone verification
+        window.location.href = "/auth/verify-phone/";
+      }
+    });
+
+    // ── Google Sign In ───────────────────────────────────────────────
+    window.signInWithGoogle = async function () {
+      const btn     = document.getElementById("google-btn");
+      const btnText = document.getElementById("google-btn-text");
+      const spinner = document.getElementById("google-btn-spinner");
+
+      btn.disabled = true;
+      btnText.textContent = "Signing in…";
+      spinner.classList.remove("hidden");
+
+      try {
+        const result = await signInWithPopup(auth, googleProvider);
+        const user   = result.user;
+
+        // Check if user doc exists
+        const userRef  = doc(db, "users", user.uid);
+        const userSnap = await getDoc(userRef);
+
+        if (!userSnap.exists()) {
+          // New patient — create user doc
+          await setDoc(userRef, {
+            role:          "patient",
+            name:          user.displayName || "",
+            email:         user.email || "",
+            photoURL:      user.photoURL || "",
+            phoneVerified: false,
+            profileComplete: false,
+            createdAt:     serverTimestamp()
+          });
+
+          // Create empty patient profile doc
+          await setDoc(doc(db, "patients", user.uid), {
+            age: "", height: "", weight: "", bloodGroup: "",
+            createdAt: serverTimestamp()
+          });
+
+          await logActivity("REGISTER", { method: "google" });
+          showToast("Account created! Let's verify your phone.", "success");
+
+        } else {
+          const data = userSnap.data();
+
+          // Block if not a patient role
+          if (data.role !== "patient") {
+            await auth.signOut();
+            showToast("This account is registered as staff. Use Staff Login.", "error");
+            resetBtn(); return;
+          }
+
+          await logActivity("LOGIN", { method: "google" });
+          showToast("Welcome back!", "success");
+        }
+
+        // Small delay so toast is visible, then redirect
+        setTimeout(() => {
+          window.location.href = "/auth/verify-phone/";
+        }, 1000);
+
+      } catch (err) {
+        console.error("Sign-in error:", err);
+
+        const messages = {
+          "auth/popup-closed-by-user":      "Sign-in cancelled.",
+          "auth/popup-blocked":             "Popup blocked. Please allow popups for this site.",
+          "auth/network-request-failed":    "Network error. Check your connection.",
+          "auth/cancelled-popup-request":   "Only one sign-in popup at a time.",
+        };
+
+        showToast(messages[err.code] || "Sign-in failed. Please try again.", "error");
+        resetBtn();
+      }
+    };
+
+    function resetBtn() {
+      const btn     = document.getElementById("google-btn");
+      const btnText = document.getElementById("google-btn-text");
+      const spinner = document.getElementById("google-btn-spinner");
+      btn.disabled = false;
+      btnText.textContent = "Continue with Google";
+      spinner.classList.add("hidden");
+    }
+
+    // ── Theme toggle ─────────────────────────────────────────────────
+    const htmlEl    = document.getElementById("html-root");
+    const themeIcon = document.getElementById("theme-icon");
+
+    function applyTheme(dark) {
+      htmlEl.setAttribute("data-theme", dark ? "dark" : "light");
+      themeIcon.className = dark ? "fa-solid fa-sun text-sm" : "fa-solid fa-moon text-sm";
+      localStorage.setItem("theme", dark ? "dark" : "light");
+    }
+    applyTheme(localStorage.getItem("theme") === "dark");
+    document.getElementById("theme-toggle").addEventListener("click", () => {
+      applyTheme(htmlEl.getAttribute("data-theme") !== "dark");
+    });
+
+    // ── Toast ─────────────────────────────────────────────────────────
+    window.showToast = function(msg, type = "info") {
+      const toast    = document.getElementById("toast");
+      const toastMsg = document.getElementById("toast-msg");
+      const toastIcon = document.getElementById("toast-icon");
+
+      const icons = {
+        success: "fa-solid fa-circle-check",
+        error:   "fa-solid fa-circle-exclamation",
+        info:    "fa-solid fa-circle-info"
+      };
+
+      toast.className       = `show ${type}`;
+      toastMsg.textContent  = msg;
+      toastIcon.className   = icons[type] || icons.info;
+
+      clearTimeout(window._toastTimer);
+      window._toastTimer = setTimeout(() => { toast.className = type; }, 3500);
+    };
+
+    // ── Footer year ───────────────────────────────────────────────────
+    document.getElementById("side-year").textContent = new Date().getFullYear();
+
+    // ── Init ──────────────────────────────────────────────────────────
+    await loadSettings();
+    const loader = document.getElementById("page-loader");
+    loader.classList.add("hidden");
+    setTimeout(() => loader.remove(), 500);
+  </script>
+
+</body>
+</html>

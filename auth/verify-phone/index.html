@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html lang="en" id="html-root">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title id="page-title">Verify Phone — MediCore</title>
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+
+  <style>
+    :root {
+      --color-primary:      #2563eb;
+      --color-primary-dark: #1d4ed8;
+      --color-secondary:    #0ea5e9;
+      --color-bg:           #f8fafc;
+      --color-surface:      #ffffff;
+      --color-text:         #0f172a;
+      --color-muted:        #64748b;
+      --color-border:       #e2e8f0;
+      --color-error:        #ef4444;
+      --color-success:      #10b981;
+      --font-family:        'Inter', sans-serif;
+    }
+    [data-theme="dark"] {
+      --color-bg:      #0f172a;
+      --color-surface: #1e293b;
+      --color-text:    #f1f5f9;
+      --color-muted:   #94a3b8;
+      --color-border:  #334155;
+    }
+
+    * { font-family: var(--font-family); box-sizing: border-box; margin: 0; padding: 0; }
+    body { background-color: var(--color-bg); color: var(--color-text); transition: background 0.3s, color 0.3s; min-height: 100vh; }
+
+    #page-loader {
+      position: fixed; inset: 0; z-index: 9999;
+      background: var(--color-bg);
+      display: flex; align-items: center; justify-content: center;
+      transition: opacity 0.4s;
+    }
+    #page-loader.hidden { opacity: 0; pointer-events: none; }
+    .spinner {
+      width: 36px; height: 36px;
+      border: 3px solid var(--color-border);
+      border-top-color: var(--color-primary);
+      border-radius: 50%;
+      animation: spin 0.75s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .card { background-color: var(--color-surface); border: 1px solid var(--color-border); border-radius: 1.25rem; }
+
+    /* Input */
+    .input-field {
+      width: 100%; padding: 12px 14px;
+      background: var(--color-bg);
+      border: 1.5px solid var(--color-border);
+      border-radius: 12px;
+      color: var(--color-text);
+      font-size: 0.9rem;
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .input-field:focus {
+      border-color: var(--color-primary);
+      box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 15%, transparent);
+    }
+    .input-field::placeholder { color: var(--color-muted); }
+
+    /* Phone input with flag/code */
+    .phone-wrap {
+      display: flex; gap: 8px;
+    }
+    .country-code {
+      display: flex; align-items: center; gap: 6px;
+      padding: 12px 14px;
+      background: var(--color-bg);
+      border: 1.5px solid var(--color-border);
+      border-radius: 12px;
+      font-size: 0.9rem;
+      color: var(--color-text);
+      white-space: nowrap;
+      cursor: pointer;
+      transition: border-color 0.2s;
+      position: relative;
+    }
+    .country-code:hover { border-color: var(--color-primary); }
+
+    /* OTP boxes */
+    .otp-inputs { display: flex; gap: 10px; justify-content: center; }
+    .otp-box {
+      width: 48px; height: 56px;
+      text-align: center; font-size: 1.3rem; font-weight: 600;
+      background: var(--color-bg);
+      border: 1.5px solid var(--color-border);
+      border-radius: 12px; color: var(--color-text);
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s, transform 0.1s;
+    }
+    .otp-box:focus {
+      border-color: var(--color-primary);
+      box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 15%, transparent);
+      transform: scale(1.05);
+    }
+    .otp-box.filled { border-color: var(--color-primary); background: color-mix(in srgb, var(--color-primary) 6%, var(--color-bg)); }
+
+    /* Primary button */
+    .btn-primary {
+      width: 100%; padding: 13px;
+      background-color: var(--color-primary);
+      color: #fff; font-size: 0.9rem; font-weight: 600;
+      border: none; border-radius: 12px; cursor: pointer;
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      transition: background 0.2s, transform 0.15s, box-shadow 0.2s;
+    }
+    .btn-primary:hover { background-color: var(--color-primary-dark); transform: translateY(-1px); box-shadow: 0 6px 20px color-mix(in srgb, var(--color-primary) 35%, transparent); }
+    .btn-primary:disabled { opacity: 0.55; cursor: not-allowed; transform: none; box-shadow: none; }
+
+    /* Step indicator */
+    .step { display: flex; align-items: center; gap: 8px; }
+    .step-dot {
+      width: 28px; height: 28px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.7rem; font-weight: 700;
+      transition: background 0.3s, color 0.3s;
+    }
+    .step-dot.active   { background: var(--color-primary); color: #fff; }
+    .step-dot.done     { background: var(--color-success); color: #fff; }
+    .step-dot.inactive { background: var(--color-border); color: var(--color-muted); }
+    .step-line { flex: 1; height: 2px; background: var(--color-border); border-radius: 2px; }
+    .step-line.done { background: var(--color-success); }
+
+    /* Resend timer */
+    #resend-timer { font-size: 0.8rem; }
+
+    /* Blob */
+    .blob { position: fixed; border-radius: 50%; filter: blur(90px); opacity: 0.06; pointer-events: none; z-index: 0; }
+
+    /* Toast */
+    #toast {
+      position: fixed; bottom: 28px; left: 50%;
+      transform: translateX(-50%) translateY(70px);
+      padding: 11px 20px; border-radius: 12px;
+      font-size: 0.85rem; font-weight: 500;
+      display: flex; align-items: center; gap: 10px;
+      z-index: 9999; opacity: 0; white-space: nowrap;
+      transition: transform 0.35s cubic-bezier(0.34,1.56,0.64,1), opacity 0.3s;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+    }
+    #toast.show    { transform: translateX(-50%) translateY(0); opacity: 1; }
+    #toast.success { background: var(--color-success); color: #fff; }
+    #toast.error   { background: var(--color-error);   color: #fff; }
+    #toast.info    { background: var(--color-primary);  color: #fff; }
+
+    .fade-up    { animation: fadeUp 0.5s ease forwards; opacity: 0; }
+    .fade-up.d1 { animation-delay: 0.1s; }
+    .fade-up.d2 { animation-delay: 0.22s; }
+    @keyframes fadeUp { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+
+    /* Panel states */
+    #panel-phone { display: block; }
+    #panel-otp   { display: none; }
+  </style>
+</head>
+
+<body>
+
+  <div id="page-loader"><div class="spinner"></div></div>
+
+  <div class="blob" style="width:460px;height:460px;top:-80px;right:-80px;background:var(--color-primary)"></div>
+  <div class="blob" style="width:360px;height:360px;bottom:-60px;left:-60px;background:var(--color-secondary)"></div>
+
+  <div id="toast"><i id="toast-icon" class="fa-solid fa-circle-check"></i><span id="toast-msg"></span></div>
+
+  <!-- reCAPTCHA container (invisible) -->
+  <div id="recaptcha-container"></div>
+
+  <div class="min-h-screen flex items-center justify-center px-4 py-12 relative z-10">
+    <div class="w-full max-w-md">
+
+      <!-- Top bar -->
+      <div class="flex items-center justify-between mb-8 fade-up">
+        <a href="../patient-login/" class="flex items-center gap-2 text-sm text-muted hover:text-primary transition-colors">
+          <i class="fa-solid fa-arrow-left text-xs"></i> Back
+        </a>
+        <button id="theme-toggle"
+                class="w-9 h-9 rounded-xl border flex items-center justify-center text-muted hover:text-primary transition-colors"
+                style="border-color:var(--color-border)">
+          <i id="theme-icon" class="fa-solid fa-moon text-sm"></i>
+        </button>
+      </div>
+
+      <!-- Step indicator -->
+      <div class="flex items-center mb-8 px-2 fade-up">
+        <div class="step">
+          <div class="step-dot done" id="dot-1"><i class="fa-solid fa-check text-[10px]"></i></div>
+          <span class="text-xs text-muted ml-2 hidden sm:inline">Google Sign-in</span>
+        </div>
+        <div class="step-line done mx-3"></div>
+        <div class="step">
+          <div class="step-dot active" id="dot-2">2</div>
+          <span class="text-xs font-medium ml-2 hidden sm:inline" style="color:var(--color-primary)">Phone Verify</span>
+        </div>
+        <div class="step-line mx-3" id="line-3"></div>
+        <div class="step">
+          <div class="step-dot inactive" id="dot-3">3</div>
+          <span class="text-xs text-muted ml-2 hidden sm:inline">Dashboard</span>
+        </div>
+      </div>
+
+      <!-- Card -->
+      <div class="card p-8 fade-up d1">
+
+        <!-- ── PANEL 1: Enter phone ── -->
+        <div id="panel-phone">
+          <div class="text-center mb-7">
+            <div class="w-14 h-14 rounded-2xl mx-auto mb-4 flex items-center justify-center text-white text-xl"
+                 style="background-color: var(--color-primary)">
+              <i class="fa-solid fa-mobile-screen-button"></i>
+            </div>
+            <h1 class="text-xl font-bold mb-1">Verify Your Phone</h1>
+            <p class="text-muted text-sm">We'll send a 6-digit OTP to confirm your number.</p>
+          </div>
+
+          <div class="mb-5">
+            <label class="block text-sm font-medium mb-2">Phone Number</label>
+            <div class="phone-wrap">
+              <!-- Country code selector -->
+              <div class="country-code" id="country-code-btn" onclick="toggleCountryDropdown()">
+                <i class="fa-solid fa-flag text-xs text-muted mr-1"></i>
+                <span id="selected-code">+91</span>
+                <i class="fa-solid fa-chevron-down text-xs text-muted ml-1"></i>
+              </div>
+              <input id="phone-input" type="tel" class="input-field" placeholder="Enter phone number"
+                     maxlength="10" oninput="this.value=this.value.replace(/\D/g,'')" />
+            </div>
+
+            <!-- Country dropdown -->
+            <div id="country-dropdown"
+                 class="hidden mt-1 rounded-xl shadow-lg border overflow-hidden z-50"
+                 style="background:var(--color-surface);border-color:var(--color-border)">
+              <div class="p-2">
+                <input id="country-search" type="text" placeholder="Search country…"
+                       class="input-field text-sm" style="padding:8px 12px"
+                       oninput="filterCountries(this.value)" />
+              </div>
+              <div id="country-list" class="max-h-48 overflow-y-auto"></div>
+            </div>
+          </div>
+
+          <button id="send-otp-btn" class="btn-primary" onclick="sendOTP()">
+            <i class="fa-solid fa-paper-plane"></i>
+            <span id="send-otp-text">Send OTP</span>
+            <i id="send-otp-spinner" class="fa-solid fa-circle-notch fa-spin hidden"></i>
+          </button>
+        </div>
+
+        <!-- ── PANEL 2: Enter OTP ── -->
+        <div id="panel-otp">
+          <div class="text-center mb-7">
+            <div class="w-14 h-14 rounded-2xl mx-auto mb-4 flex items-center justify-center text-white text-xl"
+                 style="background-color: var(--color-success)">
+              <i class="fa-solid fa-shield-halved"></i>
+            </div>
+            <h1 class="text-xl font-bold mb-1">Enter OTP</h1>
+            <p class="text-muted text-sm">
+              Sent to <span id="otp-phone-display" class="font-semibold" style="color:var(--color-primary)"></span>
+            </p>
+          </div>
+
+          <!-- 6 OTP boxes -->
+          <div class="otp-inputs mb-6" id="otp-inputs">
+            <input class="otp-box" type="text" maxlength="1" inputmode="numeric" />
+            <input class="otp-box" type="text" maxlength="1" inputmode="numeric" />
+            <input class="otp-box" type="text" maxlength="1" inputmode="numeric" />
+            <input class="otp-box" type="text" maxlength="1" inputmode="numeric" />
+            <input class="otp-box" type="text" maxlength="1" inputmode="numeric" />
+            <input class="otp-box" type="text" maxlength="1" inputmode="numeric" />
+          </div>
+
+          <button id="verify-otp-btn" class="btn-primary mb-4" onclick="verifyOTP()">
+            <i class="fa-solid fa-circle-check"></i>
+            <span id="verify-otp-text">Verify OTP</span>
+            <i id="verify-otp-spinner" class="fa-solid fa-circle-notch fa-spin hidden"></i>
+          </button>
+
+          <!-- Resend -->
+          <div class="text-center">
+            <span id="resend-timer" class="text-muted">
+              Resend OTP in <span id="timer-count" class="font-semibold" style="color:var(--color-primary)">30</span>s
+            </span>
+            <button id="resend-btn" class="hidden text-sm font-medium hover:underline"
+                    style="color:var(--color-primary)" onclick="resendOTP()">
+              <i class="fa-solid fa-rotate-right mr-1"></i> Resend OTP
+            </button>
+          </div>
+
+          <!-- Change number -->
+          <div class="text-center mt-3">
+            <button class="text-xs text-muted hover:text-primary transition-colors" onclick="changeNumber()">
+              <i class="fa-solid fa-pen text-[10px] mr-1"></i> Change phone number
+            </button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+
+  <script type="module">
+    import { auth, db } from "../../assets/js/firebase-config.js";
+    import { logActivity } from "../../assets/js/activity-logger.js";
+    import {
+      onAuthStateChanged,
+      PhoneAuthProvider,
+      RecaptchaVerifier,
+      signInWithCredential,
+      updatePhoneNumber
+    } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-auth.js";
+    import {
+      doc, getDoc, updateDoc, serverTimestamp
+    } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-firestore.js";
+
+    // ── Countries list ───────────────────────────────────────────────
+    const COUNTRIES = [
+      { name: "India",          code: "+91",  flag: "🇮🇳" },
+      { name: "United States",  code: "+1",   flag: "🇺🇸" },
+      { name: "United Kingdom", code: "+44",  flag: "🇬🇧" },
+      { name: "Australia",      code: "+61",  flag: "🇦🇺" },
+      { name: "Canada",         code: "+1",   flag: "🇨🇦" },
+      { name: "Germany",        code: "+49",  flag: "🇩🇪" },
+      { name: "France",         code: "+33",  flag: "🇫🇷" },
+      { name: "UAE",            code: "+971", flag: "🇦🇪" },
+      { name: "Singapore",      code: "+65",  flag: "🇸🇬" },
+      { name: "Bangladesh",     code: "+880", flag: "🇧🇩" },
+      { name: "Nepal",          code: "+977", flag: "🇳🇵" },
+      { name: "Sri Lanka",      code: "+94",  flag: "🇱🇰" },
+    ];
+
+    let selectedCountryCode = "+91";
+    let confirmationResult  = null;
+    let timerInterval       = null;
+    let currentUser         = null;
+
+    // ── Guard: must be logged in ─────────────────────────────────────
+    onAuthStateChanged(auth, async (user) => {
+      if (!user) { window.location.href = "/auth/patient-login/"; return; }
+
+      currentUser = user;
+      const snap = await getDoc(doc(db, "users", user.uid));
+      if (!snap.exists()) { window.location.href = "/auth/patient-login/"; return; }
+
+      const data = snap.data();
+      if (data.role !== "patient") { window.location.href = "/auth/patient-login/"; return; }
+
+      // Already verified
+      if (data.phoneVerified) { window.location.href = "/patient/dashboard/"; return; }
+    });
+
+    // ── Load settings ────────────────────────────────────────────────
+    async function loadSettings() {
+      try {
+        const snap = await getDoc(doc(db, "settings", "hospital"));
+        if (!snap.exists()) return;
+        const s = snap.data(); const theme = s.theme || {};
+        const root = document.documentElement;
+        if (theme.primary)    root.style.setProperty("--color-primary",      theme.primary);
+        if (theme.primaryDark)root.style.setProperty("--color-primary-dark", theme.primaryDark);
+        if (theme.secondary)  root.style.setProperty("--color-secondary",    theme.secondary);
+        if (s.hospitalName)   document.getElementById("page-title").textContent = `Verify Phone — ${s.hospitalName}`;
+      } catch (e) { console.error(e); }
+    }
+
+    // ── Render country list ──────────────────────────────────────────
+    function renderCountries(list) {
+      const el = document.getElementById("country-list");
+      el.innerHTML = list.map(c => `
+        <div class="flex items-center gap-3 px-4 py-2.5 cursor-pointer hover:bg-opacity-10 text-sm transition-colors"
+             style="color:var(--color-text)"
+             onmouseover="this.style.background='color-mix(in srgb, var(--color-primary) 8%, transparent)'"
+             onmouseout="this.style.background=''"
+             onclick="selectCountry('${c.code}','${c.name}')">
+          <span>${c.flag}</span>
+          <span class="flex-1">${c.name}</span>
+          <span style="color:var(--color-muted)">${c.code}</span>
+        </div>
+      `).join('');
+    }
+    renderCountries(COUNTRIES);
+
+    window.filterCountries = (q) => {
+      renderCountries(COUNTRIES.filter(c =>
+        c.name.toLowerCase().includes(q.toLowerCase()) || c.code.includes(q)
+      ));
+    };
+
+    window.selectCountry = (code, name) => {
+      selectedCountryCode = code;
+      document.getElementById("selected-code").textContent = code;
+      document.getElementById("country-dropdown").classList.add("hidden");
+    };
+
+    window.toggleCountryDropdown = () => {
+      const dd = document.getElementById("country-dropdown");
+      dd.classList.toggle("hidden");
+      if (!dd.classList.contains("hidden")) {
+        document.getElementById("country-search").focus();
+      }
+    };
+
+    // Close dropdown on outside click
+    document.addEventListener("click", (e) => {
+      if (!e.target.closest("#country-code-btn") && !e.target.closest("#country-dropdown")) {
+        document.getElementById("country-dropdown").classList.add("hidden");
+      }
+    });
+
+    // ── reCAPTCHA setup ──────────────────────────────────────────────
+    function setupRecaptcha() {
+      window.recaptchaVerifier = new RecaptchaVerifier(auth, "recaptcha-container", {
+        size: "invisible",
+        callback: () => {}
+      });
+    }
+
+    // ── Send OTP ─────────────────────────────────────────────────────
+    window.sendOTP = async function () {
+      const phone = document.getElementById("phone-input").value.trim();
+      if (phone.length < 7) { showToast("Enter a valid phone number.", "error"); return; }
+
+      const fullPhone = selectedCountryCode + phone;
+      const btn = document.getElementById("send-otp-btn");
+      const txt = document.getElementById("send-otp-text");
+      const spn = document.getElementById("send-otp-spinner");
+
+      btn.disabled = true; txt.textContent = "Sending…"; spn.classList.remove("hidden");
+
+      try {
+        if (!window.recaptchaVerifier) setupRecaptcha();
+
+        const provider = new PhoneAuthProvider(auth);
+        confirmationResult = await provider.verifyPhoneNumber(fullPhone, window.recaptchaVerifier);
+
+        // Switch panels
+        document.getElementById("panel-phone").style.display = "none";
+        document.getElementById("panel-otp").style.display   = "block";
+        document.getElementById("otp-phone-display").textContent = fullPhone;
+
+        startResendTimer();
+        setupOTPBoxes();
+        showToast("OTP sent successfully!", "success");
+
+      } catch (err) {
+        console.error(err);
+        showToast(err.message || "Failed to send OTP.", "error");
+        btn.disabled = false; txt.textContent = "Send OTP"; spn.classList.add("hidden");
+        // Reset recaptcha
+        if (window.recaptchaVerifier) { window.recaptchaVerifier.clear(); window.recaptchaVerifier = null; }
+      }
+    };
+
+    // ── Verify OTP ───────────────────────────────────────────────────
+    window.verifyOTP = async function () {
+      const boxes = document.querySelectorAll(".otp-box");
+      const otp   = Array.from(boxes).map(b => b.value).join("");
+
+      if (otp.length < 6) { showToast("Enter all 6 digits.", "error"); return; }
+
+      const btn = document.getElementById("verify-otp-btn");
+      const txt = document.getElementById("verify-otp-text");
+      const spn = document.getElementById("verify-otp-spinner");
+      btn.disabled = true; txt.textContent = "Verifying…"; spn.classList.remove("hidden");
+
+      try {
+        const credential = PhoneAuthProvider.credential(confirmationResult, otp);
+        await updatePhoneNumber(currentUser, credential);
+
+        // Mark phone verified in Firestore
+        await updateDoc(doc(db, "users", currentUser.uid), {
+          phoneVerified: true,
+          phone: currentUser.phoneNumber,
+          updatedAt: serverTimestamp()
+        });
+
+        await logActivity("PHONE_VERIFIED", {});
+
+        // Update step UI
+        document.getElementById("dot-2").className = "step-dot done";
+        document.getElementById("dot-2").innerHTML = '<i class="fa-solid fa-check text-[10px]"></i>';
+        document.getElementById("dot-3").className = "step-dot active";
+        document.getElementById("line-3").classList.add("done");
+
+        showToast("Phone verified! Redirecting…", "success");
+
+        setTimeout(() => {
+          window.location.href = "/patient/dashboard/";
+        }, 1200);
+
+      } catch (err) {
+        console.error(err);
+        const msg = err.code === "auth/invalid-verification-code"
+          ? "Wrong OTP. Please try again."
+          : err.code === "auth/code-expired"
+          ? "OTP expired. Please resend."
+          : "Verification failed.";
+        showToast(msg, "error");
+        btn.disabled = false; txt.textContent = "Verify OTP"; spn.classList.add("hidden");
+      }
+    };
+
+    // ── Resend OTP ───────────────────────────────────────────────────
+    window.resendOTP = async function () {
+      document.getElementById("resend-btn").classList.add("hidden");
+      document.getElementById("resend-timer").classList.remove("hidden");
+      if (window.recaptchaVerifier) { window.recaptchaVerifier.clear(); window.recaptchaVerifier = null; }
+      await sendOTP();
+    };
+
+    window.changeNumber = () => {
+      document.getElementById("panel-otp").style.display   = "none";
+      document.getElementById("panel-phone").style.display = "block";
+      clearInterval(timerInterval);
+    };
+
+    // ── Resend countdown ─────────────────────────────────────────────
+    function startResendTimer() {
+      let count = 30;
+      document.getElementById("timer-count").textContent = count;
+      document.getElementById("resend-timer").classList.remove("hidden");
+      document.getElementById("resend-btn").classList.add("hidden");
+
+      clearInterval(timerInterval);
+      timerInterval = setInterval(() => {
+        count--;
+        document.getElementById("timer-count").textContent = count;
+        if (count <= 0) {
+          clearInterval(timerInterval);
+          document.getElementById("resend-timer").classList.add("hidden");
+          document.getElementById("resend-btn").classList.remove("hidden");
+        }
+      }, 1000);
+    }
+
+    // ── OTP box auto-focus logic ─────────────────────────────────────
+    function setupOTPBoxes() {
+      const boxes = document.querySelectorAll(".otp-box");
+      boxes.forEach((box, i) => {
+        box.value = "";
+        box.addEventListener("input", () => {
+          box.classList.toggle("filled", box.value !== "");
+          if (box.value && i < boxes.length - 1) boxes[i + 1].focus();
+        });
+        box.addEventListener("keydown", (e) => {
+          if (e.key === "Backspace" && !box.value && i > 0) boxes[i - 1].focus();
+        });
+        box.addEventListener("paste", (e) => {
+          const pasted = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, 6);
+          pasted.split("").forEach((ch, j) => {
+            if (boxes[j]) { boxes[j].value = ch; boxes[j].classList.add("filled"); }
+          });
+          boxes[Math.min(pasted.length, 5)].focus();
+          e.preventDefault();
+        });
+      });
+      boxes[0].focus();
+    }
+
+    // ── Theme ────────────────────────────────────────────────────────
+    const htmlEl = document.getElementById("html-root");
+    const themeIcon = document.getElementById("theme-icon");
+    function applyTheme(dark) {
+      htmlEl.setAttribute("data-theme", dark ? "dark" : "light");
+      themeIcon.className = dark ? "fa-solid fa-sun text-sm" : "fa-solid fa-moon text-sm";
+      localStorage.setItem("theme", dark ? "dark" : "light");
+    }
+    applyTheme(localStorage.getItem("theme") === "dark");
+    document.getElementById("theme-toggle").addEventListener("click", () => {
+      applyTheme(htmlEl.getAttribute("data-theme") !== "dark");
+    });
+
+    // ── Toast ────────────────────────────────────────────────────────
+    window.showToast = function (msg, type = "info") {
+      const toast = document.getElementById("toast");
+      const icons = { success: "fa-solid fa-circle-check", error: "fa-solid fa-circle-exclamation", info: "fa-solid fa-circle-info" };
+      document.getElementById("toast-msg").textContent = msg;
+      document.getElementById("toast-icon").className  = icons[type];
+      toast.className = `show ${type}`;
+      clearTimeout(window._toastTimer);
+      window._toastTimer = setTimeout(() => { toast.className = type; }, 3500);
+    };
+
+    // ── Init ─────────────────────────────────────────────────────────
+    await loadSettings();
+    const loader = document.getElementById("page-loader");
+    loader.classList.add("hidden");
+    setTimeout(() => loader.remove(), 500);
+  </script>
+
+</body>
+</html>
