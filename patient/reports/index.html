@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="en" id="html-root">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>My Reports — MediCore</title>
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+
+  <style>
+    :root {
+      --color-primary:      #2563eb;
+      --color-primary-dark: #1d4ed8;
+      --color-secondary:    #0ea5e9;
+      --color-bg:           #f8fafc;
+      --color-surface:      #ffffff;
+      --color-text:         #0f172a;
+      --color-muted:        #64748b;
+      --color-border:       #e2e8f0;
+      --color-success:      #10b981;
+      --color-warning:      #f59e0b;
+      --color-error:        #ef4444;
+      --font-family:        'Inter', sans-serif;
+    }
+    [data-theme="dark"] {
+      --color-bg:      #0f172a;
+      --color-surface: #1e293b;
+      --color-text:    #f1f5f9;
+      --color-muted:   #94a3b8;
+      --color-border:  #334155;
+    }
+    * { box-sizing:border-box; font-family:var(--font-family); margin:0; padding:0; }
+    body { background:var(--color-bg); color:var(--color-text); transition:background 0.25s,color 0.25s; }
+
+    .card { background:var(--color-surface); border:1px solid var(--color-border); border-radius:16px; }
+
+    .badge {
+      font-size:0.7rem; font-weight:600;
+      border-radius:999px; padding:3px 10px;
+      display:inline-flex; align-items:center; gap:4px;
+    }
+
+    #page-loader {
+      position:fixed; inset:0; z-index:9999;
+      background:var(--color-bg);
+      display:flex; align-items:center; justify-content:center;
+      transition:opacity 0.35s;
+    }
+    #page-loader.hidden { opacity:0; pointer-events:none; }
+    .spinner {
+      width:38px; height:38px; border-radius:50%;
+      border:3px solid var(--color-border);
+      border-top-color:var(--color-primary);
+      animation:spin 0.75s linear infinite;
+    }
+    @keyframes spin { to{transform:rotate(360deg)} }
+
+    #toast {
+      position:fixed; bottom:-80px; left:50%; transform:translateX(-50%);
+      z-index:9999; padding:10px 20px; border-radius:12px;
+      font-size:0.82rem; font-weight:500;
+      display:flex; align-items:center; gap:8px;
+      transition:bottom 0.35s;
+      background:var(--color-surface); border:1px solid var(--color-border);
+      box-shadow:0 8px 28px rgba(0,0,0,0.12);
+    }
+    #toast.show  { bottom:28px; }
+    #toast.success #toast-icon { color:var(--color-success); }
+    #toast.error   #toast-icon { color:var(--color-error); }
+    #toast.info    #toast-icon { color:var(--color-primary); }
+
+    .pnav-link {
+      font-size:0.82rem; font-weight:500; padding:6px 14px;
+      border-radius:10px; color:var(--color-muted); text-decoration:none;
+      transition:all 0.15s;
+    }
+    .pnav-link:hover { color:var(--color-primary); background:color-mix(in srgb,var(--color-primary) 8%,transparent); }
+    .pnav-link.active { color:var(--color-primary); background:color-mix(in srgb,var(--color-primary) 12%,transparent); font-weight:600; }
+
+    .filter-tab {
+      padding:7px 16px; border-radius:10px; font-size:0.8rem; font-weight:500;
+      cursor:pointer; border:1.5px solid var(--color-border);
+      color:var(--color-muted); background:var(--color-surface);
+      transition:all 0.15s; white-space:nowrap;
+    }
+    .filter-tab:hover  { border-color:var(--color-primary); color:var(--color-primary); }
+    .filter-tab.active {
+      background:color-mix(in srgb,var(--color-primary) 10%,transparent);
+      border-color:var(--color-primary); color:var(--color-primary);
+    }
+
+    .input-field {
+      width:100%; padding:9px 14px;
+      background:var(--color-bg); border:1.5px solid var(--color-border);
+      border-radius:10px; color:var(--color-text); font-size:0.85rem; outline:none;
+      transition:border-color 0.2s, box-shadow 0.2s;
+    }
+    .input-field:focus {
+      border-color:var(--color-primary);
+      box-shadow:0 0 0 3px color-mix(in srgb,var(--color-primary) 15%,transparent);
+    }
+
+    .report-card {
+      border:1.5px solid var(--color-border); border-radius:14px;
+      padding:16px; cursor:pointer;
+      transition:border-color 0.2s, box-shadow 0.2s, transform 0.15s;
+      background:var(--color-surface);
+    }
+    .report-card:hover {
+      border-color:var(--color-primary);
+      box-shadow:0 6px 20px rgba(0,0,0,0.07);
+      transform:translateY(-2px);
+    }
+
+    /* Detail modal */
+    .modal-overlay {
+      position:fixed; inset:0; z-index:100;
+      background:rgba(0,0,0,0.45); backdrop-filter:blur(4px);
+      display:flex; align-items:center; justify-content:center;
+      padding:16px; opacity:0; pointer-events:none; transition:opacity 0.25s;
+    }
+    .modal-overlay.show { opacity:1; pointer-events:all; }
+    .modal-box {
+      background:var(--color-surface); border:1px solid var(--color-border);
+      border-radius:1.25rem; padding:1.75rem;
+      width:100%; max-width:520px; max-height:92vh; overflow-y:auto;
+      transform:translateY(20px); transition:transform 0.25s;
+    }
+    .modal-overlay.show .modal-box { transform:translateY(0); }
+
+    .fade-up    { animation:fadeUp 0.5s ease forwards; opacity:0; }
+    .fade-up.d1 { animation-delay:0.1s; }
+    .fade-up.d2 { animation-delay:0.2s; }
+    @keyframes fadeUp { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:none} }
+  </style>
+</head>
+
+<body>
+  <div id="page-loader"><div class="spinner"></div></div>
+
+  <!-- ═══ Header ═══ -->
+  <header class="sticky top-0 z-20"
+          style="background:var(--color-surface);border-bottom:1px solid var(--color-border)">
+    <div class="max-w-6xl mx-auto px-5 py-4 flex items-center justify-between gap-3">
+      <div class="flex items-center gap-3 min-w-0">
+        <div id="hdr-logo-wrap"
+             class="w-10 h-10 rounded-xl overflow-hidden flex items-center justify-center text-white shrink-0"
+             style="background:linear-gradient(135deg,var(--color-primary),var(--color-secondary))">
+          <img id="hdr-logo-img" src="" alt="" class="w-full h-full object-cover hidden" />
+          <i id="hdr-logo-icon" class="fa-solid fa-heart-pulse"></i>
+        </div>
+        <div class="min-w-0">
+          <div id="hospital-name" class="font-semibold text-sm truncate">MediCore</div>
+          <div class="text-xs" style="color:var(--color-muted)">Patient Portal</div>
+        </div>
+      </div>
+      <div class="flex items-center gap-2">
+        <button id="theme-toggle"
+                class="w-9 h-9 rounded-xl border flex items-center justify-center"
+                style="border-color:var(--color-border);color:var(--color-muted)">
+          <i id="theme-icon" class="fa-solid fa-moon text-sm"></i>
+        </button>
+        <button onclick="patientLogout()"
+                class="px-4 py-2 rounded-xl text-xs font-medium text-white"
+                style="background:var(--color-primary)">
+          <i class="fa-solid fa-right-from-bracket mr-1"></i>Logout
+        </button>
+      </div>
+    </div>
+    <div class="max-w-6xl mx-auto px-5 pb-3 flex gap-1 overflow-x-auto">
+      <a href="/patient/dashboard/"    class="pnav-link"><i class="fa-solid fa-gauge-high mr-1.5"></i>Dashboard</a>
+      <a href="/patient/appointments/" class="pnav-link"><i class="fa-solid fa-calendar-check mr-1.5"></i>Appointments</a>
+      <a href="/patient/reports/"      class="pnav-link active"><i class="fa-solid fa-file-waveform mr-1.5"></i>Reports</a>
+      <a href="/patient/profile/"      class="pnav-link"><i class="fa-solid fa-circle-user mr-1.5"></i>Profile</a>
+    </div>
+  </header>
+
+  <!-- ═══ Detail Modal ═══ -->
+  <div id="detail-modal" class="modal-overlay">
+    <div class="modal-box">
+      <div class="flex items-center justify-between mb-5">
+        <h3 class="font-bold text-sm">Report Details</h3>
+        <button onclick="closeDetailModal()"
+                class="w-8 h-8 rounded-lg border flex items-center justify-center transition-colors hover:text-red-500"
+                style="border-color:var(--color-border);color:var(--color-muted)">
+          <i class="fa-solid fa-xmark text-sm"></i>
+        </button>
+      </div>
+      <div id="detail-content"></div>
+    </div>
+  </div>
+
+  <!-- ═══ Main ═══ -->
+  <main class="max-w-6xl mx-auto p-5 md:p-6 space-y-5">
+
+    <!-- Stats -->
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 fade-up">
+      <div class="card px-4 py-3 flex items-center gap-3">
+        <div class="w-9 h-9 rounded-xl flex items-center justify-center"
+             style="background:color-mix(in srgb,var(--color-primary) 10%,transparent)">
+          <i class="fa-solid fa-file-waveform text-sm" style="color:var(--color-primary)"></i>
+        </div>
+        <div>
+          <div id="count-total" class="font-bold text-lg">0</div>
+          <div class="text-xs" style="color:var(--color-muted)">Total</div>
+        </div>
+      </div>
+      <div class="card px-4 py-3 flex items-center gap-3">
+        <div class="w-9 h-9 rounded-xl flex items-center justify-center"
+             style="background:color-mix(in srgb,var(--color-warning) 10%,transparent)">
+          <i class="fa-solid fa-clock text-sm" style="color:var(--color-warning)"></i>
+        </div>
+        <div>
+          <div id="count-pending" class="font-bold text-lg">0</div>
+          <div class="text-xs" style="color:var(--color-muted)">Pending</div>
+        </div>
+      </div>
+      <div class="card px-4 py-3 flex items-center gap-3">
+        <div class="w-9 h-9 rounded-xl flex items-center justify-center"
+             style="background:color-mix(in srgb,var(--color-success) 10%,transparent)">
+          <i class="fa-solid fa-circle-check text-sm" style="color:var(--color-success)"></i>
+        </div>
+        <div>
+          <div id="count-verified" class="font-bold text-lg">0</div>
+          <div class="text-xs" style="color:var(--color-muted)">Verified</div>
+        </div>
+      </div>
+      <div class="card px-4 py-3 flex items-center gap-3">
+        <div class="w-9 h-9 rounded-xl flex items-center justify-center"
+             style="background:color-mix(in srgb,var(--color-error) 10%,transparent)">
+          <i class="fa-solid fa-circle-xmark text-sm" style="color:var(--color-error)"></i>
+        </div>
+        <div>
+          <div id="count-rejected" class="font-bold text-lg">0</div>
+          <div class="text-xs" style="color:var(--color-muted)">Rejected</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="flex flex-col sm:flex-row gap-3 fade-up d1">
+      <div class="flex gap-2 flex-wrap">
+        <button class="filter-tab active" onclick="setFilter('all',this)">All</button>
+        <button class="filter-tab" onclick="setFilter('pending_review',this)"><i class="fa-solid fa-clock mr-1"></i>Pending</button>
+        <button class="filter-tab" onclick="setFilter('verified',this)"><i class="fa-solid fa-circle-check mr-1"></i>Verified</button>
+        <button class="filter-tab" onclick="setFilter('rejected',this)"><i class="fa-solid fa-circle-xmark mr-1"></i>Rejected</button>
+      </div>
+      <div class="relative ml-auto">
+        <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-xs"
+           style="color:var(--color-muted)"></i>
+        <input type="text" placeholder="Search test or category…" class="input-field pl-9"
+               style="width:220px" oninput="setSearch(this.value)" />
+      </div>
+    </div>
+
+    <!-- Reports grid -->
+    <div id="reports-grid" class="grid sm:grid-cols-2 gap-4 fade-up d2"></div>
+  </main>
+
+  <div id="toast"><i id="toast-icon"></i><span id="toast-msg"></span></div>
+
+  <!-- ═══ Script ═══ -->
+  <script type="module">
+    import { auth, db }    from "../../assets/js/firebase-config.js";
+    import { guardPage }   from "../../assets/js/auth-guard.js";
+    import { logActivity } from "../../assets/js/activity-logger.js";
+    import {
+      doc, getDoc, getDocs, collection, query, where
+    } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-firestore.js";
+    import { signOut } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-auth.js";
+
+    let currentUser  = null;
+    let allReports   = [];
+    let filtered     = [];
+    let activeFilter = "all";
+    let activeSearch = "";
+
+    const STATUS_MAP = {
+      pending_review: { label:"Pending Review", color:"var(--color-warning)", icon:"fa-clock" },
+      verified:       { label:"Verified",        color:"var(--color-success)", icon:"fa-circle-check" },
+      rejected:       { label:"Rejected",        color:"var(--color-error)",   icon:"fa-circle-xmark" },
+    };
+
+    function statusBadge(s) {
+      const st = STATUS_MAP[(s||"").toLowerCase()] || { label:s||"Unknown", color:"var(--color-muted)", icon:"fa-circle-question" };
+      return `<span class="badge" style="background:color-mix(in srgb,${st.color} 14%,transparent);color:${st.color}">
+                <i class="fa-solid ${st.icon}" style="font-size:0.6rem"></i>${st.label}</span>`;
+    }
+
+    function fmtDate(v) {
+      if (!v) return "—";
+      const d = v.toDate ? v.toDate() : new Date(v);
+      return isNaN(d) ? "—" : d.toLocaleDateString("en-IN",{day:"2-digit",month:"short",year:"numeric"});
+    }
+
+    function categoryIcon(cat) {
+      const map = {
+        "hematology":     "fa-droplet",
+        "biochemistry":   "fa-flask-vial",
+        "microbiology":   "fa-virus",
+        "radiology":      "fa-x-ray",
+        "pathology":      "fa-microscope",
+        "cardiology":     "fa-heart-pulse",
+        "urology":        "fa-vial",
+      };
+      return map[(cat||"").toLowerCase()] || "fa-file-medical";
+    }
+
+    function categoryColor(cat) {
+      const map = {
+        "hematology":     "#ef4444",
+        "biochemistry":   "#f59e0b",
+        "microbiology":   "#10b981",
+        "radiology":      "#8b5cf6",
+        "pathology":      "#ec4899",
+        "cardiology":     "#2563eb",
+        "urology":        "#0ea5e9",
+      };
+      return map[(cat||"").toLowerCase()] || "var(--color-primary)";
+    }
+
+    /* ── Theme ────────────────────────────────────── */
+    const htmlEl = document.getElementById("html-root");
+    function applyTheme(dark) {
+      htmlEl.setAttribute("data-theme", dark ? "dark" : "light");
+      document.getElementById("theme-icon").className = dark ? "fa-solid fa-sun text-sm" : "fa-solid fa-moon text-sm";
+      localStorage.setItem("theme", dark ? "dark" : "light");
+    }
+    applyTheme(localStorage.getItem("theme") === "dark");
+    document.getElementById("theme-toggle").addEventListener("click", () =>
+      applyTheme(htmlEl.getAttribute("data-theme") !== "dark"));
+
+    /* ── Settings ──────────────────────────────────── */
+    async function loadSettings() {
+      try {
+        const snap = await getDoc(doc(db, "settings", "hospital"));
+        if (!snap.exists()) return;
+        const s = snap.data(), t = s.theme || {}, r = document.documentElement;
+        if (t.primary)     r.style.setProperty("--color-primary",      t.primary);
+        if (t.primaryDark) r.style.setProperty("--color-primary-dark", t.primaryDark);
+        if (t.secondary)   r.style.setProperty("--color-secondary",    t.secondary);
+        if (t.fontFamily)  r.style.setProperty("--font-family",        t.fontFamily);
+        document.getElementById("hospital-name").textContent = s.hospitalName || "MediCore";
+        document.title = `My Reports — ${s.hospitalName || "MediCore"}`;
+        if (s.logoUrl) {
+          const img = document.getElementById("hdr-logo-img");
+          img.src = s.logoUrl; img.classList.remove("hidden");
+          document.getElementById("hdr-logo-icon").classList.add("hidden");
+        }
+      } catch(e) { console.error("Settings:", e); }
+    }
+
+    /* ── Toast ─────────────────────────────────────── */
+    window.showToast = function(msg, type="info") {
+      const t = document.getElementById("toast");
+      const icons = { success:"fa-solid fa-circle-check", error:"fa-solid fa-circle-exclamation", info:"fa-solid fa-circle-info" };
+      document.getElementById("toast-msg").textContent = msg;
+      document.getElementById("toast-icon").className  = icons[type]||icons.info;
+      t.className = `show ${type}`;
+      clearTimeout(window._tt);
+      window._tt = setTimeout(() => { t.className = type; }, 3500);
+    };
+
+    /* ── Load reports ──────────────────────────────── */
+    async function loadReports() {
+      const snap = await getDocs(query(
+        collection(db, "reports"),
+        where("patientId", "==", currentUser.uid)
+      ));
+      allReports = snap.docs.map(d => ({ id:d.id, ...d.data() }));
+      allReports.sort((a,b) => (b.uploadedAt?.seconds||0) - (a.uploadedAt?.seconds||0));
+
+      updateCounts();
+      applyFilters();
+    }
+
+    function updateCounts() {
+      document.getElementById("count-total").textContent    = allReports.length;
+      document.getElementById("count-pending").textContent  = allReports.filter(r => r.status === "pending_review").length;
+      document.getElementById("count-verified").textContent = allReports.filter(r => r.status === "verified").length;
+      document.getElementById("count-rejected").textContent = allReports.filter(r => r.status === "rejected").length;
+    }
+
+    /* ── Filters ───────────────────────────────────── */
+    window.setFilter = function(f, btn) {
+      activeFilter = f;
+      document.querySelectorAll(".filter-tab").forEach(t => t.classList.remove("active"));
+      btn.classList.add("active");
+      applyFilters();
+    };
+    window.setSearch = function(q) { activeSearch = q.toLowerCase(); applyFilters(); };
+
+    function applyFilters() {
+      filtered = [...allReports];
+      if (activeFilter !== "all") filtered = filtered.filter(r => r.status === activeFilter);
+      if (activeSearch) {
+        filtered = filtered.filter(r =>
+          (r.testName||"").toLowerCase().includes(activeSearch) ||
+          (r.category||"").toLowerCase().includes(activeSearch)
+        );
+      }
+      renderGrid();
+    }
+
+    /* ── Render reports grid ───────────────────────── */
+    function renderGrid() {
+      const el = document.getElementById("reports-grid");
+      if (!filtered.length) {
+        el.innerHTML = `
+          <div class="col-span-full card p-10 text-center">
+            <div class="w-14 h-14 rounded-2xl mx-auto mb-3 flex items-center justify-center"
+                 style="background:color-mix(in srgb,var(--color-secondary) 8%,transparent)">
+              <i class="fa-solid fa-file-circle-xmark text-xl" style="color:var(--color-secondary)"></i>
+            </div>
+            <p class="font-semibold text-sm">No reports found</p>
+            <p class="text-xs mt-1" style="color:var(--color-muted)">Reports will appear here once uploaded by lab staff.</p>
+          </div>`;
+        return;
+      }
+
+      el.innerHTML = filtered.map(r => {
+        const icon  = categoryIcon(r.category);
+        const color = categoryColor(r.category);
+        return `
+          <div class="report-card" onclick="viewReport('${r.id}')">
+            <div class="flex items-start gap-3">
+              <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+                   style="background:color-mix(in srgb,${color} 12%,transparent)">
+                <i class="fa-solid ${icon} text-sm" style="color:${color}"></i>
+              </div>
+              <div class="flex-1 min-w-0">
+                <p class="text-sm font-semibold truncate">${r.testName || "Lab Report"}</p>
+                <p class="text-xs mt-0.5" style="color:var(--color-muted)">
+                  ${r.category || "General"} · ${fmtDate(r.uploadedAt || r.testDate)}
+                </p>
+              </div>
+              ${statusBadge(r.status)}
+            </div>
+            ${r.summary ? `<p class="text-xs mt-3 line-clamp-2" style="color:var(--color-muted)">${r.summary}</p>` : ""}
+          </div>`;
+      }).join("");
+    }
+
+    /* ── View report detail ────────────────────────── */
+    window.viewReport = function(id) {
+      const r = allReports.find(x => x.id === id);
+      if (!r) return;
+      const icon  = categoryIcon(r.category);
+      const color = categoryColor(r.category);
+
+      let testsHtml = "";
+      if (r.tests && Array.isArray(r.tests) && r.tests.length) {
+        testsHtml = `
+          <div class="mt-4">
+            <p class="text-xs font-semibold mb-2" style="color:var(--color-muted)">TEST RESULTS</p>
+            <div class="space-y-2">
+              ${r.tests.map(t => `
+                <div class="flex items-center justify-between p-2.5 rounded-lg"
+                     style="background:var(--color-bg)">
+                  <span class="text-sm">${t.name || t.testName || "—"}</span>
+                  <div class="text-right">
+                    <span class="text-sm font-semibold">${t.value || t.result || "—"}</span>
+                    ${t.unit ? `<span class="text-xs ml-1" style="color:var(--color-muted)">${t.unit}</span>` : ""}
+                    ${t.normalRange ? `<p class="text-[10px]" style="color:var(--color-muted)">Ref: ${t.normalRange}</p>` : ""}
+                  </div>
+                </div>`).join("")}
+            </div>
+          </div>`;
+      }
+
+      document.getElementById("detail-content").innerHTML = `
+        <div class="flex items-center gap-3 mb-5 p-3 rounded-xl"
+             style="background:color-mix(in srgb,${color} 8%,transparent)">
+          <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+               style="background:color-mix(in srgb,${color} 15%,transparent)">
+            <i class="fa-solid ${icon} text-sm" style="color:${color}"></i>
+          </div>
+          <div class="flex-1">
+            <p class="text-sm font-semibold">${r.testName || "Lab Report"}</p>
+            <p class="text-xs" style="color:var(--color-muted)">${r.category || "General"}</p>
+          </div>
+          ${statusBadge(r.status)}
+        </div>
+
+        <div class="space-y-3 text-sm">
+          <div class="flex justify-between"><span style="color:var(--color-muted)">Test Date</span><span class="font-medium">${fmtDate(r.testDate || r.uploadedAt)}</span></div>
+          <div class="flex justify-between"><span style="color:var(--color-muted)">Uploaded</span><span class="font-medium">${fmtDate(r.uploadedAt)}</span></div>
+          ${r.labTechName ? `<div class="flex justify-between"><span style="color:var(--color-muted)">Lab Tech</span><span class="font-medium">${r.labTechName}</span></div>` : ""}
+          ${r.verifiedBy ? `<div class="flex justify-between"><span style="color:var(--color-muted)">Verified By</span><span class="font-medium">${r.verifiedBy}</span></div>` : ""}
+        </div>
+
+        ${r.summary ? `
+        <div class="mt-4 p-3 rounded-xl" style="background:var(--color-bg)">
+          <p class="text-xs font-semibold mb-1" style="color:var(--color-muted)">SUMMARY</p>
+          <p class="text-sm">${r.summary}</p>
+        </div>` : ""}
+
+        ${testsHtml}
+
+        ${r.doctorRemarks ? `
+        <div class="mt-4 p-3 rounded-xl" style="background:color-mix(in srgb,var(--color-primary) 5%,transparent);border:1px solid color-mix(in srgb,var(--color-primary) 15%,transparent)">
+          <p class="text-xs font-semibold mb-1" style="color:var(--color-primary)">
+            <i class="fa-solid fa-user-doctor mr-1"></i>DOCTOR'S REMARKS
+          </p>
+          <p class="text-sm">${r.doctorRemarks}</p>
+        </div>` : ""}
+
+        ${r.fileUrl ? `
+        <a href="${r.fileUrl}" target="_blank" rel="noopener noreferrer"
+           class="mt-5 w-full py-2.5 rounded-xl text-sm font-semibold text-white flex items-center justify-center gap-2"
+           style="background:var(--color-primary);text-decoration:none">
+          <i class="fa-solid fa-download"></i> Download Report
+        </a>` : ""}
+      `;
+      document.getElementById("detail-modal").classList.add("show");
+    };
+
+    window.closeDetailModal = function() {
+      document.getElementById("detail-modal").classList.remove("show");
+    };
+
+    /* ── Logout ────────────────────────────────────── */
+    window.patientLogout = async function() {
+      await signOut(auth);
+      window.location.href = "/auth/patient-login/";
+    };
+
+    /* ── Init ──────────────────────────────────────── */
+    await loadSettings();
+
+    guardPage(["patient"], async (user, userData) => {
+      currentUser = user;
+      await loadReports();
+      logActivity("VIEW_REPORTS", { role:"patient" }).catch(()=>{});
+      const loader = document.getElementById("page-loader");
+      loader.classList.add("hidden");
+      setTimeout(() => loader.remove(), 450);
+    });
+  </script>
+</body>
+</html>

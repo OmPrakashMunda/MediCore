@@ -202,6 +202,8 @@
     <a href="/doctor/appointments/" class="nav-link"><i class="fa-solid fa-calendar-check"></i> Appointments</a>
     <a href="/doctor/reports/"      class="nav-link"><i class="fa-solid fa-file-waveform"></i> Lab Reports</a>
     <a href="/doctor/patients/"     class="nav-link"><i class="fa-solid fa-users"></i> My Patients</a>
+    <a href="/doctor/ai-tools/"      class="nav-link"><i class="fa-solid fa-brain"></i> AI Tools</a>
+    <a href="/doctor/predict/"       class="nav-link"><i class="fa-solid fa-brain"></i> Tumor Predict</a>
     <div class="pt-3 pb-1 px-3">
       <p class="text-[10px] font-semibold uppercase tracking-wider"
          style="color:var(--color-muted)">Account</p>
@@ -786,7 +788,7 @@
 
       setTimeout(async () => {
         await signOut(auth);
-        window.location.href = "/auth/staff-login/";
+        window.location.href = "/auth/staff-login/?role=doctor";
       }, 1800);
 
     } catch(e) {
@@ -886,7 +888,7 @@
   // ── Logout ─────────────────────────────────────────────────────────
   window.doctorLogout = async function() {
     await signOut(auth);
-    window.location.href = "/auth/staff-login/";
+    window.location.href = "/auth/staff-login/?role=doctor";
   };
 
   // ── Init ───────────────────────────────────────────────────────────

@@ -309,295 +309,323 @@
     </div>
   </div>
 
+<script type="module">
+  import { auth, db } from "../../assets/js/firebase-config.js";
+  import { logActivity } from "../../assets/js/activity-logger.js";
+  import {
+    onAuthStateChanged,
+    PhoneAuthProvider,
+    RecaptchaVerifier,
+    updatePhoneNumber
+  } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-auth.js";
+  import {
+    doc, getDoc, updateDoc, serverTimestamp
+  } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-firestore.js";
 
-  <script type="module">
-    import { auth, db } from "../../assets/js/firebase-config.js";
-    import { logActivity } from "../../assets/js/activity-logger.js";
-    import {
-      onAuthStateChanged,
-      PhoneAuthProvider,
-      RecaptchaVerifier,
-      signInWithCredential,
-      updatePhoneNumber
-    } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-auth.js";
-    import {
-      doc, getDoc, updateDoc, serverTimestamp
-    } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-firestore.js";
+  // ── Countries list ───────────────────────────────────────────────
+  const COUNTRIES = [
+    { name: "India",          code: "+91",  flag: "🇮🇳" },
+    { name: "United States",  code: "+1",   flag: "🇺🇸" },
+    { name: "United Kingdom", code: "+44",  flag: "🇬🇧" },
+    { name: "Australia",      code: "+61",  flag: "🇦🇺" },
+    { name: "Canada",         code: "+1",   flag: "🇨🇦" },
+    { name: "Germany",        code: "+49",  flag: "🇩🇪" },
+    { name: "France",         code: "+33",  flag: "🇫🇷" },
+    { name: "UAE",            code: "+971", flag: "🇦🇪" },
+    { name: "Singapore",      code: "+65",  flag: "🇸🇬" },
+    { name: "Bangladesh",     code: "+880", flag: "🇧🇩" },
+    { name: "Nepal",          code: "+977", flag: "🇳🇵" },
+    { name: "Sri Lanka",      code: "+94",  flag: "🇱🇰" },
+  ];
 
-    // ── Countries list ───────────────────────────────────────────────
-    const COUNTRIES = [
-      { name: "India",          code: "+91",  flag: "🇮🇳" },
-      { name: "United States",  code: "+1",   flag: "🇺🇸" },
-      { name: "United Kingdom", code: "+44",  flag: "🇬🇧" },
-      { name: "Australia",      code: "+61",  flag: "🇦🇺" },
-      { name: "Canada",         code: "+1",   flag: "🇨🇦" },
-      { name: "Germany",        code: "+49",  flag: "🇩🇪" },
-      { name: "France",         code: "+33",  flag: "🇫🇷" },
-      { name: "UAE",            code: "+971", flag: "🇦🇪" },
-      { name: "Singapore",      code: "+65",  flag: "🇸🇬" },
-      { name: "Bangladesh",     code: "+880", flag: "🇧🇩" },
-      { name: "Nepal",          code: "+977", flag: "🇳🇵" },
-      { name: "Sri Lanka",      code: "+94",  flag: "🇱🇰" },
-    ];
+  let selectedCountryCode = "+91";
+  let verificationId      = null;   // from PhoneAuthProvider.verifyPhoneNumber
+  let lastFullPhone       = "";     // stored for resend
+  let timerInterval       = null;
+  let currentUser         = null;
 
-    let selectedCountryCode = "+91";
-    let confirmationResult  = null;
-    let timerInterval       = null;
-    let currentUser         = null;
+  // ── Guard: must be logged in ─────────────────────────────────────
+  onAuthStateChanged(auth, async (user) => {
+    if (!user) { window.location.href = "/auth/patient-login/"; return; }
 
-    // ── Guard: must be logged in ─────────────────────────────────────
-    onAuthStateChanged(auth, async (user) => {
-      if (!user) { window.location.href = "/auth/patient-login/"; return; }
+    currentUser = user;
+    const snap = await getDoc(doc(db, "users", user.uid));
+    if (!snap.exists()) { window.location.href = "/auth/patient-login/"; return; }
 
-      currentUser = user;
-      const snap = await getDoc(doc(db, "users", user.uid));
-      if (!snap.exists()) { window.location.href = "/auth/patient-login/"; return; }
+    const data = snap.data();
+    if (data.role !== "patient") { window.location.href = "/auth/patient-login/"; return; }
+    if (data.phoneVerified)      { window.location.href = "/patient/dashboard/"; return; }
+  });
 
-      const data = snap.data();
-      if (data.role !== "patient") { window.location.href = "/auth/patient-login/"; return; }
+  // ── Load settings ────────────────────────────────────────────────
+  async function loadSettings() {
+    try {
+      const snap = await getDoc(doc(db, "settings", "hospital"));
+      if (!snap.exists()) return;
+      const s = snap.data(); const theme = s.theme || {};
+      const root = document.documentElement;
+      if (theme.primary)     root.style.setProperty("--color-primary",      theme.primary);
+      if (theme.primaryDark) root.style.setProperty("--color-primary-dark", theme.primaryDark);
+      if (theme.secondary)   root.style.setProperty("--color-secondary",    theme.secondary);
+      if (s.hospitalName)    document.getElementById("page-title").textContent = `Verify Phone — ${s.hospitalName}`;
+    } catch (e) { console.warn("Settings:", e.code); }
+  }
 
-      // Already verified
-      if (data.phoneVerified) { window.location.href = "/patient/dashboard/"; return; }
+  // ── reCAPTCHA ────────────────────────────────────────────────────
+  function setupRecaptcha() {
+    if (window.recaptchaVerifier) return;
+    window.recaptchaVerifier = new RecaptchaVerifier(auth, "recaptcha-container", {
+      size: "invisible",
+      callback: () => {},
+      "expired-callback": () => {
+        window.recaptchaVerifier.clear();
+        window.recaptchaVerifier = null;
+        setupRecaptcha(); // auto re-init on expiry
+      }
     });
+  }
 
-    // ── Load settings ────────────────────────────────────────────────
-    async function loadSettings() {
-      try {
-        const snap = await getDoc(doc(db, "settings", "hospital"));
-        if (!snap.exists()) return;
-        const s = snap.data(); const theme = s.theme || {};
-        const root = document.documentElement;
-        if (theme.primary)    root.style.setProperty("--color-primary",      theme.primary);
-        if (theme.primaryDark)root.style.setProperty("--color-primary-dark", theme.primaryDark);
-        if (theme.secondary)  root.style.setProperty("--color-secondary",    theme.secondary);
-        if (s.hospitalName)   document.getElementById("page-title").textContent = `Verify Phone — ${s.hospitalName}`;
-      } catch (e) { console.error(e); }
-    }
+  // ── Render country list ──────────────────────────────────────────
+  function renderCountries(list) {
+    const el = document.getElementById("country-list");
+    el.innerHTML = list.map(c => `
+      <div class="flex items-center gap-3 px-4 py-2.5 cursor-pointer text-sm transition-colors"
+           style="color:var(--color-text)"
+           onmouseover="this.style.background='color-mix(in srgb, var(--color-primary) 8%, transparent)'"
+           onmouseout="this.style.background=''"
+           onclick="selectCountry('${c.code}','${c.name}')">
+        <span>${c.flag}</span>
+        <span class="flex-1">${c.name}</span>
+        <span style="color:var(--color-muted)">${c.code}</span>
+      </div>
+    `).join('');
+  }
+  renderCountries(COUNTRIES);
 
-    // ── Render country list ──────────────────────────────────────────
-    function renderCountries(list) {
-      const el = document.getElementById("country-list");
-      el.innerHTML = list.map(c => `
-        <div class="flex items-center gap-3 px-4 py-2.5 cursor-pointer hover:bg-opacity-10 text-sm transition-colors"
-             style="color:var(--color-text)"
-             onmouseover="this.style.background='color-mix(in srgb, var(--color-primary) 8%, transparent)'"
-             onmouseout="this.style.background=''"
-             onclick="selectCountry('${c.code}','${c.name}')">
-          <span>${c.flag}</span>
-          <span class="flex-1">${c.name}</span>
-          <span style="color:var(--color-muted)">${c.code}</span>
-        </div>
-      `).join('');
-    }
-    renderCountries(COUNTRIES);
+  window.filterCountries = (q) => {
+    renderCountries(COUNTRIES.filter(c =>
+      c.name.toLowerCase().includes(q.toLowerCase()) || c.code.includes(q)
+    ));
+  };
 
-    window.filterCountries = (q) => {
-      renderCountries(COUNTRIES.filter(c =>
-        c.name.toLowerCase().includes(q.toLowerCase()) || c.code.includes(q)
-      ));
-    };
+  window.selectCountry = (code) => {
+    selectedCountryCode = code;
+    document.getElementById("selected-code").textContent = code;
+    document.getElementById("country-dropdown").classList.add("hidden");
+  };
 
-    window.selectCountry = (code, name) => {
-      selectedCountryCode = code;
-      document.getElementById("selected-code").textContent = code;
+  window.toggleCountryDropdown = () => {
+    const dd = document.getElementById("country-dropdown");
+    dd.classList.toggle("hidden");
+    if (!dd.classList.contains("hidden")) document.getElementById("country-search").focus();
+  };
+
+  document.addEventListener("click", (e) => {
+    if (!e.target.closest("#country-code-btn") && !e.target.closest("#country-dropdown")) {
       document.getElementById("country-dropdown").classList.add("hidden");
-    };
-
-    window.toggleCountryDropdown = () => {
-      const dd = document.getElementById("country-dropdown");
-      dd.classList.toggle("hidden");
-      if (!dd.classList.contains("hidden")) {
-        document.getElementById("country-search").focus();
-      }
-    };
-
-    // Close dropdown on outside click
-    document.addEventListener("click", (e) => {
-      if (!e.target.closest("#country-code-btn") && !e.target.closest("#country-dropdown")) {
-        document.getElementById("country-dropdown").classList.add("hidden");
-      }
-    });
-
-    // ── reCAPTCHA setup ──────────────────────────────────────────────
-    function setupRecaptcha() {
-      window.recaptchaVerifier = new RecaptchaVerifier(auth, "recaptcha-container", {
-        size: "invisible",
-        callback: () => {}
-      });
     }
+  });
 
-    // ── Send OTP ─────────────────────────────────────────────────────
-    window.sendOTP = async function () {
-      const phone = document.getElementById("phone-input").value.trim();
-      if (phone.length < 7) { showToast("Enter a valid phone number.", "error"); return; }
+  // ── Send OTP ─────────────────────────────────────────────────────
+  async function sendOTPToPhone(fullPhone) {
+    const btn = document.getElementById("send-otp-btn");
+    const txt = document.getElementById("send-otp-text");
+    const spn = document.getElementById("send-otp-spinner");
 
-      const fullPhone = selectedCountryCode + phone;
-      const btn = document.getElementById("send-otp-btn");
-      const txt = document.getElementById("send-otp-text");
-      const spn = document.getElementById("send-otp-spinner");
+    btn.disabled = true;
+    txt.textContent = "Sending…";
+    spn.classList.remove("hidden");
 
-      btn.disabled = true; txt.textContent = "Sending…"; spn.classList.remove("hidden");
+    try {
+      setupRecaptcha();
 
-      try {
-        if (!window.recaptchaVerifier) setupRecaptcha();
+      // Use verifyPhoneNumber — does NOT sign in, keeps Google session intact
+      const provider = new PhoneAuthProvider(auth);
+      verificationId = await provider.verifyPhoneNumber(fullPhone, window.recaptchaVerifier);
+      lastFullPhone = fullPhone;
 
-        const provider = new PhoneAuthProvider(auth);
-        confirmationResult = await provider.verifyPhoneNumber(fullPhone, window.recaptchaVerifier);
+      document.getElementById("panel-phone").style.display = "none";
+      document.getElementById("panel-otp").style.display   = "block";
+      document.getElementById("otp-phone-display").textContent = fullPhone;
 
-        // Switch panels
-        document.getElementById("panel-phone").style.display = "none";
-        document.getElementById("panel-otp").style.display   = "block";
-        document.getElementById("otp-phone-display").textContent = fullPhone;
+      startResendTimer();
+      setupOTPBoxes();
+      showToast("OTP sent successfully!", "success");
 
-        startResendTimer();
-        setupOTPBoxes();
-        showToast("OTP sent successfully!", "success");
-
-      } catch (err) {
-        console.error(err);
-        showToast(err.message || "Failed to send OTP.", "error");
-        btn.disabled = false; txt.textContent = "Send OTP"; spn.classList.add("hidden");
-        // Reset recaptcha
-        if (window.recaptchaVerifier) { window.recaptchaVerifier.clear(); window.recaptchaVerifier = null; }
+    } catch (err) {
+      console.error(err);
+      if (window.recaptchaVerifier) {
+        window.recaptchaVerifier.clear();
+        window.recaptchaVerifier = null;
       }
-    };
+      const messages = {
+        "auth/invalid-app-credential": "reCAPTCHA failed. Please refresh and try again.",
+        "auth/invalid-phone-number":   "Invalid phone number format.",
+        "auth/too-many-requests":      "Too many attempts. Please try later.",
+        "auth/captcha-check-failed":   "reCAPTCHA check failed. Try again.",
+      };
+      showToast(messages[err.code] || err.message || "Failed to send OTP.", "error");
+      btn.disabled = false;
+      txt.textContent = "Send OTP";
+      spn.classList.add("hidden");
+    }
+  }
 
-    // ── Verify OTP ───────────────────────────────────────────────────
-    window.verifyOTP = async function () {
-      const boxes = document.querySelectorAll(".otp-box");
-      const otp   = Array.from(boxes).map(b => b.value).join("");
+  window.sendOTP = async function () {
+    const phone = document.getElementById("phone-input").value.trim();
+    if (phone.length < 7) { showToast("Enter a valid phone number.", "error"); return; }
+    await sendOTPToPhone(selectedCountryCode + phone);
+  };
 
-      if (otp.length < 6) { showToast("Enter all 6 digits.", "error"); return; }
+  // ── Verify OTP ───────────────────────────────────────────────────
+  window.verifyOTP = async function () {
+    const boxes = document.querySelectorAll(".otp-box");
+    const otp   = Array.from(boxes).map(b => b.value).join("");
+    if (otp.length < 6) { showToast("Enter all 6 digits.", "error"); return; }
 
-      const btn = document.getElementById("verify-otp-btn");
-      const txt = document.getElementById("verify-otp-text");
-      const spn = document.getElementById("verify-otp-spinner");
-      btn.disabled = true; txt.textContent = "Verifying…"; spn.classList.remove("hidden");
+    const btn = document.getElementById("verify-otp-btn");
+    const txt = document.getElementById("verify-otp-text");
+    const spn = document.getElementById("verify-otp-spinner");
+    btn.disabled = true;
+    txt.textContent = "Verifying…";
+    spn.classList.remove("hidden");
 
-      try {
-        const credential = PhoneAuthProvider.credential(confirmationResult, otp);
-        await updatePhoneNumber(currentUser, credential);
+    try {
+      // Build credential from verificationId + OTP, then link to Google account
+      const credential = PhoneAuthProvider.credential(verificationId, otp);
+      await updatePhoneNumber(currentUser, credential);
 
-        // Mark phone verified in Firestore
-        await updateDoc(doc(db, "users", currentUser.uid), {
-          phoneVerified: true,
-          phone: currentUser.phoneNumber,
-          updatedAt: serverTimestamp()
-        });
+      await updateDoc(doc(db, "users", currentUser.uid), {
+        phoneVerified: true,
+        phone: lastFullPhone,
+        updatedAt: serverTimestamp()
+      });
 
-        await logActivity("PHONE_VERIFIED", {});
+      await logActivity("PHONE_VERIFIED", {}).catch(() => {});
 
-        // Update step UI
-        document.getElementById("dot-2").className = "step-dot done";
-        document.getElementById("dot-2").innerHTML = '<i class="fa-solid fa-check text-[10px]"></i>';
-        document.getElementById("dot-3").className = "step-dot active";
-        document.getElementById("line-3").classList.add("done");
+      document.getElementById("dot-2").className = "step-dot done";
+      document.getElementById("dot-2").innerHTML = '<i class="fa-solid fa-check text-[10px]"></i>';
+      document.getElementById("dot-3").className = "step-dot active";
+      document.getElementById("line-3").classList.add("done");
 
-        showToast("Phone verified! Redirecting…", "success");
+      showToast("Phone verified! Redirecting…", "success");
+      setTimeout(() => { window.location.href = "/patient/dashboard/"; }, 1200);
 
-        setTimeout(() => {
-          window.location.href = "/patient/dashboard/";
-        }, 1200);
+    } catch (err) {
+      console.error(err);
+      const messages = {
+        "auth/invalid-verification-code": "Wrong OTP. Please try again.",
+        "auth/code-expired":              "OTP expired. Please resend.",
+        "auth/credential-already-in-use": "This phone is linked to another account.",
+      };
+      showToast(messages[err.code] || "Verification failed.", "error");
+      btn.disabled = false;
+      txt.textContent = "Verify OTP";
+      spn.classList.add("hidden");
+    }
+  };
 
-      } catch (err) {
-        console.error(err);
-        const msg = err.code === "auth/invalid-verification-code"
-          ? "Wrong OTP. Please try again."
-          : err.code === "auth/code-expired"
-          ? "OTP expired. Please resend."
-          : "Verification failed.";
-        showToast(msg, "error");
-        btn.disabled = false; txt.textContent = "Verify OTP"; spn.classList.add("hidden");
-      }
-    };
+  // ── Resend OTP ───────────────────────────────────────────────────
+  window.resendOTP = async function () {
+    document.getElementById("resend-btn").classList.add("hidden");
+    document.getElementById("resend-timer").classList.remove("hidden");
+    // ✅ uses stored lastFullPhone — not phone input (which is hidden)
+    if (window.recaptchaVerifier) {
+      window.recaptchaVerifier.clear();
+      window.recaptchaVerifier = null;
+    }
+    await sendOTPToPhone(lastFullPhone);
+  };
 
-    // ── Resend OTP ───────────────────────────────────────────────────
-    window.resendOTP = async function () {
-      document.getElementById("resend-btn").classList.add("hidden");
-      document.getElementById("resend-timer").classList.remove("hidden");
-      if (window.recaptchaVerifier) { window.recaptchaVerifier.clear(); window.recaptchaVerifier = null; }
-      await sendOTP();
-    };
+  window.changeNumber = () => {
+    document.getElementById("panel-otp").style.display   = "none";
+    document.getElementById("panel-phone").style.display = "block";
+    clearInterval(timerInterval);
+    verificationId = null;
+  };
 
-    window.changeNumber = () => {
-      document.getElementById("panel-otp").style.display   = "none";
-      document.getElementById("panel-phone").style.display = "block";
-      clearInterval(timerInterval);
-    };
-
-    // ── Resend countdown ─────────────────────────────────────────────
-    function startResendTimer() {
-      let count = 30;
+  // ── Resend countdown ─────────────────────────────────────────────
+  function startResendTimer() {
+    let count = 30;
+    document.getElementById("timer-count").textContent = count;
+    document.getElementById("resend-timer").classList.remove("hidden");
+    document.getElementById("resend-btn").classList.add("hidden");
+    clearInterval(timerInterval);
+    timerInterval = setInterval(() => {
+      count--;
       document.getElementById("timer-count").textContent = count;
-      document.getElementById("resend-timer").classList.remove("hidden");
-      document.getElementById("resend-btn").classList.add("hidden");
+      if (count <= 0) {
+        clearInterval(timerInterval);
+        document.getElementById("resend-timer").classList.add("hidden");
+        document.getElementById("resend-btn").classList.remove("hidden");
+      }
+    }, 1000);
+  }
 
-      clearInterval(timerInterval);
-      timerInterval = setInterval(() => {
-        count--;
-        document.getElementById("timer-count").textContent = count;
-        if (count <= 0) {
-          clearInterval(timerInterval);
-          document.getElementById("resend-timer").classList.add("hidden");
-          document.getElementById("resend-btn").classList.remove("hidden");
-        }
-      }, 1000);
-    }
-
-    // ── OTP box auto-focus logic ─────────────────────────────────────
-    function setupOTPBoxes() {
-      const boxes = document.querySelectorAll(".otp-box");
-      boxes.forEach((box, i) => {
-        box.value = "";
-        box.addEventListener("input", () => {
-          box.classList.toggle("filled", box.value !== "");
-          if (box.value && i < boxes.length - 1) boxes[i + 1].focus();
-        });
-        box.addEventListener("keydown", (e) => {
-          if (e.key === "Backspace" && !box.value && i > 0) boxes[i - 1].focus();
-        });
-        box.addEventListener("paste", (e) => {
-          const pasted = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, 6);
-          pasted.split("").forEach((ch, j) => {
-            if (boxes[j]) { boxes[j].value = ch; boxes[j].classList.add("filled"); }
-          });
-          boxes[Math.min(pasted.length, 5)].focus();
-          e.preventDefault();
-        });
-      });
-      boxes[0].focus();
-    }
-
-    // ── Theme ────────────────────────────────────────────────────────
-    const htmlEl = document.getElementById("html-root");
-    const themeIcon = document.getElementById("theme-icon");
-    function applyTheme(dark) {
-      htmlEl.setAttribute("data-theme", dark ? "dark" : "light");
-      themeIcon.className = dark ? "fa-solid fa-sun text-sm" : "fa-solid fa-moon text-sm";
-      localStorage.setItem("theme", dark ? "dark" : "light");
-    }
-    applyTheme(localStorage.getItem("theme") === "dark");
-    document.getElementById("theme-toggle").addEventListener("click", () => {
-      applyTheme(htmlEl.getAttribute("data-theme") !== "dark");
+  // ── OTP box auto-focus ───────────────────────────────────────────
+  function setupOTPBoxes() {
+    const boxes = document.querySelectorAll(".otp-box");
+    boxes.forEach((box, i) => {
+      box.value = "";
+      box.replaceWith(box.cloneNode(true)); // remove old listeners
     });
+    const freshBoxes = document.querySelectorAll(".otp-box");
+    freshBoxes.forEach((box, i) => {
+      box.addEventListener("input", () => {
+        box.value = box.value.replace(/\D/g, "").slice(0, 1);
+        box.classList.toggle("filled", box.value !== "");
+        if (box.value && i < freshBoxes.length - 1) freshBoxes[i + 1].focus();
+      });
+      box.addEventListener("keydown", (e) => {
+        if (e.key === "Backspace" && !box.value && i > 0) freshBoxes[i - 1].focus();
+      });
+      box.addEventListener("paste", (e) => {
+        const pasted = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, 6);
+        pasted.split("").forEach((ch, j) => {
+          if (freshBoxes[j]) { freshBoxes[j].value = ch; freshBoxes[j].classList.add("filled"); }
+        });
+        freshBoxes[Math.min(pasted.length, 5)].focus();
+        e.preventDefault();
+      });
+    });
+    freshBoxes[0].focus();
+  }
 
-    // ── Toast ────────────────────────────────────────────────────────
-    window.showToast = function (msg, type = "info") {
-      const toast = document.getElementById("toast");
-      const icons = { success: "fa-solid fa-circle-check", error: "fa-solid fa-circle-exclamation", info: "fa-solid fa-circle-info" };
-      document.getElementById("toast-msg").textContent = msg;
-      document.getElementById("toast-icon").className  = icons[type];
-      toast.className = `show ${type}`;
-      clearTimeout(window._toastTimer);
-      window._toastTimer = setTimeout(() => { toast.className = type; }, 3500);
+  // ── Theme ────────────────────────────────────────────────────────
+  const htmlEl    = document.getElementById("html-root");
+  const themeIcon = document.getElementById("theme-icon");
+  function applyTheme(dark) {
+    htmlEl.setAttribute("data-theme", dark ? "dark" : "light");
+    themeIcon.className = dark ? "fa-solid fa-sun text-sm" : "fa-solid fa-moon text-sm";
+    localStorage.setItem("theme", dark ? "dark" : "light");
+  }
+  applyTheme(localStorage.getItem("theme") === "dark");
+  document.getElementById("theme-toggle").addEventListener("click", () => {
+    applyTheme(htmlEl.getAttribute("data-theme") !== "dark");
+  });
+
+  // ── Toast ─────────────────────────────────────────────────────────
+  window.showToast = function (msg, type = "info") {
+    const toast = document.getElementById("toast");
+    const icons = {
+      success: "fa-solid fa-circle-check",
+      error:   "fa-solid fa-circle-exclamation",
+      info:    "fa-solid fa-circle-info"
     };
+    document.getElementById("toast-msg").textContent = msg;
+    document.getElementById("toast-icon").className  = icons[type];
+    toast.className = `show ${type}`;
+    clearTimeout(window._toastTimer);
+    window._toastTimer = setTimeout(() => { toast.className = type; }, 3500);
+  };
 
-    // ── Init ─────────────────────────────────────────────────────────
-    await loadSettings();
-    const loader = document.getElementById("page-loader");
-    loader.classList.add("hidden");
-    setTimeout(() => loader.remove(), 500);
-  </script>
+  // ── Init ──────────────────────────────────────────────────────────
+  setupRecaptcha();        // ✅ init on page load, not inside sendOTP
+  await loadSettings();
+  const loader = document.getElementById("page-loader");
+  loader.classList.add("hidden");
+  setTimeout(() => loader.remove(), 500);
+</script>
 
 </body>
 </html>

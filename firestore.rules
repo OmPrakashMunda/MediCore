@@ -1,0 +1,137 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ─── Helper functions ───────────────────────────────────
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    function isOwner(uid) {
+      return isSignedIn() && request.auth.uid == uid;
+    }
+    function getUserRole() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
+    }
+    function hasRole(role) {
+      return isSignedIn() && getUserRole() == role;
+    }
+    function hasAnyRole(roles) {
+      return isSignedIn() && getUserRole() in roles;
+    }
+
+    // ─── users ──────────────────────────────────────────────
+    match /users/{uid} {
+      // Anyone signed-in can read user profiles (needed for name lookups)
+      allow read:   if isSignedIn();
+      // User can update own profile
+      allow update: if isOwner(uid);
+      // Patient self-registration via Google sign-in
+      allow create: if isOwner(uid);
+      // Admin can create/update/delete staff
+      allow create, update, delete: if hasRole("admin");
+
+      // ─── vitals (subcollection under users) ────────────
+      match /vitals/{vitalId} {
+        // Patient can read own vitals
+        allow read: if isOwner(uid);
+        // Doctor, lab, admin can read any patient's vitals
+        allow read: if hasAnyRole(["doctor", "lab", "admin"]);
+        // Doctor and admin can create vitals
+        allow create: if hasAnyRole(["doctor", "admin"]);
+        // Doctor and admin can update vitals
+        allow update: if hasAnyRole(["doctor", "admin"]);
+      }
+    }
+
+    // ─── patients (medical data) ────────────────────────────
+    match /patients/{uid} {
+      allow read, write: if isOwner(uid);
+      allow read:        if hasAnyRole(["doctor", "lab", "admin"]);
+      allow create:      if isOwner(uid);
+    }
+
+    // ─── doctors (availability profiles) ────────────────────
+    match /doctors/{uid} {
+      // Anyone signed-in can read doctor profiles (for booking)
+      allow read:   if isSignedIn();
+      // Doctor can update own profile/availability
+      allow write:  if isOwner(uid);
+      // Admin can manage doctor profiles
+      allow write:  if hasRole("admin");
+    }
+
+    // ─── appointments ───────────────────────────────────────
+    match /appointments/{apptId} {
+      // Any authenticated user can read appointments
+      // (patients check slot availability by querying doctorId + date)
+      allow read: if isSignedIn();
+      // Patients can create appointments
+      allow create: if isSignedIn()
+                    && request.resource.data.patientId == request.auth.uid;
+      // Patient or doctor on the appointment can update (cancel, confirm, etc.)
+      allow update: if isSignedIn()
+                    && (resource.data.patientId == request.auth.uid
+                        || resource.data.doctorId == request.auth.uid
+                        || hasRole("admin"));
+    }
+
+    // ─── reports ────────────────────────────────────────────
+    match /reports/{reportId} {
+      // Patient, assigned doctor, uploader, and admin can read
+      allow read: if isSignedIn();
+      // Lab techs can create reports
+      allow create: if hasAnyRole(["lab", "admin"]);
+      // Doctor can update (verify/reject), lab can update own uploads
+      allow update: if isSignedIn()
+                    && (resource.data.doctorId == request.auth.uid
+                        || resource.data.uploadedBy == request.auth.uid
+                        || hasRole("admin"));
+      // Lab can delete own uploads, admin can delete any
+      allow delete: if isSignedIn()
+                    && (resource.data.uploadedBy == request.auth.uid
+                        || hasRole("admin"));
+    }
+
+    // ─── settings ───────────────────────────────────────────
+    match /settings/{docId} {
+      // Anyone can read (landing page, branding, theme)
+      allow read:  if true;
+      // Only admin can write
+      allow write: if hasRole("admin");
+    }
+
+    // ─── activity_logs ──────────────────────────────────────
+    match /activity_logs/{logId} {
+      // Any signed-in user can create logs
+      allow create: if isSignedIn();
+      // Users can read own logs; admin can read all
+      allow read:   if isSignedIn()
+                    && (resource.data.uid == request.auth.uid
+                        || hasRole("admin"));
+      // Listing without specific uid filter (admin dashboard)
+      allow list:   if hasRole("admin");
+    }
+
+    // ─── tests (doctor orders → lab fulfills) ─────────────
+    match /tests/{testId} {
+      allow read: if isSignedIn();
+      // Doctors can create test orders
+      allow create: if hasAnyRole(["doctor", "admin"]);
+      // Lab can update (accept, complete), admin can update/delete
+      allow update: if hasAnyRole(["lab", "doctor", "admin"]);
+      allow delete: if hasRole("admin");
+    }
+
+    // ─── analyses (AI brain tumor analyses) ─────────────────
+    match /analyses/{analysisId} {
+      // Doctor who created it can read/write
+      allow read, write: if isSignedIn()
+                         && request.auth.uid == resource.data.doctorId;
+      // Doctor can create
+      allow create: if isSignedIn()
+                    && request.resource.data.doctorId == request.auth.uid;
+      // Admin can read all
+      allow read: if hasRole("admin");
+    }
+  }
+}

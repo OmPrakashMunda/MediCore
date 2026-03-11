@@ -5,7 +5,7 @@ firestore-debug.log
 ui-debug.log
 database-debug.log
 .firebaserc
-
+functions/serviceAccountKey.json
 # ── Environment & secrets ────────────────────────────────────────────
 .env
 .env.local
@@ -79,3 +79,5 @@ env/
 *.tmp
 *.swp
 .cache/
+
+ml/dataset/

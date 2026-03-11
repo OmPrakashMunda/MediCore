@@ -1,0 +1,683 @@
+<!DOCTYPE html>
+<html lang="en" id="html-root">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>My Profile — MediCore</title>
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+
+  <style>
+    :root {
+      --color-primary:      #2563eb;
+      --color-primary-dark: #1d4ed8;
+      --color-secondary:    #0ea5e9;
+      --color-bg:           #f8fafc;
+      --color-surface:      #ffffff;
+      --color-text:         #0f172a;
+      --color-muted:        #64748b;
+      --color-border:       #e2e8f0;
+      --color-success:      #10b981;
+      --color-warning:      #f59e0b;
+      --color-error:        #ef4444;
+      --font-family:        'Inter', sans-serif;
+    }
+    [data-theme="dark"] {
+      --color-bg:      #0f172a;
+      --color-surface: #1e293b;
+      --color-text:    #f1f5f9;
+      --color-muted:   #94a3b8;
+      --color-border:  #334155;
+    }
+    * { box-sizing:border-box; font-family:var(--font-family); margin:0; padding:0; }
+    body { background:var(--color-bg); color:var(--color-text); transition:background 0.25s,color 0.25s; }
+
+    .card { background:var(--color-surface); border:1px solid var(--color-border); border-radius:16px; }
+
+    #page-loader {
+      position:fixed; inset:0; z-index:9999;
+      background:var(--color-bg);
+      display:flex; align-items:center; justify-content:center;
+      transition:opacity 0.35s;
+    }
+    #page-loader.hidden { opacity:0; pointer-events:none; }
+    .spinner {
+      width:38px; height:38px; border-radius:50%;
+      border:3px solid var(--color-border);
+      border-top-color:var(--color-primary);
+      animation:spin 0.75s linear infinite;
+    }
+    @keyframes spin { to{transform:rotate(360deg)} }
+
+    #toast {
+      position:fixed; bottom:-80px; left:50%; transform:translateX(-50%);
+      z-index:9999; padding:10px 20px; border-radius:12px;
+      font-size:0.82rem; font-weight:500;
+      display:flex; align-items:center; gap:8px;
+      transition:bottom 0.35s;
+      background:var(--color-surface); border:1px solid var(--color-border);
+      box-shadow:0 8px 28px rgba(0,0,0,0.12);
+    }
+    #toast.show  { bottom:28px; }
+    #toast.success #toast-icon { color:var(--color-success); }
+    #toast.error   #toast-icon { color:var(--color-error); }
+    #toast.info    #toast-icon { color:var(--color-primary); }
+
+    .pnav-link {
+      font-size:0.82rem; font-weight:500; padding:6px 14px;
+      border-radius:10px; color:var(--color-muted); text-decoration:none;
+      transition:all 0.15s;
+    }
+    .pnav-link:hover { color:var(--color-primary); background:color-mix(in srgb,var(--color-primary) 8%,transparent); }
+    .pnav-link.active { color:var(--color-primary); background:color-mix(in srgb,var(--color-primary) 12%,transparent); font-weight:600; }
+
+    .input-field {
+      width:100%; padding:9px 14px;
+      background:var(--color-bg); border:1.5px solid var(--color-border);
+      border-radius:10px; color:var(--color-text); font-size:0.85rem; outline:none;
+      transition:border-color 0.2s, box-shadow 0.2s;
+    }
+    .input-field:focus {
+      border-color:var(--color-primary);
+      box-shadow:0 0 0 3px color-mix(in srgb,var(--color-primary) 15%,transparent);
+    }
+    .input-field:disabled { opacity:0.6; cursor:not-allowed; }
+    textarea.input-field { resize:vertical; min-height:90px; }
+    .field-label { display:block; font-size:0.8rem; font-weight:500; margin-bottom:6px; color:var(--color-muted); }
+
+    .btn-primary {
+      padding:10px 20px; background:var(--color-primary); color:#fff;
+      font-size:0.85rem; font-weight:600; border:none; border-radius:10px;
+      cursor:pointer; display:inline-flex; align-items:center; gap:8px;
+      transition:background 0.2s, transform 0.15s;
+    }
+    .btn-primary:hover { background:var(--color-primary-dark); transform:translateY(-1px); }
+    .btn-primary:disabled { opacity:0.55; cursor:not-allowed; transform:none; }
+
+    /* Section tabs */
+    .section-tab {
+      flex:1; padding:10px; text-align:center; font-size:0.82rem; font-weight:500;
+      border-bottom:2px solid transparent; color:var(--color-muted);
+      cursor:pointer; background:none;
+      border-top:none; border-left:none; border-right:none;
+      transition:all 0.15s;
+    }
+    .section-tab.active { color:var(--color-primary); border-bottom-color:var(--color-primary); }
+
+    /* Avatar */
+    #avatar-wrap { position:relative; width:96px; height:96px; }
+    #avatar-initials {
+      width:96px; height:96px; border-radius:1.25rem;
+      display:flex; align-items:center; justify-content:center;
+      font-size:2rem; font-weight:700; color:#fff;
+    }
+
+    /* Strength bar */
+    .strength-bar { height:4px; flex:1; border-radius:999px; transition:background 0.2s; }
+
+    .fade-up    { animation:fadeUp 0.5s ease forwards; opacity:0; }
+    .fade-up.d1 { animation-delay:0.1s; }
+    .fade-up.d2 { animation-delay:0.2s; }
+    @keyframes fadeUp { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:none} }
+  </style>
+</head>
+
+<body>
+  <div id="page-loader"><div class="spinner"></div></div>
+
+  <!-- ═══ Header ═══ -->
+  <header class="sticky top-0 z-20"
+          style="background:var(--color-surface);border-bottom:1px solid var(--color-border)">
+    <div class="max-w-6xl mx-auto px-5 py-4 flex items-center justify-between gap-3">
+      <div class="flex items-center gap-3 min-w-0">
+        <div id="hdr-logo-wrap"
+             class="w-10 h-10 rounded-xl overflow-hidden flex items-center justify-center text-white shrink-0"
+             style="background:linear-gradient(135deg,var(--color-primary),var(--color-secondary))">
+          <img id="hdr-logo-img" src="" alt="" class="w-full h-full object-cover hidden" />
+          <i id="hdr-logo-icon" class="fa-solid fa-heart-pulse"></i>
+        </div>
+        <div class="min-w-0">
+          <div id="hospital-name" class="font-semibold text-sm truncate">MediCore</div>
+          <div class="text-xs" style="color:var(--color-muted)">Patient Portal</div>
+        </div>
+      </div>
+      <div class="flex items-center gap-2">
+        <button id="theme-toggle"
+                class="w-9 h-9 rounded-xl border flex items-center justify-center"
+                style="border-color:var(--color-border);color:var(--color-muted)">
+          <i id="theme-icon" class="fa-solid fa-moon text-sm"></i>
+        </button>
+        <button onclick="patientLogout()"
+                class="px-4 py-2 rounded-xl text-xs font-medium text-white"
+                style="background:var(--color-primary)">
+          <i class="fa-solid fa-right-from-bracket mr-1"></i>Logout
+        </button>
+      </div>
+    </div>
+    <div class="max-w-6xl mx-auto px-5 pb-3 flex gap-1 overflow-x-auto">
+      <a href="/patient/dashboard/"    class="pnav-link"><i class="fa-solid fa-gauge-high mr-1.5"></i>Dashboard</a>
+      <a href="/patient/appointments/" class="pnav-link"><i class="fa-solid fa-calendar-check mr-1.5"></i>Appointments</a>
+      <a href="/patient/reports/"      class="pnav-link"><i class="fa-solid fa-file-waveform mr-1.5"></i>Reports</a>
+      <a href="/patient/profile/"      class="pnav-link active"><i class="fa-solid fa-circle-user mr-1.5"></i>Profile</a>
+    </div>
+  </header>
+
+  <!-- ═══ Main ═══ -->
+  <main class="max-w-4xl mx-auto p-5 md:p-6 space-y-6">
+
+    <!-- Profile header card -->
+    <div class="card p-6 fade-up">
+      <div class="flex flex-col sm:flex-row items-start sm:items-center gap-5">
+        <div id="avatar-wrap">
+          <div id="avatar-initials" style="background:var(--color-primary)">?</div>
+        </div>
+        <div class="flex-1">
+          <h2 id="profile-name" class="text-xl font-bold">—</h2>
+          <p id="profile-email" class="text-sm mt-0.5" style="color:var(--color-muted)">—</p>
+          <div class="flex flex-wrap gap-2 mt-3">
+            <span id="badge-phone" class="hidden text-xs font-medium px-2.5 py-1 rounded-lg"
+                  style="background:color-mix(in srgb,var(--color-success) 10%,transparent);color:var(--color-success)">
+              <i class="fa-solid fa-phone mr-1"></i><span id="badge-phone-text"></span>
+            </span>
+            <span id="badge-blood" class="hidden text-xs font-medium px-2.5 py-1 rounded-lg"
+                  style="background:color-mix(in srgb,var(--color-error) 10%,transparent);color:var(--color-error)">
+              <i class="fa-solid fa-droplet mr-1"></i><span id="badge-blood-text"></span>
+            </span>
+            <span class="text-xs font-medium px-2.5 py-1 rounded-lg"
+                  style="background:color-mix(in srgb,var(--color-primary) 10%,transparent);color:var(--color-primary)">
+              <i class="fa-solid fa-user mr-1"></i>Patient
+            </span>
+          </div>
+        </div>
+        <div class="flex gap-4 shrink-0">
+          <div class="text-center">
+            <div id="stat-appts" class="text-xl font-bold" style="color:var(--color-primary)">—</div>
+            <div class="text-xs" style="color:var(--color-muted)">Appointments</div>
+          </div>
+          <div class="text-center">
+            <div id="stat-reports" class="text-xl font-bold" style="color:var(--color-secondary)">—</div>
+            <div class="text-xs" style="color:var(--color-muted)">Reports</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Section tabs -->
+    <div class="card fade-up d1" style="padding:0;overflow:hidden">
+      <div class="flex" style="border-bottom:1px solid var(--color-border)">
+        <button class="section-tab active" onclick="switchSection('personal',this)">
+          <i class="fa-solid fa-user mr-1.5"></i> Personal
+        </button>
+        <button class="section-tab" onclick="switchSection('medical',this)">
+          <i class="fa-solid fa-notes-medical mr-1.5"></i> Medical
+        </button>
+        <button class="section-tab" onclick="switchSection('security',this)">
+          <i class="fa-solid fa-shield-halved mr-1.5"></i> Security
+        </button>
+      </div>
+
+      <!-- Personal -->
+      <div id="section-personal" class="p-6 space-y-4">
+        <div class="grid sm:grid-cols-2 gap-4">
+          <div>
+            <label class="field-label">Full Name</label>
+            <input id="f-name" type="text" class="input-field" placeholder="Your full name" />
+          </div>
+          <div>
+            <label class="field-label">Email <span class="text-xs opacity-50">(read only)</span></label>
+            <input id="f-email" type="email" class="input-field" disabled />
+          </div>
+          <div>
+            <label class="field-label">Phone</label>
+            <input id="f-phone" type="tel" class="input-field" placeholder="+91 98765 43210" />
+          </div>
+          <div>
+            <label class="field-label">Date of Birth</label>
+            <input id="f-dob" type="date" class="input-field" />
+          </div>
+          <div>
+            <label class="field-label">Gender</label>
+            <select id="f-gender" class="input-field">
+              <option value="">Select gender</option>
+              <option value="Male">Male</option>
+              <option value="Female">Female</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+          <div>
+            <label class="field-label">Blood Group</label>
+            <select id="f-blood" class="input-field">
+              <option value="">Select</option>
+              <option>A+</option><option>A-</option>
+              <option>B+</option><option>B-</option>
+              <option>O+</option><option>O-</option>
+              <option>AB+</option><option>AB-</option>
+            </select>
+          </div>
+        </div>
+        <div>
+          <label class="field-label">Address</label>
+          <textarea id="f-address" class="input-field" placeholder="Your address…"></textarea>
+        </div>
+        <div class="flex justify-end">
+          <button onclick="savePersonal()" class="btn-primary">
+            <i class="fa-solid fa-floppy-disk"></i>
+            <span id="save-personal-text">Save Personal Info</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Medical -->
+      <div id="section-medical" class="p-6 space-y-4 hidden">
+        <div class="grid sm:grid-cols-2 gap-4">
+          <div>
+            <label class="field-label">Emergency Contact Name</label>
+            <input id="f-emg-name" type="text" class="input-field" placeholder="Name" />
+          </div>
+          <div>
+            <label class="field-label">Emergency Contact Phone</label>
+            <input id="f-emg-phone" type="tel" class="input-field" placeholder="+91 …" />
+          </div>
+          <div>
+            <label class="field-label">Height (cm)</label>
+            <input id="f-height" type="number" min="0" max="300" class="input-field" placeholder="170" />
+          </div>
+          <div>
+            <label class="field-label">Weight (kg)</label>
+            <input id="f-weight" type="number" min="0" max="500" class="input-field" placeholder="65" />
+          </div>
+        </div>
+        <div>
+          <label class="field-label">Known Allergies</label>
+          <textarea id="f-allergies" class="input-field" placeholder="e.g. Penicillin, Peanuts…"></textarea>
+        </div>
+        <div>
+          <label class="field-label">Current Medications</label>
+          <textarea id="f-medications" class="input-field" placeholder="List current medications…"></textarea>
+        </div>
+        <div>
+          <label class="field-label">Pre-existing Conditions</label>
+          <textarea id="f-conditions" class="input-field" placeholder="e.g. Diabetes, Hypertension…"></textarea>
+        </div>
+        <div class="flex justify-end">
+          <button onclick="saveMedical()" class="btn-primary">
+            <i class="fa-solid fa-floppy-disk"></i>
+            <span id="save-medical-text">Save Medical Info</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Security -->
+      <div id="section-security" class="p-6 space-y-4 hidden">
+        <div class="p-4 rounded-xl mb-2"
+             style="background:color-mix(in srgb,var(--color-warning) 8%,transparent);
+                    border:1px solid color-mix(in srgb,var(--color-warning) 20%,transparent)">
+          <p class="text-xs font-medium" style="color:var(--color-warning)">
+            <i class="fa-solid fa-triangle-exclamation mr-2"></i>
+            You will be logged out after changing your password.
+          </p>
+        </div>
+        <div>
+          <label class="field-label">Current Password</label>
+          <div class="relative">
+            <input id="f-curr-pw" type="password" class="input-field pr-10" placeholder="Enter current password" />
+            <button type="button" onclick="togglePw('f-curr-pw','eye-curr')"
+                    class="absolute right-3 top-1/2 -translate-y-1/2 text-sm"
+                    style="color:var(--color-muted);background:none;border:none;cursor:pointer">
+              <i id="eye-curr" class="fa-regular fa-eye"></i>
+            </button>
+          </div>
+        </div>
+        <div>
+          <label class="field-label">New Password</label>
+          <div class="relative">
+            <input id="f-new-pw" type="password" class="input-field pr-10" placeholder="Min 8 characters"
+                   oninput="checkStrength(this.value)" />
+            <button type="button" onclick="togglePw('f-new-pw','eye-new')"
+                    class="absolute right-3 top-1/2 -translate-y-1/2 text-sm"
+                    style="color:var(--color-muted);background:none;border:none;cursor:pointer">
+              <i id="eye-new" class="fa-regular fa-eye"></i>
+            </button>
+          </div>
+          <div class="flex gap-1 mt-2">
+            <div class="strength-bar" style="background:var(--color-border)" id="sb1"></div>
+            <div class="strength-bar" style="background:var(--color-border)" id="sb2"></div>
+            <div class="strength-bar" style="background:var(--color-border)" id="sb3"></div>
+            <div class="strength-bar" style="background:var(--color-border)" id="sb4"></div>
+          </div>
+          <p id="strength-label" class="text-xs mt-1" style="color:var(--color-muted)"></p>
+        </div>
+        <div>
+          <label class="field-label">Confirm New Password</label>
+          <div class="relative">
+            <input id="f-conf-pw" type="password" class="input-field pr-10" placeholder="Re-enter new password" />
+            <button type="button" onclick="togglePw('f-conf-pw','eye-conf')"
+                    class="absolute right-3 top-1/2 -translate-y-1/2 text-sm"
+                    style="color:var(--color-muted);background:none;border:none;cursor:pointer">
+              <i id="eye-conf" class="fa-regular fa-eye"></i>
+            </button>
+          </div>
+        </div>
+        <div class="flex justify-end">
+          <button onclick="changePassword()" class="btn-primary" style="background:var(--color-error)">
+            <i class="fa-solid fa-lock"></i>
+            <span id="save-pw-text">Update Password</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Activity log -->
+    <div class="card fade-up d2" style="overflow:hidden">
+      <div class="flex items-center justify-between px-6 pt-5 pb-3">
+        <h3 class="font-semibold text-sm">
+          <i class="fa-solid fa-clock-rotate-left mr-1.5" style="color:var(--color-primary)"></i>Recent Activity
+        </h3>
+      </div>
+      <div id="activity-log" class="divide-y" style="border-color:var(--color-border)">
+        <p class="px-6 py-6 text-sm text-center" style="color:var(--color-muted)">Loading…</p>
+      </div>
+    </div>
+  </main>
+
+  <div id="toast"><i id="toast-icon"></i><span id="toast-msg"></span></div>
+
+  <!-- ═══ Script ═══ -->
+  <script type="module">
+    import { auth, db }    from "../../assets/js/firebase-config.js";
+    import { guardPage }   from "../../assets/js/auth-guard.js";
+    import { logActivity } from "../../assets/js/activity-logger.js";
+    import {
+      doc, getDoc, setDoc, updateDoc, getDocs,
+      collection, query, where, orderBy, limit, serverTimestamp
+    } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-firestore.js";
+    import {
+      signOut, EmailAuthProvider, reauthenticateWithCredential, updatePassword
+    } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-auth.js";
+
+    let currentUser = null;
+    let userData    = null;
+    let patientData = null;
+
+    /* ── Theme ────────────────────────────────────── */
+    const htmlEl = document.getElementById("html-root");
+    function applyTheme(dark) {
+      htmlEl.setAttribute("data-theme", dark ? "dark" : "light");
+      document.getElementById("theme-icon").className = dark ? "fa-solid fa-sun text-sm" : "fa-solid fa-moon text-sm";
+      localStorage.setItem("theme", dark ? "dark" : "light");
+    }
+    applyTheme(localStorage.getItem("theme") === "dark");
+    document.getElementById("theme-toggle").addEventListener("click", () =>
+      applyTheme(htmlEl.getAttribute("data-theme") !== "dark"));
+
+    /* ── Settings ──────────────────────────────────── */
+    async function loadSettings() {
+      try {
+        const snap = await getDoc(doc(db, "settings", "hospital"));
+        if (!snap.exists()) return;
+        const s = snap.data(), t = s.theme || {}, r = document.documentElement;
+        if (t.primary)     r.style.setProperty("--color-primary",      t.primary);
+        if (t.primaryDark) r.style.setProperty("--color-primary-dark", t.primaryDark);
+        if (t.secondary)   r.style.setProperty("--color-secondary",    t.secondary);
+        if (t.fontFamily)  r.style.setProperty("--font-family",        t.fontFamily);
+        document.getElementById("hospital-name").textContent = s.hospitalName || "MediCore";
+        document.title = `My Profile — ${s.hospitalName || "MediCore"}`;
+        if (s.logoUrl) {
+          const img = document.getElementById("hdr-logo-img");
+          img.src = s.logoUrl; img.classList.remove("hidden");
+          document.getElementById("hdr-logo-icon").classList.add("hidden");
+        }
+      } catch(e) { console.error("Settings:", e); }
+    }
+
+    /* ── Toast ─────────────────────────────────────── */
+    window.showToast = function(msg, type="info") {
+      const t = document.getElementById("toast");
+      const icons = { success:"fa-solid fa-circle-check", error:"fa-solid fa-circle-exclamation", info:"fa-solid fa-circle-info" };
+      document.getElementById("toast-msg").textContent = msg;
+      document.getElementById("toast-icon").className  = icons[type]||icons.info;
+      t.className = `show ${type}`;
+      clearTimeout(window._tt);
+      window._tt = setTimeout(() => { t.className = type; }, 3500);
+    };
+
+    /* ── Section tabs ──────────────────────────────── */
+    window.switchSection = function(name, btn) {
+      document.querySelectorAll("[id^='section-']").forEach(el => el.classList.add("hidden"));
+      document.getElementById("section-" + name).classList.remove("hidden");
+      document.querySelectorAll(".section-tab").forEach(t => t.classList.remove("active"));
+      btn.classList.add("active");
+    };
+
+    /* ── Toggle password visibility ────────────────── */
+    window.togglePw = function(inputId, iconId) {
+      const inp  = document.getElementById(inputId);
+      const icon = document.getElementById(iconId);
+      if (inp.type === "password") {
+        inp.type = "text";
+        icon.className = "fa-regular fa-eye-slash";
+      } else {
+        inp.type = "password";
+        icon.className = "fa-regular fa-eye";
+      }
+    };
+
+    /* ── Password strength ─────────────────────────── */
+    window.checkStrength = function(pw) {
+      let score = 0;
+      if (pw.length >= 8)       score++;
+      if (/[a-z]/.test(pw) && /[A-Z]/.test(pw)) score++;
+      if (/\d/.test(pw))        score++;
+      if (/[^a-zA-Z0-9]/.test(pw)) score++;
+      const colors = ["var(--color-border)","var(--color-error)","var(--color-warning)","#f59e0b","var(--color-success)"];
+      const labels = ["","Weak","Fair","Good","Strong"];
+      for (let i = 1; i <= 4; i++) {
+        document.getElementById("sb" + i).style.background = i <= score ? colors[score] : "var(--color-border)";
+      }
+      document.getElementById("strength-label").textContent = labels[score] || "";
+    };
+
+    /* ── Load profile ──────────────────────────────── */
+    async function loadProfile(user, uData) {
+      currentUser = user;
+      userData    = uData;
+
+      // Fill header
+      const name  = uData.name || "Patient";
+      const ini   = name.charAt(0).toUpperCase();
+      document.getElementById("profile-name").textContent  = name;
+      document.getElementById("profile-email").textContent = uData.email || user.email || "—";
+      document.getElementById("avatar-initials").textContent = ini;
+
+      if (uData.phone) {
+        const b = document.getElementById("badge-phone");
+        b.classList.remove("hidden");
+        document.getElementById("badge-phone-text").textContent = uData.phone;
+      }
+
+      // Fill personal form
+      document.getElementById("f-name").value    = uData.name    || "";
+      document.getElementById("f-email").value   = uData.email   || user.email || "";
+      document.getElementById("f-phone").value   = uData.phone   || "";
+      document.getElementById("f-dob").value     = uData.dob     || "";
+      document.getElementById("f-gender").value  = uData.gender  || "";
+      document.getElementById("f-blood").value   = uData.bloodGroup || "";
+      document.getElementById("f-address").value = uData.address || "";
+
+      if (uData.bloodGroup) {
+        document.getElementById("badge-blood").classList.remove("hidden");
+        document.getElementById("badge-blood-text").textContent = uData.bloodGroup;
+      }
+
+      // Load patient-specific data
+      try {
+        const pSnap = await getDoc(doc(db, "patients", user.uid));
+        if (pSnap.exists()) {
+          patientData = pSnap.data();
+          document.getElementById("f-emg-name").value   = patientData.emergencyContactName  || "";
+          document.getElementById("f-emg-phone").value  = patientData.emergencyContactPhone || "";
+          document.getElementById("f-height").value     = patientData.height     || "";
+          document.getElementById("f-weight").value     = patientData.weight     || "";
+          document.getElementById("f-allergies").value  = patientData.allergies  || "";
+          document.getElementById("f-medications").value= patientData.medications|| "";
+          document.getElementById("f-conditions").value = patientData.conditions || "";
+        }
+      } catch(_) {}
+
+      // Counts
+      try {
+        const [apptSnap, repSnap] = await Promise.all([
+          getDocs(query(collection(db,"appointments"), where("patientId","==",user.uid))),
+          getDocs(query(collection(db,"reports"),      where("patientId","==",user.uid)))
+        ]);
+        document.getElementById("stat-appts").textContent   = apptSnap.size;
+        document.getElementById("stat-reports").textContent  = repSnap.size;
+      } catch(_) {}
+
+      // Activity log
+      try {
+        const logSnap = await getDocs(query(
+          collection(db, "activity_logs"),
+          where("uid", "==", user.uid),
+          orderBy("timestamp", "desc"),
+          limit(10)
+        ));
+        const logEl = document.getElementById("activity-log");
+        if (logSnap.empty) {
+          logEl.innerHTML = `<p class="px-6 py-6 text-sm text-center" style="color:var(--color-muted)">No activity recorded</p>`;
+        } else {
+          logEl.innerHTML = logSnap.docs.map(d => {
+            const l = d.data();
+            const t = l.timestamp?.toDate ? l.timestamp.toDate() : null;
+            const timeStr = t ? t.toLocaleString("en-IN",{day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit"}) : "—";
+            return `
+              <div class="px-6 py-3 flex items-center gap-3">
+                <div class="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
+                     style="background:color-mix(in srgb,var(--color-primary) 8%,transparent)">
+                  <i class="fa-solid fa-bolt text-xs" style="color:var(--color-primary)"></i>
+                </div>
+                <div class="flex-1 min-w-0">
+                  <p class="text-sm font-medium truncate">${l.action || "Activity"}</p>
+                  <p class="text-xs truncate" style="color:var(--color-muted)">${timeStr}</p>
+                </div>
+              </div>`;
+          }).join("");
+        }
+      } catch(e) {
+        console.error(e);
+        document.getElementById("activity-log").innerHTML =
+          `<p class="px-6 py-6 text-sm text-center" style="color:var(--color-muted)">Could not load activity</p>`;
+      }
+    }
+
+    /* ── Save personal info ────────────────────────── */
+    window.savePersonal = async function() {
+      const btn  = document.getElementById("save-personal-text");
+      btn.textContent = "Saving…";
+      try {
+        const data = {
+          name:       document.getElementById("f-name").value.trim(),
+          phone:      document.getElementById("f-phone").value.trim(),
+          dob:        document.getElementById("f-dob").value,
+          gender:     document.getElementById("f-gender").value,
+          bloodGroup: document.getElementById("f-blood").value,
+          address:    document.getElementById("f-address").value.trim(),
+          updatedAt:  serverTimestamp()
+        };
+        await updateDoc(doc(db, "users", currentUser.uid), data);
+        logActivity("UPDATE_PROFILE", { section:"personal" }).catch(()=>{});
+        showToast("Personal info saved!", "success");
+
+        // Update header
+        document.getElementById("profile-name").textContent = data.name || "Patient";
+        document.getElementById("avatar-initials").textContent = (data.name || "P").charAt(0).toUpperCase();
+        if (data.bloodGroup) {
+          document.getElementById("badge-blood").classList.remove("hidden");
+          document.getElementById("badge-blood-text").textContent = data.bloodGroup;
+        }
+        if (data.phone) {
+          document.getElementById("badge-phone").classList.remove("hidden");
+          document.getElementById("badge-phone-text").textContent = data.phone;
+        }
+      } catch(e) {
+        console.error(e);
+        showToast("Save failed: " + e.message, "error");
+      } finally {
+        btn.textContent = "Save Personal Info";
+      }
+    };
+
+    /* ── Save medical info ─────────────────────────── */
+    window.saveMedical = async function() {
+      const btn = document.getElementById("save-medical-text");
+      btn.textContent = "Saving…";
+      try {
+        const data = {
+          emergencyContactName:  document.getElementById("f-emg-name").value.trim(),
+          emergencyContactPhone: document.getElementById("f-emg-phone").value.trim(),
+          height:      document.getElementById("f-height").value,
+          weight:      document.getElementById("f-weight").value,
+          allergies:   document.getElementById("f-allergies").value.trim(),
+          medications: document.getElementById("f-medications").value.trim(),
+          conditions:  document.getElementById("f-conditions").value.trim(),
+          updatedAt:   serverTimestamp()
+        };
+        await setDoc(doc(db, "patients", currentUser.uid), data, { merge: true });
+        logActivity("UPDATE_PROFILE", { section:"medical" }).catch(()=>{});
+        showToast("Medical info saved!", "success");
+      } catch(e) {
+        console.error(e);
+        showToast("Save failed: " + e.message, "error");
+      } finally {
+        btn.textContent = "Save Medical Info";
+      }
+    };
+
+    /* ── Change password ───────────────────────────── */
+    window.changePassword = async function() {
+      const currPw = document.getElementById("f-curr-pw").value;
+      const newPw  = document.getElementById("f-new-pw").value;
+      const confPw = document.getElementById("f-conf-pw").value;
+      if (!currPw || !newPw) { showToast("Fill in all password fields", "error"); return; }
+      if (newPw.length < 8) { showToast("Password must be at least 8 characters", "error"); return; }
+      if (newPw !== confPw) { showToast("Passwords do not match", "error"); return; }
+
+      const btn = document.getElementById("save-pw-text");
+      btn.textContent = "Updating…";
+      try {
+        const cred = EmailAuthProvider.credential(currentUser.email, currPw);
+        await reauthenticateWithCredential(currentUser, cred);
+        await updatePassword(currentUser, newPw);
+        logActivity("CHANGE_PASSWORD", {}).catch(()=>{});
+        showToast("Password updated — logging out…", "success");
+        setTimeout(() => signOut(auth).then(() => { window.location.href = "/auth/patient-login/"; }), 1500);
+      } catch(e) {
+        console.error(e);
+        const msg = e.code === "auth/wrong-password" ? "Current password is incorrect" : e.message;
+        showToast(msg, "error");
+      } finally {
+        btn.textContent = "Update Password";
+      }
+    };
+
+    /* ── Logout ────────────────────────────────────── */
+    window.patientLogout = async function() {
+      await signOut(auth);
+      window.location.href = "/auth/patient-login/";
+    };
+
+    /* ── Init ──────────────────────────────────────── */
+    await loadSettings();
+
+    guardPage(["patient"], async (user, uData) => {
+      await loadProfile(user, uData);
+      logActivity("VIEW_PROFILE", { role:"patient" }).catch(()=>{});
+      const loader = document.getElementById("page-loader");
+      loader.classList.add("hidden");
+      setTimeout(() => loader.remove(), 450);
+    });
+  </script>
+</body>
+</html>

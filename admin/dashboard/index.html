@@ -503,7 +503,7 @@
   // ── Logout ─────────────────────────────────────────────────────────
   window.adminLogout = async function () {
     await signOut(auth);
-    window.location.href = "/auth/staff-login/";
+    window.location.href = "/auth/staff-login/?role=admin";
   };
 
   // ── Toast ──────────────────────────────────────────────────────────

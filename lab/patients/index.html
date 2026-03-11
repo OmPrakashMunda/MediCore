@@ -971,7 +971,7 @@
   // ── Logout ─────────────────────────────────────────────────────────
   window.labLogout = async function() {
     await signOut(auth);
-    window.location.href = "/auth/staff-login/";
+    window.location.href = "/auth/staff-login/?role=lab";
   };
 
   // ── Init ───────────────────────────────────────────────────────────

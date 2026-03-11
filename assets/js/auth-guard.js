@@ -34,7 +34,7 @@ export function guardPage(allowedRoles, onAuthorized) {
 
       // Check phone verified for patients
       if (userData.role === "patient" && !userData.phoneVerified) {
-        window.location.href = "/auth/verify-phone.html";
+        window.location.href = "/auth/verify-phone/";
         return;
       }
 

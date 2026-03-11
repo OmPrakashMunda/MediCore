@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="en" id="html-root">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Patient Dashboard — MediCore</title>
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+
+  <style>
+    :root {
+      --color-primary:      #2563eb;
+      --color-primary-dark: #1d4ed8;
+      --color-secondary:    #0ea5e9;
+      --color-bg:           #f8fafc;
+      --color-surface:      #ffffff;
+      --color-text:         #0f172a;
+      --color-muted:        #64748b;
+      --color-border:       #e2e8f0;
+      --color-success:      #10b981;
+      --color-warning:      #f59e0b;
+      --color-danger:       #ef4444;
+      --font-family:        'Inter', sans-serif;
+    }
+
+    [data-theme="dark"] {
+      --color-bg:      #0f172a;
+      --color-surface: #1e293b;
+      --color-text:    #f1f5f9;
+      --color-muted:   #94a3b8;
+      --color-border:  #334155;
+    }
+
+    * { box-sizing: border-box; font-family: var(--font-family); }
+
+    body {
+      margin: 0;
+      background: var(--color-bg);
+      color: var(--color-text);
+      transition: background 0.25s, color 0.25s;
+    }
+
+    .card {
+      background: var(--color-surface);
+      border: 1px solid var(--color-border);
+      border-radius: 16px;
+    }
+
+    .badge {
+      font-size: 0.7rem; font-weight: 600;
+      border-radius: 999px; padding: 3px 10px;
+    }
+
+    /* Loader */
+    #page-loader {
+      position: fixed; inset: 0; z-index: 9999;
+      background: var(--color-bg);
+      display: flex; align-items: center; justify-content: center;
+      transition: opacity 0.35s;
+    }
+    #page-loader.hidden { opacity: 0; pointer-events: none; }
+    .spinner {
+      width: 38px; height: 38px; border-radius: 50%;
+      border: 3px solid var(--color-border);
+      border-top-color: var(--color-primary);
+      animation: spin 0.75s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Toast */
+    #toast {
+      position: fixed; bottom: -80px; left: 50%; transform: translateX(-50%);
+      z-index: 9999; padding: 10px 20px; border-radius: 12px;
+      font-size: 0.82rem; font-weight: 500;
+      display: flex; align-items: center; gap: 8px;
+      transition: bottom 0.35s;
+      background: var(--color-surface); border: 1px solid var(--color-border);
+      box-shadow: 0 8px 28px rgba(0,0,0,0.12);
+    }
+    #toast.show  { bottom: 28px; }
+    #toast.success #toast-icon { color: var(--color-success); }
+    #toast.error   #toast-icon { color: var(--color-danger); }
+
+    .pnav-link {
+      font-size:0.82rem; font-weight:500; padding:6px 14px;
+      border-radius:10px; color:var(--color-muted); text-decoration:none;
+      transition:all 0.15s;
+    }
+    .pnav-link:hover { color:var(--color-primary); background:color-mix(in srgb,var(--color-primary) 8%,transparent); }
+    .pnav-link.active { color:var(--color-primary); background:color-mix(in srgb,var(--color-primary) 12%,transparent); font-weight:600; }
+  </style>
+</head>
+
+<body>
+  <!-- Loader -->
+  <div id="page-loader"><div class="spinner"></div></div>
+
+  <!-- Header -->
+  <header class="sticky top-0 z-20"
+          style="background:var(--color-surface);border-bottom:1px solid var(--color-border)">
+    <div class="max-w-6xl mx-auto px-5 py-4 flex items-center justify-between gap-3">
+      <div class="flex items-center gap-3 min-w-0">
+        <div id="hdr-logo-wrap"
+             class="w-10 h-10 rounded-xl overflow-hidden flex items-center justify-center text-white shrink-0"
+             style="background:linear-gradient(135deg,var(--color-primary),var(--color-secondary))">
+          <img id="hdr-logo-img" src="" alt="" class="w-full h-full object-cover hidden" />
+          <i id="hdr-logo-icon" class="fa-solid fa-heart-pulse"></i>
+        </div>
+        <div class="min-w-0">
+          <div id="hospital-name" class="font-semibold text-sm truncate">MediCore</div>
+          <div class="text-xs" style="color:var(--color-muted)">Patient Portal</div>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-2">
+        <button id="theme-toggle"
+                class="w-9 h-9 rounded-xl border flex items-center justify-center"
+                style="border-color:var(--color-border);color:var(--color-muted)">
+          <i id="theme-icon" class="fa-solid fa-moon text-sm"></i>
+        </button>
+        <button onclick="patientLogout()"
+                class="px-4 py-2 rounded-xl text-xs font-medium text-white"
+                style="background:var(--color-primary)">
+          <i class="fa-solid fa-right-from-bracket mr-1"></i>Logout
+        </button>
+      </div>
+    </div>
+    <!-- Sub-nav -->
+    <div class="max-w-6xl mx-auto px-5 pb-3 flex gap-1 overflow-x-auto">
+      <a href="/patient/dashboard/"    class="pnav-link active"><i class="fa-solid fa-gauge-high mr-1.5"></i>Dashboard</a>
+      <a href="/patient/appointments/" class="pnav-link"><i class="fa-solid fa-calendar-check mr-1.5"></i>Appointments</a>
+      <a href="/patient/reports/"      class="pnav-link"><i class="fa-solid fa-file-waveform mr-1.5"></i>Reports</a>
+      <a href="/patient/profile/"      class="pnav-link"><i class="fa-solid fa-circle-user mr-1.5"></i>Profile</a>
+    </div>
+  </header>
+
+  <!-- Main -->
+  <main class="max-w-6xl mx-auto p-5 md:p-6 space-y-6">
+
+    <!-- Welcome banner -->
+    <section class="card p-5 md:p-6">
+      <div class="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <p class="text-xs uppercase tracking-wider font-semibold" style="color:var(--color-muted)">Welcome back</p>
+          <h1 id="patient-name" class="text-2xl font-bold mt-1">Patient</h1>
+          <p id="patient-email" class="text-sm mt-1" style="color:var(--color-muted)">—</p>
+        </div>
+        <div class="text-right">
+          <p class="text-xs uppercase tracking-wider font-semibold" style="color:var(--color-muted)">Phone</p>
+          <p id="phone-status" class="badge mt-2 inline-block"
+             style="background:color-mix(in srgb,var(--color-success) 14%,transparent);color:var(--color-success)">
+            Verified
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Stat cards -->
+    <section class="grid sm:grid-cols-3 gap-4">
+      <div class="card p-5">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl flex items-center justify-center"
+               style="background:color-mix(in srgb,var(--color-primary) 10%,transparent)">
+            <i class="fa-solid fa-calendar-check" style="color:var(--color-primary)"></i>
+          </div>
+          <div>
+            <p class="text-xs" style="color:var(--color-muted)">Total Appointments</p>
+            <p id="stat-total" class="text-xl font-bold">0</p>
+          </div>
+        </div>
+      </div>
+      <div class="card p-5">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl flex items-center justify-center"
+               style="background:color-mix(in srgb,var(--color-warning) 10%,transparent)">
+            <i class="fa-solid fa-clock" style="color:var(--color-warning)"></i>
+          </div>
+          <div>
+            <p class="text-xs" style="color:var(--color-muted)">Upcoming</p>
+            <p id="stat-upcoming" class="text-xl font-bold">0</p>
+          </div>
+        </div>
+      </div>
+      <div class="card p-5">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl flex items-center justify-center"
+               style="background:color-mix(in srgb,var(--color-secondary) 10%,transparent)">
+            <i class="fa-solid fa-file-waveform" style="color:var(--color-secondary)"></i>
+          </div>
+          <div>
+            <p class="text-xs" style="color:var(--color-muted)">Lab Reports</p>
+            <p id="stat-reports" class="text-xl font-bold">0</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Two-column lists -->
+    <section class="grid lg:grid-cols-2 gap-5">
+
+      <!-- Latest Vitals -->
+      <div class="card overflow-hidden lg:col-span-2">
+        <div class="flex items-center justify-between px-5 pt-5 pb-3">
+          <h2 class="font-semibold text-sm">
+            <i class="fa-solid fa-heart-pulse mr-1.5" style="color:var(--color-danger)"></i>Latest Vitals
+          </h2>
+          <span class="text-xs" style="color:var(--color-muted)">Recorded by your doctor</span>
+        </div>
+        <div id="vitals-section" class="px-5 pb-5">
+          <p class="py-4 text-sm text-center" style="color:var(--color-muted)">Loading…</p>
+        </div>
+      </div>
+
+      <!-- Appointments -->
+      <div class="card overflow-hidden">
+        <div class="flex items-center justify-between px-5 pt-5 pb-3">
+          <h2 class="font-semibold text-sm">
+            <i class="fa-solid fa-calendar-check mr-1.5 text-primary"></i>Appointments
+          </h2>
+          <span class="text-xs" style="color:var(--color-muted)">Latest 8</span>
+        </div>
+        <div id="appointments-list" class="divide-y" style="border-color:var(--color-border)">
+          <p class="px-5 py-6 text-sm text-center" style="color:var(--color-muted)">Loading…</p>
+        </div>
+      </div>
+
+      <!-- Reports -->
+      <div class="card overflow-hidden">
+        <div class="flex items-center justify-between px-5 pt-5 pb-3">
+          <h2 class="font-semibold text-sm">
+            <i class="fa-solid fa-file-waveform mr-1.5" style="color:var(--color-secondary)"></i>Lab Reports
+          </h2>
+          <span class="text-xs" style="color:var(--color-muted)">Latest 8</span>
+        </div>
+        <div id="reports-list" class="divide-y" style="border-color:var(--color-border)">
+          <p class="px-5 py-6 text-sm text-center" style="color:var(--color-muted)">Loading…</p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Toast -->
+  <div id="toast"><i id="toast-icon"></i><span id="toast-msg"></span></div>
+
+  <!-- ═══ SCRIPTS ═══ -->
+  <script type="module">
+    import { auth, db }   from "../../assets/js/firebase-config.js";
+    import { guardPage }  from "../../assets/js/auth-guard.js";
+    import { logActivity } from "../../assets/js/activity-logger.js";
+    import {
+      doc, getDoc, collection, getDocs, query, where, orderBy, limit
+    } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-firestore.js";
+    import { signOut } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-auth.js";
+
+    // ── Helpers ────────────────────────────────────────────────────
+    function fmtDate(v) {
+      if (!v) return "—";
+      const d = v.toDate ? v.toDate() : new Date(v);
+      return isNaN(d) ? "—" : d.toLocaleDateString("en-IN",{day:"2-digit",month:"short",year:"numeric"});
+    }
+
+    const STATUS = {
+      pending:        { label:"Pending",        color:"var(--color-warning)" },
+      confirmed:      { label:"Confirmed",      color:"var(--color-primary)" },
+      completed:      { label:"Completed",      color:"var(--color-success)" },
+      cancelled:      { label:"Cancelled",      color:"var(--color-danger)"  },
+      pending_review: { label:"Pending Review",  color:"var(--color-warning)" },
+      verified:       { label:"Verified",        color:"var(--color-success)" },
+      rejected:       { label:"Rejected",        color:"var(--color-danger)"  },
+    };
+    function badge(s) {
+      const st = STATUS[(s||"").toLowerCase()] || { label:s||"Unknown", color:"var(--color-muted)" };
+      return `<span class="badge" style="background:color-mix(in srgb,${st.color} 14%,transparent);color:${st.color}">${st.label}</span>`;
+    }
+
+    // ── Settings / theme ──────────────────────────────────────────
+    async function loadSettings() {
+      try {
+        const snap = await getDoc(doc(db, "settings", "hospital"));
+        if (!snap.exists()) return;
+        const s = snap.data(), theme = s.theme || {}, root = document.documentElement;
+        if (theme.primary)     root.style.setProperty("--color-primary",      theme.primary);
+        if (theme.primaryDark) root.style.setProperty("--color-primary-dark", theme.primaryDark);
+        if (theme.secondary)   root.style.setProperty("--color-secondary",    theme.secondary);
+        if (theme.fontFamily)  root.style.setProperty("--font-family",        theme.fontFamily);
+
+        const name = s.hospitalName || "MediCore";
+        document.getElementById("hospital-name").textContent = name;
+        document.title = `Patient Dashboard — ${name}`;
+
+        if (s.logoUrl) {
+          const img = document.getElementById("hdr-logo-img");
+          img.src = s.logoUrl; img.classList.remove("hidden");
+          document.getElementById("hdr-logo-icon").classList.add("hidden");
+        }
+      } catch (e) { console.error("Settings:", e); }
+    }
+
+    // ── Dashboard loader ──────────────────────────────────────────
+    async function loadDashboard(user, userData) {
+      // Welcome
+      document.getElementById("patient-name").textContent  = userData.name || "Patient";
+      document.getElementById("patient-email").textContent = userData.email || user.email || "—";
+
+      const now = new Date();
+
+      // ── Appointments ──
+      const apptSnap = await getDocs(query(
+        collection(db, "appointments"),
+        where("patientId", "==", user.uid)
+      ));
+      const appts = apptSnap.docs
+        .map(d => ({ id:d.id, ...d.data() }))
+        .sort((a,b) => (b.date?.seconds||0) - (a.date?.seconds||0));
+
+      const upcoming = appts.filter(a => {
+        const d = a.date?.toDate ? a.date.toDate() : new Date(a.date);
+        return d >= now && a.status !== "cancelled";
+      });
+
+      document.getElementById("stat-total").textContent    = appts.length;
+      document.getElementById("stat-upcoming").textContent = upcoming.length;
+
+      const apptEl = document.getElementById("appointments-list");
+      if (!appts.length) {
+        apptEl.innerHTML = `
+          <div class="px-5 py-8 text-center">
+            <div class="w-12 h-12 rounded-2xl mx-auto mb-3 flex items-center justify-center"
+                 style="background:color-mix(in srgb,var(--color-primary) 10%,transparent)">
+              <i class="fa-solid fa-calendar-xmark" style="color:var(--color-primary)"></i>
+            </div>
+            <p class="text-sm font-medium">No appointments yet</p>
+            <p class="text-xs mt-1" style="color:var(--color-muted)">Your upcoming visits will appear here.</p>
+          </div>`;
+      } else {
+        // Pre-fetch doctor names for display
+        const docIds = [...new Set(appts.map(a => a.doctorId).filter(Boolean))];
+        const docNames = {};
+        await Promise.all(docIds.map(async id => {
+          try { const s = await getDoc(doc(db,"users",id)); if(s.exists()) docNames[id]=s.data().name; } catch(_){}
+        }));
+
+        apptEl.innerHTML = appts.slice(0,8).map(a => `
+          <div class="px-5 py-3.5 flex items-center gap-3">
+            <div class="flex-1 min-w-0">
+              <p class="text-sm font-medium truncate">${a.reason || "General Consultation"}</p>
+              <p class="text-xs mt-0.5 truncate" style="color:var(--color-muted)">
+                <i class="fa-regular fa-calendar mr-1"></i>${fmtDate(a.date)}
+                <span class="mx-1">·</span>
+                <i class="fa-regular fa-clock mr-1"></i>${a.slot || "—"}
+                ${docNames[a.doctorId] ? `<span class="mx-1">·</span>Dr. ${docNames[a.doctorId]}` : ""}
+              </p>
+            </div>
+            ${badge(a.status)}
+          </div>
+        `).join("");
+      }
+
+      // ── Reports ──
+      const repSnap = await getDocs(query(
+        collection(db, "reports"),
+        where("patientId", "==", user.uid)
+      ));
+      const reports = repSnap.docs
+        .map(d => ({ id:d.id, ...d.data() }))
+        .sort((a,b) => (b.uploadedAt?.seconds||0) - (a.uploadedAt?.seconds||0));
+
+      document.getElementById("stat-reports").textContent = reports.length;
+
+      const repEl = document.getElementById("reports-list");
+      if (!reports.length) {
+        repEl.innerHTML = `
+          <div class="px-5 py-8 text-center">
+            <div class="w-12 h-12 rounded-2xl mx-auto mb-3 flex items-center justify-center"
+                 style="background:color-mix(in srgb,var(--color-secondary) 10%,transparent)">
+              <i class="fa-solid fa-file-circle-check" style="color:var(--color-secondary)"></i>
+            </div>
+            <p class="text-sm font-medium">No reports yet</p>
+            <p class="text-xs mt-1" style="color:var(--color-muted)">Lab results will appear here once uploaded.</p>
+          </div>`;
+      } else {
+        repEl.innerHTML = reports.slice(0,8).map(r => `
+          <div class="px-5 py-3.5 flex items-center gap-3">
+            <div class="flex-1 min-w-0">
+              <p class="text-sm font-medium truncate">${r.testName || r.category || "Lab Report"}</p>
+              <p class="text-xs mt-0.5 truncate" style="color:var(--color-muted)">
+                <i class="fa-solid fa-flask mr-1"></i>${r.category || "General"}
+                <span class="mx-1">·</span>
+                <i class="fa-regular fa-calendar mr-1"></i>${fmtDate(r.uploadedAt || r.testDate)}
+              </p>
+            </div>
+            ${badge(r.status)}
+          </div>
+        `).join("");
+      }
+
+      // Log visit
+      logActivity("VIEW_DASHBOARD", { role:"patient" }).catch(()=>{});
+
+      // ── Vitals ──
+      loadVitals(user.uid);
+    }
+
+    // ── Load patient vitals ───────────────────────────────────────
+    async function loadVitals(uid) {
+      const el = document.getElementById("vitals-section");
+      try {
+        const snap = await getDocs(query(
+          collection(db, "users", uid, "vitals"),
+          orderBy("recordedAt", "desc"),
+          limit(5)
+        ));
+
+        if (snap.empty) {
+          el.innerHTML = `
+            <div class="py-6 text-center">
+              <div class="w-12 h-12 rounded-2xl mx-auto mb-3 flex items-center justify-center"
+                   style="background:color-mix(in srgb,var(--color-danger) 10%,transparent)">
+                <i class="fa-solid fa-heart-pulse" style="color:var(--color-danger)"></i>
+              </div>
+              <p class="text-sm font-medium">No vitals recorded yet</p>
+              <p class="text-xs mt-1" style="color:var(--color-muted)">Your doctor will record vitals during visits.</p>
+            </div>`;
+          return;
+        }
+
+        const vitals = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+        el.innerHTML = vitals.map(v => {
+          const date = v.recordedAt?.toDate
+            ? v.recordedAt.toDate().toLocaleDateString("en-IN",{day:"2-digit",month:"short",year:"numeric"})
+            : "\u2014";
+          const time = v.recordedAt?.toDate
+            ? v.recordedAt.toDate().toLocaleTimeString("en-IN",{hour:"2-digit",minute:"2-digit"})
+            : "";
+
+          const pills = [];
+          if (v.systolicBP != null && v.diastolicBP != null)
+            pills.push({ icon:"fa-heart", label:"BP", value:`${v.systolicBP}/${v.diastolicBP}`, color: v.systolicBP>=140?"var(--color-danger)":v.systolicBP>=120?"var(--color-warning)":"var(--color-success)" });
+          if (v.heartRate != null)
+            pills.push({ icon:"fa-heart-pulse", label:"HR", value:`${v.heartRate} bpm`, color: (v.heartRate<60||v.heartRate>100)?"var(--color-warning)":"var(--color-success)" });
+          if (v.temperature != null)
+            pills.push({ icon:"fa-thermometer-half", label:"Temp", value:`${v.temperature}\u00b0F`, color: (v.temperature<97||v.temperature>99.5)?"var(--color-warning)":"var(--color-success)" });
+          if (v.spo2 != null)
+            pills.push({ icon:"fa-lungs", label:"SpO2", value:`${v.spo2}%`, color: v.spo2<95?"var(--color-danger)":"var(--color-success)" });
+          if (v.respiratoryRate != null)
+            pills.push({ icon:"fa-wind", label:"RR", value:`${v.respiratoryRate}/min`, color:"var(--color-primary)" });
+          if (v.weight != null)
+            pills.push({ icon:"fa-weight-scale", label:"Wt", value:`${v.weight} kg`, color:"var(--color-muted)" });
+          if (v.height != null)
+            pills.push({ icon:"fa-ruler-vertical", label:"Ht", value:`${v.height} cm`, color:"var(--color-muted)" });
+
+          return `
+            <div class="py-3" style="border-bottom:1px solid var(--color-border)">
+              <div class="text-xs font-medium mb-2">${date} <span style="color:var(--color-muted)">${time}</span></div>
+              <div class="flex flex-wrap gap-1.5">
+                ${pills.map(pill => `
+                  <span class="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-medium"
+                        style="background:color-mix(in srgb,${pill.color} 10%,transparent);color:${pill.color}">
+                    <i class="fa-solid ${pill.icon} text-[9px]"></i> ${pill.label}: ${pill.value}
+                  </span>
+                `).join('')}
+              </div>
+              ${v.notes ? `<div class="text-xs mt-2 p-2 rounded-lg italic" style="background:var(--color-bg);color:var(--color-muted)">
+                <i class="fa-solid fa-note-sticky mr-1"></i>${v.notes}</div>` : ""}
+            </div>`;
+        }).join('');
+      } catch(e) {
+        console.error("Vitals:", e);
+        el.innerHTML = `<p class="text-xs text-center py-4" style="color:var(--color-danger)">Failed to load vitals.</p>`;
+      }
+    }
+
+    // ── Logout ────────────────────────────────────────────────────
+    window.patientLogout = async function() {
+      await signOut(auth);
+      window.location.href = "/auth/patient-login/";
+    };
+
+    // ── Theme toggle ──────────────────────────────────────────────
+    const htmlEl    = document.getElementById("html-root");
+    const themeIcon = document.getElementById("theme-icon");
+    function applyTheme(dark) {
+      htmlEl.setAttribute("data-theme", dark ? "dark" : "light");
+      themeIcon.className = dark ? "fa-solid fa-sun text-sm" : "fa-solid fa-moon text-sm";
+      localStorage.setItem("theme", dark ? "dark" : "light");
+    }
+    applyTheme(localStorage.getItem("theme") === "dark");
+    document.getElementById("theme-toggle").addEventListener("click", () => {
+      applyTheme(htmlEl.getAttribute("data-theme") !== "dark");
+    });
+
+    // ── Toast ─────────────────────────────────────────────────────
+    window.showToast = function(msg, type="info") {
+      const t = document.getElementById("toast");
+      const icons = { success:"fa-solid fa-circle-check", error:"fa-solid fa-circle-exclamation", info:"fa-solid fa-circle-info" };
+      document.getElementById("toast-msg").textContent  = msg;
+      document.getElementById("toast-icon").className   = icons[type]||icons.info;
+      t.className = `show ${type}`;
+      clearTimeout(window._tt);
+      window._tt = setTimeout(() => { t.className = type; }, 3500);
+    };
+
+    // ── Init ──────────────────────────────────────────────────────
+    await loadSettings();
+
+    guardPage(["patient"], async (user, userData) => {
+      await loadDashboard(user, userData);
+      const loader = document.getElementById("page-loader");
+      loader.classList.add("hidden");
+      setTimeout(() => loader.remove(), 450);
+    });
+  </script>
+</body>
+</html>

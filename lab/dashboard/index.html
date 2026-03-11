@@ -504,6 +504,25 @@
           <div id="urgent-list" class="space-y-1"></div>
         </div>
 
+        <!-- Pending test orders from doctors -->
+        <div class="card fade-up d1">
+          <div class="flex items-center justify-between px-5 py-4"
+               style="border-bottom:1px solid var(--color-border)">
+            <h3 class="font-semibold text-sm flex items-center gap-2">
+              <i class="fa-solid fa-flask-vial text-xs" style="color:var(--color-warning)"></i>
+              Pending Test Orders
+            </h3>
+            <span id="pending-orders-count" class="text-[11px] font-bold px-2 py-0.5 rounded-full"
+                  style="background:color-mix(in srgb,var(--color-warning) 12%,transparent);
+                         color:var(--color-warning)">0</span>
+          </div>
+          <div id="pending-orders">
+            <div class="p-6 text-center text-sm" style="color:var(--color-muted)">
+              <i class="fa-solid fa-circle-notch fa-spin mr-2"></i>Loading…
+            </div>
+          </div>
+        </div>
+
         <!-- Recent reports card -->
         <div class="card fade-up d1">
           <div class="flex items-center justify-between px-5 py-4"
@@ -600,7 +619,7 @@
   import { logActivity } from "../../assets/js/activity-logger.js";
   import {
     collection, query, where, getDocs, addDoc,
-    doc, getDoc, serverTimestamp, orderBy, limit
+    doc, getDoc, updateDoc, serverTimestamp, orderBy, limit
   } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-firestore.js";
   import {
     getStorage, ref, uploadBytesResumable, getDownloadURL
@@ -706,6 +725,7 @@
       renderUrgentBanner(patientMap);
       renderCategoryBreakdown();
       renderDoctorBreakdown(doctorMap);
+      await loadPendingOrders();
 
     } catch(e) {
       console.error("Dashboard load error:", e);
@@ -1099,6 +1119,20 @@
 
       const docRef = await addDoc(collection(db,"reports"), reportData);
 
+      // If upload was for a test order, mark it completed
+      if (window._pendingOrderId) {
+        try {
+          await updateDoc(doc(db, "tests", window._pendingOrderId), {
+            status: "completed",
+            reportId: docRef.id,
+            completedBy: labUid,
+            completedAt: serverTimestamp(),
+            updatedAt: serverTimestamp()
+          });
+        } catch(e) { console.error("Failed to update test order:", e); }
+        window._pendingOrderId = null;
+      }
+
       try {
         await logActivity("UPLOAD_REPORT", {
           reportId: docRef.id, testName, patientId: selectedPatientId
@@ -1149,6 +1183,146 @@
       new Date().toISOString().slice(0,10);
   }
 
+  // ── Pending Test Orders ────────────────────────────────────────────
+  async function loadPendingOrders() {
+    try {
+      const snap = await getDocs(query(
+        collection(db, "tests"),
+        where("status", "in", ["pending", "in_progress"]),
+        orderBy("orderedAt", "desc")
+      ));
+
+      const orders = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+      // Resolve names
+      const pids = [...new Set(orders.map(o => o.patientId).filter(Boolean))];
+      const dids = [...new Set(orders.map(o => o.doctorId).filter(Boolean))];
+      const nameMap = {};
+      await Promise.all([
+        ...pids.map(async id => {
+          const s = await getDoc(doc(db, "users", id));
+          if (s.exists()) nameMap[id] = s.data().name || "Unknown";
+        }),
+        ...dids.map(async id => {
+          const s = await getDoc(doc(db, "users", id));
+          if (s.exists()) nameMap[id] = s.data().name || "Unknown";
+        })
+      ]);
+
+      document.getElementById("pending-orders-count").textContent = orders.length;
+
+      const container = document.getElementById("pending-orders");
+      if (orders.length === 0) {
+        container.innerHTML = `
+          <div class="p-6 text-center text-sm" style="color:var(--color-muted)">
+            <i class="fa-solid fa-check-circle mr-2" style="color:var(--color-success)"></i>
+            No pending test orders!
+          </div>`;
+        return;
+      }
+
+      const PRIORITY_STYLE = {
+        urgent:  { bg:"color-mix(in srgb,#f59e0b 15%,transparent)", color:"#f59e0b" },
+        critical:{ bg:"color-mix(in srgb,#ef4444 15%,transparent)", color:"#ef4444" }
+      };
+
+      container.innerHTML = orders.map(o => {
+        const pName = nameMap[o.patientId] || "Unknown";
+        const dName = nameMap[o.doctorId]  || "Unknown";
+        const ini   = pName.charAt(0).toUpperCase();
+        const bg    = avatarBg(pName);
+        const date  = o.orderedAt?.toDate
+          ? o.orderedAt.toDate().toLocaleDateString("en-IN", { day:"2-digit", month:"short", hour:"2-digit", minute:"2-digit" })
+          : "—";
+        const ps = PRIORITY_STYLE[o.priority];
+        const priorityBadge = ps
+          ? `<span class="text-[10px] font-bold px-1.5 py-0.5 rounded ml-1"
+                   style="background:${ps.bg};color:${ps.color}">${o.priority.toUpperCase()}</span>`
+          : "";
+        const statusLabel = o.status === "in_progress"
+          ? `<span class="text-[10px] font-bold px-1.5 py-0.5 rounded"
+                   style="background:color-mix(in srgb,var(--color-primary) 12%,transparent);color:var(--color-primary)">IN PROGRESS</span>`
+          : "";
+
+        return `
+          <div class="report-row">
+            <div class="avatar w-9 h-9 rounded-xl shrink-0 text-sm"
+                 style="background:${bg}">${ini}</div>
+            <div class="flex-1 min-w-0">
+              <div class="font-medium truncate text-sm">
+                ${o.testName}${priorityBadge} ${statusLabel}
+              </div>
+              <div class="text-xs truncate" style="color:var(--color-muted)">
+                Patient: ${pName} · Dr. ${dName}
+              </div>
+              ${o.notes ? `<div class="text-xs mt-0.5 truncate" style="color:var(--color-muted)"><i class="fa-solid fa-note-sticky mr-1"></i>${o.notes}</div>` : ""}
+            </div>
+            <div class="text-right shrink-0 flex flex-col items-end gap-1">
+              <div class="text-[10px]" style="color:var(--color-muted)">${date}</div>
+              <div class="flex gap-1">
+                ${o.status === "pending" ? `
+                  <button onclick="acceptOrder('${o.id}')" title="Accept"
+                          class="w-7 h-7 rounded-lg flex items-center justify-center border-0 cursor-pointer text-xs text-white"
+                          style="background:var(--color-primary)">
+                    <i class="fa-solid fa-check"></i>
+                  </button>` : ""}
+                <button onclick="uploadForOrder('${o.id}','${(o.testName||"").replace(/'/g,"\\\'")}','${o.patientId}','${o.doctorId}','${o.category||"Other"}','${o.priority||"normal"}')" title="Upload Report"
+                        class="w-7 h-7 rounded-lg flex items-center justify-center border-0 cursor-pointer text-xs text-white"
+                        style="background:var(--color-success)">
+                  <i class="fa-solid fa-file-arrow-up"></i>
+                </button>
+              </div>
+            </div>
+          </div>`;
+      }).join("");
+    } catch(e) {
+      console.error("Load pending orders error:", e);
+      document.getElementById("pending-orders").innerHTML = `
+        <div class="p-6 text-center text-sm" style="color:var(--color-error)">
+          <i class="fa-solid fa-triangle-exclamation mr-2"></i>Failed to load orders
+        </div>`;
+    }
+  }
+
+  window.acceptOrder = async function(orderId) {
+    try {
+      await updateDoc(doc(db, "tests", orderId), {
+        status: "in_progress",
+        acceptedBy: labUid,
+        updatedAt: serverTimestamp()
+      });
+      showToast("Order accepted!", "success");
+      await loadPendingOrders();
+    } catch(e) {
+      console.error(e);
+      showToast("Failed to accept: " + e.message, "error");
+    }
+  };
+
+  window.uploadForOrder = function(orderId, testName, patientId, doctorId, category, priority) {
+    openUploadModal();
+    // Pre-fill modal fields
+    setTimeout(() => {
+      document.getElementById("test-name").value     = testName;
+      document.getElementById("test-category").value = category;
+      document.getElementById("test-priority").value = priority;
+      // Select patient
+      if (patientId) {
+        selectedPatientId = patientId;
+        const pat = allPatients.find(p => p.id === patientId);
+        if (pat) {
+          document.getElementById("patient-search-input").value = pat.name || patientId;
+        }
+      }
+      // Select doctor
+      if (doctorId) {
+        document.getElementById("doctor-select").value = doctorId;
+      }
+      // Store order ID so we can mark it completed after upload
+      window._pendingOrderId = orderId;
+    }, 100);
+  };
+
   // ── Toast ──────────────────────────────────────────────────────────
   window.showToast = function(msg, type = "info") {
     const toast = document.getElementById("toast");
@@ -1167,7 +1341,7 @@
   // ── Logout ─────────────────────────────────────────────────────────
   window.labLogout = async function() {
     await signOut(auth);
-    window.location.href = "/auth/staff-login/";
+    window.location.href = "/auth/staff-login/?role=lab";
   };
 
   // ── Init ───────────────────────────────────────────────────────────

@@ -9,7 +9,6 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
-  <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
 
   <style>
     :root {
@@ -674,6 +673,8 @@
     signOut
   } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-auth.js";
 
+  const API_BASE = "http://localhost:3001";
+
   // Secondary app — for creating staff without affecting admin session
   import { initializeApp, getApps }
     from "https://www.gstatic.com/firebasejs/11.4.0/firebase-app.js";
@@ -685,14 +686,30 @@
 
 
   // ══════════════════════════════════════════════════════════════════
-  // EMAILJS CONFIG  →  replace with your actual credentials
+  // SEND WELCOME EMAIL  (Express API → Gmail SMTP)
   // ══════════════════════════════════════════════════════════════════
-  const EMAILJS_PUBLIC_KEY  = "5t0pGOi07v91icvIZ";
-  const EMAILJS_SERVICE_ID  = "Op_O1i_W-yaFGJI4nbsAa";
-  const EMAILJS_TEMPLATE_ID = "template_vxhye6n";
-
-
-  // ══════════════════════════════════════════════════════════════════
+  async function sendWelcomeEmail({ name, email, role, password }) {
+    try {
+      const loginUrl = `${window.location.origin}/auth/staff-login/?role=${role}`;
+      const token = await auth.currentUser.getIdToken();
+      const res = await fetch(`${API_BASE}/api/sendWelcomeEmail`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify({ name, email, role, password, loginUrl })
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || "Email request failed");
+      }
+      return true;
+    } catch(err) {
+      console.error("Email error:", err);
+      return false;
+    }
+  }
   // SECONDARY FIREBASE APP
   // Creates staff user in isolation — admin session never touched
   // ══════════════════════════════════════════════════════════════════
@@ -1097,36 +1114,6 @@
 
 
   // ══════════════════════════════════════════════════════════════════
-  // SEND WELCOME EMAIL  (EmailJS)
-  // ══════════════════════════════════════════════════════════════════
-  async function sendWelcomeEmail({ name, email, role, password }) {
-    try {
-      const snap         = await getDoc(doc(db, "settings", "hospital"));
-      const hospitalName = snap.exists()
-        ? (snap.data().hospitalName || "MediCore")
-        : "MediCore";
-
-      const roleLabels = { doctor:"Doctor", lab:"Lab Engineer", admin:"Admin" };
-      const loginUrl   = `${window.location.origin}/auth/staff-login/?role=${role}`;
-
-      emailjs.init(EMAILJS_PUBLIC_KEY);
-      await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, {
-        hospital_name: hospitalName,
-        staff_name:    name,
-        role:          roleLabels[role] || role,
-        email,
-        password,
-        login_url:     loginUrl,
-      });
-      return true;
-    } catch(err) {
-      console.error("EmailJS error:", err);
-      return false;
-    }
-  }
-
-
-  // ══════════════════════════════════════════════════════════════════
   // RESEND CREDENTIALS
   // ══════════════════════════════════════════════════════════════════
   window.resendCredentials = async function(uid) {
@@ -1324,7 +1311,7 @@
   // ══════════════════════════════════════════════════════════════════
   window.adminLogout = async function() {
     await signOut(auth);
-    window.location.href = "/auth/staff-login/";
+    window.location.href = "/auth/staff-login/?role=admin";
   };
 
 

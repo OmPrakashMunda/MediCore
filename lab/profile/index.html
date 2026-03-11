@@ -892,7 +892,7 @@
   window.signOutAllDevices = async function() {
     if (!confirm("Sign out of all devices? You'll need to log in again.")) return;
     await signOut(auth);
-    window.location.href = "/auth/staff-login/";
+    window.location.href = "/auth/staff-login/?role=lab";
   };
 
   // ── TAB 3: Activity Log ────────────────────────────────────────────
@@ -915,7 +915,7 @@
   async function loadActivityLog() {
     try {
       const snap = await getDocs(query(
-        collection(db,"activityLogs"),
+        collection(db,"activity_logs"),
         where("uid","==", labUid),
         orderBy("timestamp","desc"),
         limit(30)
@@ -1138,7 +1138,7 @@
   // ── Logout ─────────────────────────────────────────────────────────
   window.labLogout = async function() {
     await signOut(auth);
-    window.location.href = "/auth/staff-login/";
+    window.location.href = "/auth/staff-login/?role=lab";
   };
 
   // ── Init ───────────────────────────────────────────────────────────

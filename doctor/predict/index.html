@@ -1,0 +1,739 @@
+<!DOCTYPE html>
+<html lang="en" id="html-root">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Brain Tumor Predict — Doctor</title>
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+
+  <style>
+    :root {
+      --color-primary:      #2563eb;
+      --color-primary-dark: #1d4ed8;
+      --color-secondary:    #0ea5e9;
+      --color-bg:           #f8fafc;
+      --color-surface:      #ffffff;
+      --color-text:         #0f172a;
+      --color-muted:        #64748b;
+      --color-border:       #e2e8f0;
+      --color-success:      #10b981;
+      --color-warning:      #f59e0b;
+      --color-error:        #ef4444;
+      --font-family:        'Inter', sans-serif;
+    }
+    [data-theme="dark"] {
+      --color-bg:      #0f172a;
+      --color-surface: #1e293b;
+      --color-text:    #f1f5f9;
+      --color-muted:   #94a3b8;
+      --color-border:  #334155;
+    }
+    * { font-family:var(--font-family); box-sizing:border-box; margin:0; padding:0; }
+    body { background:var(--color-bg); color:var(--color-text); transition:background 0.3s,color 0.3s; }
+
+    .main-content { margin-left:0; padding-top:64px; transition:margin 0.3s; }
+    @media(min-width:1024px) { .main-content { margin-left:260px; } }
+
+    #page-loader {
+      position:fixed; inset:0; z-index:9999;
+      background:var(--color-bg);
+      display:flex; align-items:center; justify-content:center;
+      transition:opacity 0.4s;
+    }
+    #page-loader.hidden { opacity:0; pointer-events:none; }
+    .spinner {
+      width:36px; height:36px;
+      border:3px solid var(--color-border);
+      border-top-color:var(--color-primary);
+      border-radius:50%; animation:spin 0.75s linear infinite;
+    }
+    @keyframes spin { to{transform:rotate(360deg)} }
+
+    .card { background:var(--color-surface); border:1px solid var(--color-border); border-radius:1rem; }
+
+    /* Sidebar */
+    #sidebar {
+      position:fixed; top:0; left:0; height:100%; width:260px; z-index:40;
+      background:var(--color-surface); border-right:1px solid var(--color-border);
+      display:flex; flex-direction:column;
+      transform:translateX(-100%); transition:transform 0.3s;
+    }
+    #sidebar.open { transform:translateX(0); }
+    @media(min-width:1024px) { #sidebar { transform:translateX(0); } }
+    #sidebar-overlay {
+      position:fixed; inset:0; z-index:30;
+      background:rgba(0,0,0,0.4); backdrop-filter:blur(3px); display:none;
+    }
+    #sidebar-overlay.show { display:block; }
+    .nav-link {
+      display:flex; align-items:center; gap:12px;
+      padding:10px 14px; border-radius:12px;
+      font-size:0.85rem; font-weight:500;
+      color:var(--color-muted); text-decoration:none; transition:all 0.15s;
+    }
+    .nav-link:hover { background:color-mix(in srgb,var(--color-primary) 8%,transparent); color:var(--color-primary); }
+    .nav-link.active { background:color-mix(in srgb,var(--color-primary) 12%,transparent); color:var(--color-primary); font-weight:600; }
+    .nav-link i { width:18px; text-align:center; }
+
+    /* Topbar */
+    #topbar {
+      position:fixed; top:0; right:0; left:0; z-index:20; height:64px;
+      background:var(--color-surface); border-bottom:1px solid var(--color-border);
+      display:flex; align-items:center; justify-content:space-between; padding:0 20px;
+    }
+    @media(min-width:1024px) { #topbar { left:260px; } }
+
+    /* Toast */
+    #toast {
+      position:fixed; bottom:-80px; left:50%; transform:translateX(-50%);
+      z-index:9999; padding:10px 20px; border-radius:12px;
+      font-size:0.82rem; font-weight:500;
+      display:flex; align-items:center; gap:8px;
+      transition:bottom 0.35s;
+      box-shadow:0 8px 28px rgba(0,0,0,0.15);
+    }
+    #toast.show    { bottom:28px; }
+    #toast.success { background:var(--color-success); color:#fff; }
+    #toast.error   { background:var(--color-error);   color:#fff; }
+    #toast.info    { background:var(--color-primary);  color:#fff; }
+
+    /* Upload zone */
+    .upload-zone {
+      border:2px dashed var(--color-border);
+      border-radius:16px;
+      padding:40px 20px;
+      text-align:center;
+      cursor:pointer;
+      transition:all 0.3s;
+      background:var(--color-bg);
+    }
+    .upload-zone:hover, .upload-zone.dragover {
+      border-color:var(--color-primary);
+      background:color-mix(in srgb,var(--color-primary) 5%,transparent);
+    }
+    .upload-zone.has-file {
+      border-color:var(--color-success);
+      border-style:solid;
+    }
+
+    /* Preview */
+    .image-preview {
+      max-width:320px;
+      max-height:320px;
+      border-radius:12px;
+      object-fit:contain;
+      border:1px solid var(--color-border);
+    }
+
+    /* Result */
+    .result-card {
+      border-radius:16px;
+      padding:24px;
+      border:1px solid var(--color-border);
+      background:var(--color-surface);
+    }
+    .severity-badge {
+      display:inline-flex; align-items:center; gap:6px;
+      padding:4px 12px; border-radius:20px;
+      font-size:0.75rem; font-weight:600; text-transform:uppercase;
+    }
+    .severity-high     { background:#fef2f2; color:#dc2626; border:1px solid #fecaca; }
+    .severity-moderate { background:#fffbeb; color:#d97706; border:1px solid #fde68a; }
+    .severity-low      { background:#f0fdf4; color:#16a34a; border:1px solid #bbf7d0; }
+    [data-theme="dark"] .severity-high     { background:#450a0a; color:#fca5a5; border-color:#7f1d1d; }
+    [data-theme="dark"] .severity-moderate { background:#451a03; color:#fcd34d; border-color:#78350f; }
+    [data-theme="dark"] .severity-low      { background:#052e16; color:#86efac; border-color:#14532d; }
+
+    /* Probability bars */
+    .prob-bar-bg {
+      height:8px; border-radius:4px; background:var(--color-border); overflow:hidden;
+    }
+    .prob-bar-fill {
+      height:100%; border-radius:4px; transition:width 0.6s ease;
+    }
+
+    /* Button */
+    .btn-primary {
+      background:var(--color-primary); color:#fff;
+      padding:10px 24px; border-radius:12px; border:none;
+      font-size:0.85rem; font-weight:600; cursor:pointer;
+      display:inline-flex; align-items:center; gap:8px;
+      transition:all 0.2s;
+    }
+    .btn-primary:hover { background:var(--color-primary-dark); transform:translateY(-1px); }
+    .btn-primary:disabled { opacity:0.5; cursor:not-allowed; transform:none; }
+
+    .fade-up    { animation:fadeUp 0.5s ease forwards; opacity:0; }
+    .fade-up.d1 { animation-delay:0.1s; }
+    .fade-up.d2 { animation-delay:0.2s; }
+    .fade-up.d3 { animation-delay:0.3s; }
+    @keyframes fadeUp { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:none} }
+
+    .analyzing-spinner {
+      width:48px; height:48px;
+      border:4px solid var(--color-border);
+      border-top-color:var(--color-primary);
+      border-radius:50%;
+      animation:spin 0.8s linear infinite;
+    }
+  </style>
+</head>
+<body>
+
+<div id="page-loader"><div class="spinner"></div></div>
+<div id="toast"><i id="toast-icon" class="fa-solid fa-circle-check"></i><span id="toast-msg"></span></div>
+
+<div id="sidebar-overlay" onclick="toggleSidebar()"></div>
+
+<!-- ══════════════════════════════ SIDEBAR ══════════════════════════════ -->
+<aside id="sidebar">
+  <div class="flex items-center gap-3 px-5 py-5"
+       style="border-bottom:1px solid var(--color-border)">
+    <div class="w-9 h-9 rounded-xl flex items-center justify-center text-white text-sm font-bold shrink-0 overflow-hidden"
+         style="background:var(--color-primary)">
+      <img id="sb-logo-img" src="" alt="" class="w-full h-full object-cover hidden"/>
+      <i id="sb-logo-icon" class="fa-solid fa-hospital text-sm"></i>
+    </div>
+    <div>
+      <div id="sb-hospital-name" class="text-sm font-semibold">MediCore</div>
+      <div class="text-xs" style="color:var(--color-muted)">Doctor Portal</div>
+    </div>
+  </div>
+
+  <nav class="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
+    <a href="/doctor/dashboard/"    class="nav-link"><i class="fa-solid fa-gauge-high"></i> Dashboard</a>
+    <a href="/doctor/appointments/" class="nav-link"><i class="fa-solid fa-calendar-check"></i> Appointments</a>
+    <a href="/doctor/reports/"      class="nav-link"><i class="fa-solid fa-file-waveform"></i> Lab Reports</a>
+    <a href="/doctor/patients/"     class="nav-link"><i class="fa-solid fa-users"></i> My Patients</a>
+    <a href="/doctor/ai-tools/"     class="nav-link"><i class="fa-solid fa-robot"></i> AI Assistant</a>
+    <a href="/doctor/predict/"      class="nav-link active"><i class="fa-solid fa-brain"></i> Tumor Predict</a>
+    <div class="pt-3 pb-1 px-3">
+      <p class="text-[10px] font-semibold uppercase tracking-wider"
+         style="color:var(--color-muted)">Account</p>
+    </div>
+    <a href="/doctor/profile/"      class="nav-link"><i class="fa-solid fa-circle-user"></i> My Profile</a>
+    <a href="/doctor/availability/" class="nav-link"><i class="fa-solid fa-clock"></i> My Availability</a>
+  </nav>
+
+  <div class="px-3 py-4" style="border-top:1px solid var(--color-border)">
+    <div class="flex items-center gap-3 px-3 py-2.5 rounded-xl mb-1"
+         style="background:color-mix(in srgb,var(--color-primary) 6%,transparent)">
+      <div class="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs shrink-0"
+           style="background:var(--color-primary)">
+        <i class="fa-solid fa-user-doctor text-xs"></i>
+      </div>
+      <div class="overflow-hidden">
+        <div id="sb-doctor-name" class="text-xs font-semibold truncate">Doctor</div>
+        <div id="sb-doctor-spec" class="text-xs truncate" style="color:var(--color-muted)">—</div>
+      </div>
+    </div>
+    <button onclick="doctorLogout()"
+            class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-colors hover:text-red-500"
+            style="color:var(--color-muted)">
+      <i class="fa-solid fa-right-from-bracket w-4 text-center"></i> Logout
+    </button>
+  </div>
+</aside>
+
+<!-- ══════════════════════════════ TOPBAR ══════════════════════════════ -->
+<header id="topbar">
+  <div class="flex items-center gap-3">
+    <button class="lg:hidden w-9 h-9 rounded-xl border flex items-center justify-center"
+            style="border-color:var(--color-border);color:var(--color-muted)" onclick="toggleSidebar()">
+      <i class="fa-solid fa-bars text-sm"></i>
+    </button>
+    <div>
+      <h1 class="text-sm font-semibold">Brain Tumor Prediction</h1>
+      <p class="text-xs" style="color:var(--color-muted)">Upload MRI scans for AI-powered tumor analysis</p>
+    </div>
+  </div>
+  <button id="theme-toggle"
+          class="w-9 h-9 rounded-xl border flex items-center justify-center"
+          style="border-color:var(--color-border);color:var(--color-muted)">
+    <i id="theme-icon" class="fa-solid fa-moon text-sm"></i>
+  </button>
+</header>
+
+<!-- ══════════════════════════════ MAIN ══════════════════════════════ -->
+<div class="main-content min-h-screen">
+  <div class="p-6 max-w-5xl mx-auto">
+
+    <!-- ═══════ INFO BANNER ═══════ -->
+    <div class="card fade-up p-5 mb-6">
+      <div class="flex items-start gap-4">
+        <div class="w-12 h-12 rounded-xl flex items-center justify-center shrink-0"
+             style="background:linear-gradient(135deg,var(--color-primary),var(--color-secondary))">
+          <i class="fa-solid fa-brain text-white text-lg"></i>
+        </div>
+        <div>
+          <h2 class="text-base font-semibold mb-1">MRI Brain Tumor Analysis</h2>
+          <p class="text-xs leading-relaxed" style="color:var(--color-muted)">
+            Upload a brain MRI scan to analyze it using our trained CNN model (MobileNetV2).
+            The model can detect <strong>Glioma</strong>, <strong>Meningioma</strong>,
+            <strong>Pituitary tumors</strong>, or confirm <strong>No Tumor</strong>.
+          </p>
+          <p class="text-xs mt-2" style="color:var(--color-warning)">
+            <i class="fa-solid fa-triangle-exclamation mr-1"></i>
+            AI predictions are for clinical decision support only — not a substitute for professional diagnosis.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════ UPLOAD + RESULT GRID ═══════ -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+      <!-- LEFT: Upload + Preview -->
+      <div class="space-y-5 fade-up d1">
+
+        <!-- Upload Zone -->
+        <div class="card p-5">
+          <h3 class="text-sm font-semibold mb-4">
+            <i class="fa-solid fa-upload mr-2" style="color:var(--color-primary)"></i>
+            Upload MRI Scan
+          </h3>
+
+          <div id="upload-zone" class="upload-zone"
+               onclick="document.getElementById('file-input').click()">
+            <input type="file" id="file-input" accept=".jpg,.jpeg,.png,.bmp,.webp"
+                   class="hidden" onchange="handleFileSelect(event)"/>
+            <div id="upload-placeholder">
+              <i class="fa-solid fa-cloud-arrow-up text-3xl mb-3" style="color:var(--color-muted)"></i>
+              <p class="text-sm font-medium mb-1">Drop MRI image here or click to browse</p>
+              <p class="text-xs" style="color:var(--color-muted)">
+                Supports JPG, PNG, BMP, WebP · Max 10 MB
+              </p>
+            </div>
+            <div id="upload-success" class="hidden">
+              <i class="fa-solid fa-circle-check text-3xl mb-3" style="color:var(--color-success)"></i>
+              <p id="upload-filename" class="text-sm font-medium mb-1"></p>
+              <p class="text-xs" style="color:var(--color-muted)">Click to change image</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Image Preview -->
+        <div id="preview-card" class="card p-5 hidden">
+          <h3 class="text-sm font-semibold mb-4">
+            <i class="fa-solid fa-image mr-2" style="color:var(--color-primary)"></i>
+            Image Preview
+          </h3>
+          <div class="flex justify-center">
+            <img id="image-preview" class="image-preview" src="" alt="MRI Preview"/>
+          </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="flex gap-3">
+          <button id="predict-btn" class="btn-primary flex-1" onclick="runPrediction()" disabled>
+            <i class="fa-solid fa-wand-magic-sparkles"></i>
+            Analyze Scan
+          </button>
+          <button class="flex-1 px-4 py-2.5 rounded-xl border text-sm font-medium transition-colors"
+                  style="border-color:var(--color-border);color:var(--color-muted)"
+                  onclick="resetAll()">
+            <i class="fa-solid fa-rotate-left mr-1"></i>
+            Reset
+          </button>
+        </div>
+      </div>
+
+      <!-- RIGHT: Results -->
+      <div class="space-y-5 fade-up d2">
+
+        <!-- Analyzing State -->
+        <div id="analyzing-state" class="card p-8 hidden">
+          <div class="flex flex-col items-center justify-center text-center">
+            <div class="analyzing-spinner mb-4"></div>
+            <h3 class="text-sm font-semibold mb-1">Analyzing MRI Scan...</h3>
+            <p class="text-xs" style="color:var(--color-muted)">
+              Running CNN model inference. This may take a moment.
+            </p>
+          </div>
+        </div>
+
+        <!-- Empty State -->
+        <div id="empty-state" class="card p-8">
+          <div class="flex flex-col items-center justify-center text-center">
+            <div class="w-16 h-16 rounded-2xl flex items-center justify-center mb-4"
+                 style="background:color-mix(in srgb,var(--color-primary) 8%,transparent)">
+              <i class="fa-solid fa-microscope text-2xl" style="color:var(--color-primary)"></i>
+            </div>
+            <h3 class="text-sm font-semibold mb-1">No Results Yet</h3>
+            <p class="text-xs" style="color:var(--color-muted)">
+              Upload an MRI scan and click "Analyze Scan" to see the prediction results here.
+            </p>
+          </div>
+        </div>
+
+        <!-- Prediction Result -->
+        <div id="result-container" class="hidden space-y-5">
+
+          <!-- Main Result -->
+          <div class="result-card">
+            <div class="flex items-center justify-between mb-4">
+              <h3 class="text-sm font-semibold">
+                <i class="fa-solid fa-stethoscope mr-2" style="color:var(--color-primary)"></i>
+                Prediction Result
+              </h3>
+              <span id="result-severity" class="severity-badge"></span>
+            </div>
+
+            <div class="mb-4">
+              <p class="text-xl font-bold mb-1" id="result-label"></p>
+              <p class="text-xs" style="color:var(--color-muted)">
+                Confidence: <strong id="result-confidence" style="color:var(--color-text)"></strong>
+              </p>
+            </div>
+
+            <div class="p-3 rounded-xl mb-4" style="background:var(--color-bg)">
+              <p class="text-xs font-semibold mb-1">
+                <i class="fa-solid fa-circle-info mr-1" style="color:var(--color-primary)"></i>
+                Description
+              </p>
+              <p id="result-description" class="text-xs leading-relaxed" style="color:var(--color-muted)"></p>
+            </div>
+
+            <div class="p-3 rounded-xl" style="background:color-mix(in srgb,var(--color-warning) 8%,transparent)">
+              <p class="text-xs font-semibold mb-1">
+                <i class="fa-solid fa-clipboard-list mr-1" style="color:var(--color-warning)"></i>
+                Recommendation
+              </p>
+              <p id="result-recommendation" class="text-xs leading-relaxed" style="color:var(--color-muted)"></p>
+            </div>
+          </div>
+
+          <!-- Probability Breakdown -->
+          <div class="result-card">
+            <h3 class="text-sm font-semibold mb-4">
+              <i class="fa-solid fa-chart-bar mr-2" style="color:var(--color-primary)"></i>
+              Class Probabilities
+            </h3>
+            <div id="prob-bars" class="space-y-3"></div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Model Info -->
+    <div class="card fade-up d3 p-5 mt-6">
+      <div class="flex items-center gap-3 mb-3">
+        <i class="fa-solid fa-microchip" style="color:var(--color-primary)"></i>
+        <h3 class="text-sm font-semibold">Model Information</h3>
+      </div>
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div class="p-3 rounded-xl text-center" style="background:var(--color-bg)">
+          <p class="text-lg font-bold" style="color:var(--color-primary)" id="meta-accuracy">—</p>
+          <p class="text-xs" style="color:var(--color-muted)">Test Accuracy</p>
+        </div>
+        <div class="p-3 rounded-xl text-center" style="background:var(--color-bg)">
+          <p class="text-lg font-bold" style="color:var(--color-primary)" id="meta-classes">4</p>
+          <p class="text-xs" style="color:var(--color-muted)">Classes</p>
+        </div>
+        <div class="p-3 rounded-xl text-center" style="background:var(--color-bg)">
+          <p class="text-lg font-bold" style="color:var(--color-primary)" id="meta-model">MobileNetV2</p>
+          <p class="text-xs" style="color:var(--color-muted)">Architecture</p>
+        </div>
+        <div class="p-3 rounded-xl text-center" style="background:var(--color-bg)">
+          <p class="text-lg font-bold" style="color:var(--color-primary)">224×224</p>
+          <p class="text-xs" style="color:var(--color-muted)">Input Size</p>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script type="module">
+  import { auth, db } from "../../assets/js/firebase-config.js";
+  import { guardPage }   from "../../assets/js/auth-guard.js";
+  import { logActivity } from "../../assets/js/activity-logger.js";
+
+  import {
+    doc, getDoc
+  } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-firestore.js";
+
+  import { signOut } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-auth.js";
+
+  const FLASK_API = "http://localhost:5000";
+  let selectedFile = null;
+
+  // ── Sidebar / Theme / Toast ──────────────────────────────────────
+  window.toggleSidebar = () => {
+    document.getElementById("sidebar").classList.toggle("open");
+    document.getElementById("sidebar-overlay").classList.toggle("show");
+  };
+
+  const htmlEl = document.getElementById("html-root");
+  const themeIcon = document.getElementById("theme-icon");
+  function applyTheme(dark) {
+    htmlEl.setAttribute("data-theme", dark ? "dark" : "light");
+    themeIcon.className = dark ? "fa-solid fa-sun text-sm" : "fa-solid fa-moon text-sm";
+    localStorage.setItem("theme", dark ? "dark" : "light");
+  }
+  applyTheme(localStorage.getItem("theme") === "dark");
+  document.getElementById("theme-toggle").addEventListener("click", () => {
+    applyTheme(htmlEl.getAttribute("data-theme") !== "dark");
+  });
+
+  function showToast(msg, type = "info") {
+    const t = document.getElementById("toast");
+    const icons = { success:"fa-circle-check", error:"fa-circle-exclamation", info:"fa-circle-info" };
+    document.getElementById("toast-icon").className = "fa-solid " + (icons[type]||icons.info);
+    document.getElementById("toast-msg").textContent = msg;
+    t.className = `show ${type}`;
+    clearTimeout(window._toastT);
+    window._toastT = setTimeout(() => t.className = type, 3500);
+  }
+
+  // ── Load settings ────────────────────────────────────────────────
+  async function loadSettings() {
+    try {
+      const snap = await getDoc(doc(db,"settings","hospital"));
+      if (!snap.exists()) return;
+      const s = snap.data(); const t = s.theme || {};
+      const r = document.documentElement;
+      if (t.primary)     r.style.setProperty("--color-primary",      t.primary);
+      if (t.primaryDark) r.style.setProperty("--color-primary-dark", t.primaryDark);
+      if (t.secondary)   r.style.setProperty("--color-secondary",    t.secondary);
+      if (t.fontFamily)  r.style.setProperty("--font-family",        t.fontFamily);
+
+      const sbName = document.getElementById("sb-hospital-name");
+      if (sbName) sbName.textContent = s.hospitalName || "MediCore";
+      if (s.logoUrl) {
+        const img  = document.getElementById("sb-logo-img");
+        const icon = document.getElementById("sb-logo-icon");
+        if (img)  { img.src = s.logoUrl; img.classList.remove("hidden"); }
+        if (icon) icon.classList.add("hidden");
+      }
+    } catch(e) { console.error("Settings error:",e); }
+  }
+
+  // ── Load model metadata ─────────────────────────────────────────
+  async function loadModelMeta() {
+    try {
+      const res = await fetch(`${FLASK_API}/metadata`);
+      if (!res.ok) return;
+      const meta = await res.json();
+      document.getElementById("meta-accuracy").textContent =
+        (meta.test_accuracy * 100).toFixed(1) + "%";
+      document.getElementById("meta-classes").textContent = meta.num_classes || 4;
+    } catch(e) {
+      console.log("Could not load model metadata:", e.message);
+    }
+  }
+
+  // ── File handling ────────────────────────────────────────────────
+  window.handleFileSelect = function(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const validTypes = ["image/jpeg", "image/png", "image/bmp", "image/webp"];
+    if (!validTypes.includes(file.type)) {
+      showToast("Invalid file type. Please upload a JPG, PNG, BMP, or WebP image.", "error");
+      return;
+    }
+
+    if (file.size > 10 * 1024 * 1024) {
+      showToast("File too large. Maximum size is 10 MB.", "error");
+      return;
+    }
+
+    selectedFile = file;
+
+    // Update upload zone
+    document.getElementById("upload-placeholder").classList.add("hidden");
+    document.getElementById("upload-success").classList.remove("hidden");
+    document.getElementById("upload-filename").textContent = file.name;
+    document.getElementById("upload-zone").classList.add("has-file");
+
+    // Show preview
+    const reader = new FileReader();
+    reader.onload = function(ev) {
+      document.getElementById("image-preview").src = ev.target.result;
+      document.getElementById("preview-card").classList.remove("hidden");
+    };
+    reader.readAsDataURL(file);
+
+    // Enable predict button
+    document.getElementById("predict-btn").disabled = false;
+
+    showToast("Image loaded successfully", "success");
+  };
+
+  // ── Drag & drop ──────────────────────────────────────────────────
+  const uploadZone = document.getElementById("upload-zone");
+  uploadZone.addEventListener("dragover", (e) => {
+    e.preventDefault();
+    uploadZone.classList.add("dragover");
+  });
+  uploadZone.addEventListener("dragleave", () => {
+    uploadZone.classList.remove("dragover");
+  });
+  uploadZone.addEventListener("drop", (e) => {
+    e.preventDefault();
+    uploadZone.classList.remove("dragover");
+    const file = e.dataTransfer.files[0];
+    if (file) {
+      const input = document.getElementById("file-input");
+      const dt = new DataTransfer();
+      dt.items.add(file);
+      input.files = dt.files;
+      handleFileSelect({ target: input });
+    }
+  });
+
+  // ── Run prediction ──────────────────────────────────────────────
+  window.runPrediction = async function() {
+    if (!selectedFile) {
+      showToast("Please upload an MRI image first.", "error");
+      return;
+    }
+
+    const btn = document.getElementById("predict-btn");
+    btn.disabled = true;
+
+    // Show analyzing state
+    document.getElementById("empty-state").classList.add("hidden");
+    document.getElementById("result-container").classList.add("hidden");
+    document.getElementById("analyzing-state").classList.remove("hidden");
+
+    try {
+      const formData = new FormData();
+      formData.append("file", selectedFile);
+
+      const res = await fetch(`${FLASK_API}/predict`, {
+        method: "POST",
+        body: formData
+      });
+
+      const data = await res.json();
+
+      document.getElementById("analyzing-state").classList.add("hidden");
+
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || "Prediction failed");
+      }
+
+      displayResult(data);
+      showToast("Analysis complete!", "success");
+
+      logActivity("BRAIN_TUMOR_PREDICTION", {
+        role: "doctor",
+        prediction: data.prediction.class,
+        confidence: data.prediction.confidence
+      }).catch(() => {});
+
+    } catch(err) {
+      document.getElementById("analyzing-state").classList.add("hidden");
+      document.getElementById("empty-state").classList.remove("hidden");
+      console.error(err);
+      showToast(err.message || "Failed to analyze image. Is the Flask server running?", "error");
+    } finally {
+      btn.disabled = false;
+    }
+  };
+
+  // ── Display result ──────────────────────────────────────────────
+  function displayResult(data) {
+    const pred = data.prediction;
+
+    document.getElementById("result-label").textContent = pred.label;
+    document.getElementById("result-confidence").textContent = pred.confidence + "%";
+    document.getElementById("result-description").textContent = pred.description;
+    document.getElementById("result-recommendation").textContent = pred.recommendation;
+
+    // Severity badge
+    const badge = document.getElementById("result-severity");
+    const sevIcons = { high:"fa-circle-exclamation", moderate:"fa-triangle-exclamation", low:"fa-circle-check" };
+    badge.className = `severity-badge severity-${pred.severity}`;
+    badge.innerHTML = `<i class="fa-solid ${sevIcons[pred.severity] || sevIcons.moderate}"></i> ${pred.severity}`;
+
+    // Probability bars
+    const probContainer = document.getElementById("prob-bars");
+    probContainer.innerHTML = "";
+
+    const colorMap = {
+      glioma:     "#ef4444",
+      meningioma: "#f59e0b",
+      pituitary:  "#8b5cf6",
+      notumor:    "#10b981"
+    };
+    const labelMap = {
+      glioma:     "Glioma",
+      meningioma: "Meningioma",
+      pituitary:  "Pituitary",
+      notumor:    "No Tumor"
+    };
+
+    // Sort by probability descending
+    const sorted = Object.entries(data.probabilities).sort((a, b) => b[1] - a[1]);
+
+    for (const [cls, prob] of sorted) {
+      const color = colorMap[cls] || "var(--color-primary)";
+      const label = labelMap[cls] || cls;
+      const isTop = cls === pred.class;
+
+      const html = `
+        <div>
+          <div class="flex justify-between items-center mb-1">
+            <span class="text-xs font-medium ${isTop ? '' : ''}" style="${isTop ? 'color:var(--color-text)' : 'color:var(--color-muted)'}">
+              ${isTop ? '<i class="fa-solid fa-arrow-right mr-1" style="font-size:9px"></i>' : ''}
+              ${label}
+            </span>
+            <span class="text-xs font-semibold" style="color:${color}">${prob}%</span>
+          </div>
+          <div class="prob-bar-bg">
+            <div class="prob-bar-fill" style="width:${prob}%;background:${color}"></div>
+          </div>
+        </div>
+      `;
+      probContainer.insertAdjacentHTML("beforeend", html);
+    }
+
+    document.getElementById("result-container").classList.remove("hidden");
+  }
+
+  // ── Reset ───────────────────────────────────────────────────────
+  window.resetAll = function() {
+    selectedFile = null;
+    document.getElementById("file-input").value = "";
+    document.getElementById("upload-placeholder").classList.remove("hidden");
+    document.getElementById("upload-success").classList.add("hidden");
+    document.getElementById("upload-zone").classList.remove("has-file");
+    document.getElementById("preview-card").classList.add("hidden");
+    document.getElementById("predict-btn").disabled = true;
+    document.getElementById("result-container").classList.add("hidden");
+    document.getElementById("analyzing-state").classList.add("hidden");
+    document.getElementById("empty-state").classList.remove("hidden");
+  };
+
+  // ── Logout ───────────────────────────────────────────────────────
+  window.doctorLogout = async function() {
+    await signOut(auth);
+    window.location.href = "/auth/staff-login/?role=doctor";
+  };
+
+  // ── Init ─────────────────────────────────────────────────────────
+  await loadSettings();
+  loadModelMeta();
+
+  guardPage(["doctor"], async (user, userData) => {
+    const el = document.getElementById("sb-doctor-name");
+    if (el) el.textContent = userData.name || "Doctor";
+    const sp = document.getElementById("sb-doctor-spec");
+    if (sp) sp.textContent = userData.specialization || userData.department || "—";
+
+    logActivity("VIEW_BRAIN_PREDICT", { role:"doctor" }).catch(()=>{});
+
+    const loader = document.getElementById("page-loader");
+    loader.classList.add("hidden");
+    setTimeout(() => loader.remove(), 450);
+  });
+</script>
+</body>
+</html>

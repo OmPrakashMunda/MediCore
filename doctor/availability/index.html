@@ -86,47 +86,51 @@
     }
     @media(min-width:1024px) { #topbar { left:260px; } }
 
-    /* Day toggle buttons */
-    .day-btn {
-      width:44px; height:44px; border-radius:12px;
-      font-size:0.75rem; font-weight:600;
-      border:1.5px solid var(--color-border);
-      background:var(--color-surface); color:var(--color-muted);
-      cursor:pointer; transition:all 0.15s;
-      display:flex; align-items:center; justify-content:center;
+    /* Toast */
+    #toast {
+      position:fixed; bottom:28px; left:50%;
+      transform:translateX(-50%) translateY(70px);
+      padding:11px 20px; border-radius:12px; font-size:0.85rem; font-weight:500;
+      display:flex; align-items:center; gap:10px;
+      z-index:9999; opacity:0; white-space:nowrap;
+      transition:transform 0.35s cubic-bezier(0.34,1.56,0.64,1), opacity 0.3s;
+      box-shadow:0 8px 24px rgba(0,0,0,0.15);
     }
-    .day-btn:hover { border-color:var(--color-primary); color:var(--color-primary); }
-    .day-btn.active {
-      background:var(--color-primary); border-color:var(--color-primary);
-      color:#fff; box-shadow:0 4px 12px color-mix(in srgb,var(--color-primary) 30%,transparent);
-    }
+    #toast.show    { transform:translateX(-50%) translateY(0); opacity:1; }
+    #toast.success { background:var(--color-success); color:#fff; }
+    #toast.error   { background:var(--color-error);   color:#fff; }
+    #toast.info    { background:var(--color-primary);  color:#fff; }
 
-    /* Slot pill */
-    .slot-pill {
-      display:inline-flex; align-items:center; gap:6px;
-      padding:5px 10px; border-radius:10px; font-size:0.78rem; font-weight:500;
-      background:color-mix(in srgb,var(--color-primary) 10%,transparent);
-      color:var(--color-primary);
-      border:1px solid color-mix(in srgb,var(--color-primary) 20%,transparent);
-    }
-    .slot-pill button { line-height:1; transition:color 0.15s; }
-    .slot-pill button:hover { color:#ef4444; }
-
-    /* Day row */
-    .day-row {
-      border-radius:14px; padding:16px; margin-bottom:12px;
+    /* Day card */
+    .day-card {
+      border-radius:14px; padding:16px 20px;
       border:1.5px solid var(--color-border);
-      background:var(--color-bg);
-      transition:border-color 0.2s, background 0.2s;
+      background:var(--color-surface);
+      transition:all 0.2s;
     }
-    .day-row.has-slots {
-      border-color:color-mix(in srgb,var(--color-primary) 25%,transparent);
+    .day-card.enabled {
+      border-color:color-mix(in srgb,var(--color-primary) 30%,transparent);
       background:color-mix(in srgb,var(--color-primary) 3%,transparent);
     }
 
+    /* Toggle switch */
+    .toggle { position:relative; width:40px; height:22px; cursor:pointer; }
+    .toggle input { opacity:0; width:0; height:0; }
+    .toggle .slider {
+      position:absolute; inset:0; border-radius:11px;
+      background:var(--color-border); transition:background 0.2s;
+    }
+    .toggle .slider::before {
+      content:''; position:absolute; width:16px; height:16px;
+      left:3px; top:3px; border-radius:50%;
+      background:#fff; transition:transform 0.2s;
+    }
+    .toggle input:checked + .slider { background:var(--color-primary); }
+    .toggle input:checked + .slider::before { transform:translateX(18px); }
+
     /* Input */
     .input-field {
-      padding:8px 12px; background:var(--color-surface);
+      padding:8px 12px; background:var(--color-bg);
       border:1.5px solid var(--color-border); border-radius:10px;
       color:var(--color-text); font-size:0.83rem; outline:none;
       transition:border-color 0.2s, box-shadow 0.2s;
@@ -146,42 +150,9 @@
     .btn-primary:hover { background:var(--color-primary-dark); transform:translateY(-1px); }
     .btn-primary:disabled { opacity:0.55; cursor:not-allowed; transform:none; }
 
-    /* Weekly preview grid */
-    .week-grid {
-      display:grid;
-      grid-template-columns: repeat(7,1fr);
-      gap:8px;
-    }
-    .week-col {
-      border-radius:12px; padding:10px 6px;
-      border:1.5px solid var(--color-border);
-      background:var(--color-bg);
-      text-align:center; min-height:80px;
-    }
-    .week-col.active-day {
-      border-color:color-mix(in srgb,var(--color-primary) 30%,transparent);
-      background:color-mix(in srgb,var(--color-primary) 5%,transparent);
-    }
-
-    /* Toast */
-    #toast {
-      position:fixed; bottom:28px; left:50%;
-      transform:translateX(-50%) translateY(70px);
-      padding:11px 20px; border-radius:12px; font-size:0.85rem; font-weight:500;
-      display:flex; align-items:center; gap:10px;
-      z-index:9999; opacity:0; white-space:nowrap;
-      transition:transform 0.35s cubic-bezier(0.34,1.56,0.64,1), opacity 0.3s;
-      box-shadow:0 8px 24px rgba(0,0,0,0.15);
-    }
-    #toast.show    { transform:translateX(-50%) translateY(0); opacity:1; }
-    #toast.success { background:var(--color-success); color:#fff; }
-    #toast.error   { background:var(--color-error);   color:#fff; }
-    #toast.info    { background:var(--color-primary);  color:#fff; }
-
     .fade-up    { animation:fadeUp 0.5s ease forwards; opacity:0; }
     .fade-up.d1 { animation-delay:0.1s; }
     .fade-up.d2 { animation-delay:0.2s; }
-    .fade-up.d3 { animation-delay:0.3s; }
     @keyframes fadeUp { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:none} }
   </style>
 </head>
@@ -191,9 +162,7 @@
 <div id="toast"><i id="toast-icon"></i><span id="toast-msg"></span></div>
 <div id="sidebar-overlay" onclick="toggleSidebar()"></div>
 
-<!-- ══════════════════════════════
-     SIDEBAR
-══════════════════════════════ -->
+<!-- ══════════════════════════════ SIDEBAR ══════════════════════════════ -->
 <aside id="sidebar">
   <div class="flex items-center gap-3 px-5 py-5"
        style="border-bottom:1px solid var(--color-border)">
@@ -214,6 +183,8 @@
     <a href="/doctor/appointments/" class="nav-link"><i class="fa-solid fa-calendar-check"></i> Appointments</a>
     <a href="/doctor/reports/"      class="nav-link"><i class="fa-solid fa-file-waveform"></i> Lab Reports</a>
     <a href="/doctor/patients/"     class="nav-link"><i class="fa-solid fa-users"></i> My Patients</a>
+    <a href="/doctor/ai-tools/"      class="nav-link"><i class="fa-solid fa-brain"></i> AI Tools</a>
+    <a href="/doctor/predict/"       class="nav-link"><i class="fa-solid fa-brain"></i> Tumor Predict</a>
     <div class="pt-3 pb-1 px-3">
       <p class="text-[10px] font-semibold uppercase tracking-wider"
          style="color:var(--color-muted)">Account</p>
@@ -244,9 +215,7 @@
   </div>
 </aside>
 
-<!-- ══════════════════════════════
-     TOPBAR
-══════════════════════════════ -->
+<!-- ══════════════════════════════ TOPBAR ══════════════════════════════ -->
 <header id="topbar">
   <div class="flex items-center gap-3">
     <button class="lg:hidden w-9 h-9 rounded-xl border flex items-center justify-center"
@@ -258,207 +227,53 @@
       <p class="text-xs" style="color:var(--color-muted)">Set your working days and time slots</p>
     </div>
   </div>
-  <div class="flex items-center gap-2">
-    <!-- Save button in topbar for quick access -->
-    <button onclick="saveAvailability()" id="topbar-save"
-            class="btn-primary text-xs px-4 py-2 hidden">
-      <i class="fa-solid fa-floppy-disk"></i> Save Changes
-    </button>
-    <button id="theme-toggle"
-            class="w-9 h-9 rounded-xl border flex items-center justify-center"
-            style="border-color:var(--color-border);color:var(--color-muted)">
-      <i id="theme-icon" class="fa-solid fa-moon text-sm"></i>
-    </button>
-  </div>
+  <button id="theme-toggle"
+          class="w-9 h-9 rounded-xl border flex items-center justify-center"
+          style="border-color:var(--color-border);color:var(--color-muted)">
+    <i id="theme-icon" class="fa-solid fa-moon text-sm"></i>
+  </button>
 </header>
 
-
-<!-- ══════════════════════════════
-     MAIN
-══════════════════════════════ -->
+<!-- ══════════════════════════════ MAIN ══════════════════════════════ -->
 <div class="main-content min-h-screen">
-  <div class="p-6 max-w-4xl mx-auto">
+  <div class="p-6 max-w-2xl mx-auto">
 
-    <!-- Info banner -->
-    <div class="flex items-start gap-3 p-4 rounded-2xl mb-6 fade-up"
-         style="background:color-mix(in srgb,var(--color-primary) 6%,transparent);
-                border:1px solid color-mix(in srgb,var(--color-primary) 15%,transparent)">
-      <i class="fa-solid fa-circle-info mt-0.5 shrink-0"
-         style="color:var(--color-primary)"></i>
-      <p class="text-xs leading-relaxed" style="color:var(--color-primary)">
-        Set your weekly availability so patients can book appointments with you.
-        Changes take effect immediately after saving.
-        Your admin can also update this on your behalf.
-      </p>
-    </div>
-
-    <div class="grid lg:grid-cols-3 gap-6">
-
-      <!-- ── LEFT: Editor ───────────────────────────────────────────── -->
-      <div class="lg:col-span-2 space-y-5">
-
-        <!-- Global max patients -->
-        <div class="card p-5 fade-up">
-          <h3 class="font-semibold text-sm mb-4 flex items-center gap-2">
-            <i class="fa-solid fa-users text-xs" style="color:var(--color-primary)"></i>
-            Default Max Patients per Slot
-          </h3>
-          <div class="flex items-center gap-4">
-            <button onclick="adjustMax(-1)"
-                    class="w-9 h-9 rounded-xl border flex items-center justify-center
-                           font-bold text-lg transition-colors hover:border-red-400
-                           hover:text-red-500"
-                    style="border-color:var(--color-border);color:var(--color-muted)">−</button>
-            <input id="global-max" type="number" min="1" max="50" value="5"
-                   class="input-field text-center font-bold text-lg"
-                   style="width:80px" oninput="markDirty()"/>
-            <button onclick="adjustMax(1)"
-                    class="w-9 h-9 rounded-xl border flex items-center justify-center
-                           font-bold text-lg transition-colors hover:border-green-400
-                           hover:text-green-500"
-                    style="border-color:var(--color-border);color:var(--color-muted)">+</button>
-            <span class="text-xs" style="color:var(--color-muted)">
-              patients per time slot
-            </span>
-          </div>
+    <!-- Max patients per slot -->
+    <div class="card p-5 mb-5 fade-up">
+      <div class="flex items-center justify-between">
+        <div>
+          <h3 class="text-sm font-semibold">Max Patients per Slot</h3>
+          <p class="text-xs mt-0.5" style="color:var(--color-muted)">Default for new slots</p>
         </div>
-
-        <!-- Working days -->
-        <div class="card p-5 fade-up d1">
-          <h3 class="font-semibold text-sm mb-4 flex items-center gap-2">
-            <i class="fa-solid fa-calendar-days text-xs" style="color:var(--color-primary)"></i>
-            Working Days
-          </h3>
-          <div class="flex gap-2 flex-wrap">
-            <button class="day-btn" data-day="Mon" onclick="toggleDay(this)">Mon</button>
-            <button class="day-btn" data-day="Tue" onclick="toggleDay(this)">Tue</button>
-            <button class="day-btn" data-day="Wed" onclick="toggleDay(this)">Wed</button>
-            <button class="day-btn" data-day="Thu" onclick="toggleDay(this)">Thu</button>
-            <button class="day-btn" data-day="Fri" onclick="toggleDay(this)">Fri</button>
-            <button class="day-btn" data-day="Sat" onclick="toggleDay(this)">Sat</button>
-            <button class="day-btn" data-day="Sun" onclick="toggleDay(this)">Sun</button>
-          </div>
-          <p class="text-xs mt-3" style="color:var(--color-muted)">
-            Click to toggle working days. Then add time slots below.
-          </p>
+        <div class="flex items-center gap-2">
+          <button onclick="adjustMax(-1)"
+                  class="w-8 h-8 rounded-lg border flex items-center justify-center text-sm font-bold"
+                  style="border-color:var(--color-border);color:var(--color-muted)">−</button>
+          <input id="global-max" type="number" min="1" max="50" value="5"
+                 class="input-field text-center font-bold" style="width:56px"/>
+          <button onclick="adjustMax(1)"
+                  class="w-8 h-8 rounded-lg border flex items-center justify-center text-sm font-bold"
+                  style="border-color:var(--color-border);color:var(--color-muted)">+</button>
         </div>
-
-        <!-- Per-day slot editor -->
-        <div class="card p-5 fade-up d2">
-          <h3 class="font-semibold text-sm mb-4 flex items-center gap-2">
-            <i class="fa-solid fa-clock text-xs" style="color:var(--color-primary)"></i>
-            Time Slots
-          </h3>
-          <div id="day-slots-container">
-            <div class="text-center py-6 text-sm" style="color:var(--color-muted)">
-              <i class="fa-solid fa-calendar-xmark mr-2"></i>
-              Select working days above to configure slots.
-            </div>
-          </div>
-        </div>
-
-        <!-- Save button -->
-        <div class="flex items-center justify-between fade-up d3">
-          <button onclick="clearAll()"
-                  class="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm
-                         font-medium transition-colors"
-                  style="border:1.5px solid var(--color-border);color:var(--color-muted)">
-            <i class="fa-solid fa-rotate-left text-xs"></i> Reset
-          </button>
-          <button onclick="saveAvailability()" id="save-btn"
-                  class="btn-primary">
-            <i class="fa-solid fa-floppy-disk"></i>
-            <span id="save-btn-text">Save Availability</span>
-            <div id="save-spinner"
-                 class="hidden w-4 h-4 border-2 border-white border-t-transparent
-                        rounded-full animate-spin"></div>
-          </button>
-        </div>
-
-      </div>
-
-      <!-- ── RIGHT: Weekly preview ──────────────────────────────────── -->
-      <div class="space-y-5">
-
-        <!-- Weekly summary -->
-        <div class="card p-5 fade-up d1">
-          <h3 class="font-semibold text-sm mb-4 flex items-center gap-2">
-            <i class="fa-solid fa-table-columns text-xs" style="color:var(--color-primary)"></i>
-            Weekly Preview
-          </h3>
-          <div id="week-preview" class="week-grid"></div>
-        </div>
-
-        <!-- Stats summary -->
-        <div class="card p-5 fade-up d2">
-          <h3 class="font-semibold text-sm mb-3 flex items-center gap-2">
-            <i class="fa-solid fa-chart-bar text-xs" style="color:var(--color-primary)"></i>
-            Summary
-          </h3>
-          <div class="space-y-3">
-            <div class="flex justify-between items-center">
-              <span class="text-xs" style="color:var(--color-muted)">Working days</span>
-              <span id="sum-days" class="font-bold text-sm" style="color:var(--color-primary)">0</span>
-            </div>
-            <div class="flex justify-between items-center">
-              <span class="text-xs" style="color:var(--color-muted)">Total slots / week</span>
-              <span id="sum-slots" class="font-bold text-sm" style="color:var(--color-primary)">0</span>
-            </div>
-            <div class="flex justify-between items-center">
-              <span class="text-xs" style="color:var(--color-muted)">Max patients / week</span>
-              <span id="sum-patients" class="font-bold text-sm" style="color:var(--color-success)">0</span>
-            </div>
-            <div class="flex justify-between items-center">
-              <span class="text-xs" style="color:var(--color-muted)">Avg slots / day</span>
-              <span id="sum-avg" class="font-bold text-sm" style="color:var(--color-warning)">0</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- Quick templates -->
-        <div class="card p-5 fade-up d3">
-          <h3 class="font-semibold text-sm mb-3 flex items-center gap-2">
-            <i class="fa-solid fa-bolt text-xs" style="color:var(--color-warning)"></i>
-            Quick Templates
-          </h3>
-          <div class="space-y-2">
-            <button onclick="applyTemplate('weekdays')"
-                    class="w-full text-left px-3 py-2.5 rounded-xl text-xs font-medium
-                           transition-colors hover:border-blue-400"
-                    style="border:1.5px solid var(--color-border);color:var(--color-text)">
-              <i class="fa-solid fa-briefcase mr-2" style="color:var(--color-primary)"></i>
-              Weekdays (Mon–Fri) · 9AM–5PM
-            </button>
-            <button onclick="applyTemplate('morning')"
-                    class="w-full text-left px-3 py-2.5 rounded-xl text-xs font-medium
-                           transition-colors hover:border-yellow-400"
-                    style="border:1.5px solid var(--color-border);color:var(--color-text)">
-              <i class="fa-solid fa-sun mr-2" style="color:var(--color-warning)"></i>
-              Morning Only · 9AM–1PM
-            </button>
-            <button onclick="applyTemplate('evening')"
-                    class="w-full text-left px-3 py-2.5 rounded-xl text-xs font-medium
-                           transition-colors hover:border-purple-400"
-                    style="border:1.5px solid var(--color-border);color:var(--color-text)">
-              <i class="fa-solid fa-moon mr-2" style="color:#8b5cf6"></i>
-              Evening Only · 4PM–8PM
-            </button>
-            <button onclick="applyTemplate('halfweek')"
-                    class="w-full text-left px-3 py-2.5 rounded-xl text-xs font-medium
-                           transition-colors hover:border-green-400"
-                    style="border:1.5px solid var(--color-border);color:var(--color-text)">
-              <i class="fa-solid fa-calendar-half-stroke mr-2"
-                 style="color:var(--color-success)"></i>
-              Mon, Wed, Fri · 9AM–3PM
-            </button>
-          </div>
-        </div>
-
       </div>
     </div>
+
+    <!-- Day-by-day list -->
+    <div id="days-container" class="space-y-3 mb-5 fade-up d1"></div>
+
+    <!-- Save -->
+    <div class="flex gap-3 fade-up d2">
+      <button onclick="saveAvailability()" id="save-btn" class="btn-primary flex-1 justify-center">
+        <i class="fa-solid fa-floppy-disk"></i>
+        <span id="save-btn-text">Save Availability</span>
+        <div id="save-spinner"
+             class="hidden w-4 h-4 border-2 border-white border-t-transparent
+                    rounded-full animate-spin"></div>
+      </button>
+    </div>
+
   </div>
 </div>
-
 
 <script type="module">
   import { auth, db }    from "../../assets/js/firebase-config.js";
@@ -475,13 +290,13 @@
     Fri:"Friday",  Sat:"Saturday", Sun:"Sunday"
   };
 
-  // editState shape: { Mon:[{start,end,maxPatients},...], ... }
-  // key present = day is active; key absent = day is off
-  let editState   = {};
-  let isDirty     = false;
-  let doctorUid   = "";
+  // editState: { Mon: { enabled, slots:[{start,end},...] }, ... }
+  let editState = {};
+  let doctorUid = "";
 
-  // ── Theme ──────────────────────────────────────────────────────────
+  DAYS.forEach(d => { editState[d] = { enabled: false, slots: [] }; });
+
+  // ── Theme ──────────────────────────────────────────────────────
   const htmlEl = document.getElementById("html-root");
   function applyTheme(dark) {
     htmlEl.setAttribute("data-theme", dark ? "dark" : "light");
@@ -499,7 +314,7 @@
     document.getElementById("sidebar-overlay").classList.toggle("show");
   };
 
-  // ── Settings ───────────────────────────────────────────────────────
+  // ── Settings ───────────────────────────────────────────────────
   async function loadSettings() {
     try {
       const snap = await getDoc(doc(db,"settings","hospital"));
@@ -521,395 +336,7 @@
     } catch(e) { console.error(e); }
   }
 
-  // ── Load existing availability ─────────────────────────────────────
-  async function loadAvailability() {
-    try {
-      const snap = await getDoc(doc(db,"doctors", doctorUid));
-      if (!snap.exists()) return;
-
-      const data = snap.data();
-      const avail = data.availability || [];
-      const maxPt = data.maxPatients  || 5;
-
-      // Rebuild editState
-      editState = {};
-      avail.forEach(slot => {
-        if (!editState[slot.day]) editState[slot.day] = [];
-        editState[slot.day].push({
-          start:       slot.start,
-          end:         slot.end,
-          maxPatients: slot.maxPatients || maxPt
-        });
-      });
-
-      // Sync global max
-      document.getElementById("global-max").value = maxPt;
-
-      // Sync day buttons
-      document.querySelectorAll(".day-btn").forEach(btn => {
-        const d = btn.getAttribute("data-day");
-        btn.classList.toggle("active", editState[d] !== undefined);
-      });
-
-      renderDaySlots();
-      renderWeekPreview();
-      updateSummary();
-
-    } catch(e) { console.error("Load availability error:", e); }
-  }
-
-  // ── Toggle day ─────────────────────────────────────────────────────
-  window.toggleDay = function(btn) {
-    const day = btn.getAttribute("data-day");
-    btn.classList.toggle("active");
-
-    if (btn.classList.contains("active")) {
-      if (!editState[day]) editState[day] = [];
-    } else {
-      delete editState[day];
-    }
-    markDirty();
-    renderDaySlots();
-    renderWeekPreview();
-    updateSummary();
-  };
-
-  // ── Mark dirty — show topbar save ─────────────────────────────────
-  window.markDirty = function() {
-    isDirty = true;
-    document.getElementById("topbar-save").classList.remove("hidden");
-  };
-
-  // ── Adjust global max ──────────────────────────────────────────────
-  window.adjustMax = function(delta) {
-    const el = document.getElementById("global-max");
-    const v  = Math.max(1, Math.min(50, (parseInt(el.value)||5) + delta));
-    el.value = v;
-    markDirty();
-    updateSummary();
-  };
-
-  // ── Render day slot rows ───────────────────────────────────────────
-  function renderDaySlots() {
-    const container  = document.getElementById("day-slots-container");
-    const activeDays = DAYS.filter(d => editState[d] !== undefined);
-
-    if (activeDays.length === 0) {
-      container.innerHTML = `
-        <div class="text-center py-6 text-sm" style="color:var(--color-muted)">
-          <i class="fa-solid fa-calendar-xmark mr-2"></i>
-          Select working days above to configure slots.
-        </div>`;
-      return;
-    }
-
-    container.innerHTML = activeDays.map(day => {
-      const slots = editState[day] || [];
-
-      const pillsHTML = slots.length > 0
-        ? slots.map((s,i) => `
-            <span class="slot-pill">
-              <i class="fa-regular fa-clock text-[10px]"></i>
-              ${s.start}–${s.end}
-              <span class="opacity-60 text-[10px]">· ${s.maxPatients}p</span>
-              <button onclick="removeSlot('${day}',${i})" title="Remove">
-                <i class="fa-solid fa-xmark text-[10px]"></i>
-              </button>
-            </span>
-          `).join('')
-        : `<span class="text-xs" style="color:var(--color-muted)">
-             No slots yet — add one below.
-           </span>`;
-
-      return `
-        <div class="day-row ${slots.length > 0 ? 'has-slots' : ''}" id="day-row-${day}">
-
-          <!-- Header -->
-          <div class="flex items-center justify-between mb-3">
-            <div class="flex items-center gap-2">
-              <div class="w-8 h-8 rounded-xl flex items-center justify-center
-                          text-white text-xs font-bold"
-                   style="background:var(--color-primary)">${day}</div>
-              <span class="text-sm font-semibold">${FULL[day]}</span>
-            </div>
-            <span class="text-xs font-medium px-2 py-0.5 rounded-full"
-                  style="background:color-mix(in srgb,var(--color-primary) 10%,transparent);
-                         color:var(--color-primary)">
-              ${slots.length} slot${slots.length !== 1 ? "s" : ""}
-            </span>
-          </div>
-
-          <!-- Slot pills -->
-          <div class="flex flex-wrap gap-2 mb-3">${pillsHTML}</div>
-
-          <!-- Add slot form -->
-          <div class="flex flex-wrap items-end gap-2 pt-3"
-               style="border-top:1px solid var(--color-border)">
-            <div>
-              <label class="block text-[10px] font-semibold mb-1"
-                     style="color:var(--color-muted)">START</label>
-              <input type="time" id="start-${day}" value="09:00"
-                     class="input-field" style="width:118px"/>
-            </div>
-            <div>
-              <label class="block text-[10px] font-semibold mb-1"
-                     style="color:var(--color-muted)">END</label>
-              <input type="time" id="end-${day}" value="10:00"
-                     class="input-field" style="width:118px"/>
-            </div>
-            <div>
-              <label class="block text-[10px] font-semibold mb-1"
-                     style="color:var(--color-muted)">MAX</label>
-              <input type="number" id="max-${day}"
-                     value="${document.getElementById('global-max').value || 5}"
-                     min="1" max="50"
-                     class="input-field" style="width:72px"/>
-            </div>
-            <button onclick="addSlot('${day}')"
-                    class="flex items-center gap-1.5 px-3 py-2 rounded-lg
-                           text-xs font-semibold text-white"
-                    style="background:var(--color-primary)">
-              <i class="fa-solid fa-plus text-[10px]"></i> Add
-            </button>
-          </div>
-        </div>
-      `;
-    }).join('');
-  }
-
-  // ── Add slot ───────────────────────────────────────────────────────
-  window.addSlot = function(day) {
-    const start = document.getElementById(`start-${day}`)?.value;
-    const end   = document.getElementById(`end-${day}`)?.value;
-    const max   = parseInt(document.getElementById(`max-${day}`)?.value) || 5;
-
-    if (!start || !end) {
-      showToast("Set both start and end time.", "error"); return;
-    }
-    if (start >= end) {
-      showToast("End time must be after start.", "error"); return;
-    }
-
-    const exists = (editState[day] || []).some(s => s.start === start && s.end === end);
-    if (exists) {
-      showToast(`${start}–${end} already exists on ${FULL[day]}.`, "info"); return;
-    }
-
-    if (!editState[day]) editState[day] = [];
-    editState[day].push({ start, end, maxPatients: max });
-
-    markDirty();
-    renderDaySlots();
-    renderWeekPreview();
-    updateSummary();
-    showToast(`Slot ${start}–${end} added to ${FULL[day]}.`, "success");
-  };
-
-  // ── Remove slot ────────────────────────────────────────────────────
-  window.removeSlot = function(day, index) {
-    if (!editState[day]) return;
-    editState[day].splice(index, 1);
-    markDirty();
-    renderDaySlots();
-    renderWeekPreview();
-    updateSummary();
-  };
-
-  // ── Weekly preview ─────────────────────────────────────────────────
-  function renderWeekPreview() {
-    const container = document.getElementById("week-preview");
-    container.innerHTML = DAYS.map(day => {
-      const slots     = editState[day] || [];
-      const isActive  = editState[day] !== undefined;
-
-      const slotDots = slots.slice(0,4).map(() =>
-        `<div class="w-1.5 h-1.5 rounded-full mx-auto mb-0.5"
-              style="background:var(--color-primary)"></div>`
-      ).join('');
-
-      const more = slots.length > 4
-        ? `<div class="text-[9px]" style="color:var(--color-muted)">+${slots.length-4}</div>`
-        : "";
-
-      return `
-        <div class="week-col ${isActive ? 'active-day' : ''}">
-          <div class="text-[10px] font-bold mb-2
-                      ${isActive ? '' : ''}"
-               style="color:${isActive ? 'var(--color-primary)' : 'var(--color-muted)'}">
-            ${day}
-          </div>
-          ${isActive
-            ? (slots.length > 0
-                ? `${slotDots}${more}
-                   <div class="text-[9px] mt-1 font-semibold"
-                        style="color:var(--color-primary)">${slots.length}</div>`
-                : `<div class="text-[9px]" style="color:var(--color-warning)">No slots</div>`)
-            : `<div class="text-[9px]" style="color:var(--color-border)">Off</div>`}
-        </div>
-      `;
-    }).join('');
-  }
-
-  // ── Summary stats ──────────────────────────────────────────────────
-  function updateSummary() {
-    const activeDays = DAYS.filter(d => editState[d] !== undefined);
-    const totalSlots = activeDays.reduce((n,d) => n + (editState[d]?.length||0), 0);
-    const maxPerSlot = parseInt(document.getElementById("global-max").value) || 5;
-    const maxPerWeek = totalSlots * maxPerSlot;
-    const avg        = activeDays.length > 0
-      ? (totalSlots / activeDays.length).toFixed(1) : 0;
-
-    document.getElementById("sum-days").textContent     = activeDays.length;
-    document.getElementById("sum-slots").textContent    = totalSlots;
-    document.getElementById("sum-patients").textContent = maxPerWeek;
-    document.getElementById("sum-avg").textContent      = avg;
-  }
-
-  // ── Quick templates ────────────────────────────────────────────────
-  window.applyTemplate = function(type) {
-    editState = {};
-
-    const templates = {
-      weekdays: {
-        days:  ["Mon","Tue","Wed","Thu","Fri"],
-        slots: [
-          { start:"09:00", end:"10:00" },
-          { start:"10:00", end:"11:00" },
-          { start:"11:00", end:"12:00" },
-          { start:"14:00", end:"15:00" },
-          { start:"15:00", end:"16:00" },
-          { start:"16:00", end:"17:00" },
-        ]
-      },
-      morning: {
-        days:  ["Mon","Tue","Wed","Thu","Fri"],
-        slots: [
-          { start:"09:00", end:"10:00" },
-          { start:"10:00", end:"11:00" },
-          { start:"11:00", end:"12:00" },
-          { start:"12:00", end:"13:00" },
-        ]
-      },
-      evening: {
-        days:  ["Mon","Tue","Wed","Thu","Fri"],
-        slots: [
-          { start:"16:00", end:"17:00" },
-          { start:"17:00", end:"18:00" },
-          { start:"18:00", end:"19:00" },
-          { start:"19:00", end:"20:00" },
-        ]
-      },
-      halfweek: {
-        days:  ["Mon","Wed","Fri"],
-        slots: [
-          { start:"09:00", end:"10:00" },
-          { start:"10:00", end:"11:00" },
-          { start:"11:00", end:"12:00" },
-          { start:"13:00", end:"14:00" },
-          { start:"14:00", end:"15:00" },
-        ]
-      }
-    };
-
-    const tmpl = templates[type];
-    if (!tmpl) return;
-
-    const max = parseInt(document.getElementById("global-max").value) || 5;
-
-    tmpl.days.forEach(day => {
-      editState[day] = tmpl.slots.map(s => ({
-        start: s.start, end: s.end, maxPatients: max
-      }));
-    });
-
-    // Sync day buttons
-    document.querySelectorAll(".day-btn").forEach(btn => {
-      const d = btn.getAttribute("data-day");
-      btn.classList.toggle("active", editState[d] !== undefined);
-    });
-
-    markDirty();
-    renderDaySlots();
-    renderWeekPreview();
-    updateSummary();
-    showToast("Template applied! Review and save.", "info");
-  };
-
-  // ── Clear all ──────────────────────────────────────────────────────
-  window.clearAll = function() {
-    if (!confirm("Reset all availability? This cannot be undone until you save.")) return;
-    editState = {};
-    document.querySelectorAll(".day-btn").forEach(b => b.classList.remove("active"));
-    markDirty();
-    renderDaySlots();
-    renderWeekPreview();
-    updateSummary();
-    showToast("Availability cleared.", "info");
-  };
-
-  // ── Save availability ──────────────────────────────────────────────
-  window.saveAvailability = async function() {
-    const btn = document.getElementById("save-btn");
-    const txt = document.getElementById("save-btn-text");
-    const spn = document.getElementById("save-spinner");
-    btn.disabled = true; txt.textContent = "Saving…"; spn.classList.remove("hidden");
-
-    try {
-      const maxPatients = parseInt(document.getElementById("global-max").value) || 5;
-
-      // Flatten editState → array
-      const availability = [];
-      DAYS.forEach(day => {
-        if (editState[day] && editState[day].length > 0) {
-          editState[day].forEach(slot => {
-            availability.push({
-              day,
-              start:       slot.start,
-              end:         slot.end,
-              maxPatients: slot.maxPatients || maxPatients
-            });
-          });
-        }
-      });
-
-      await setDoc(
-        doc(db, "doctors", doctorUid),
-        { availability, maxPatients, updatedAt: serverTimestamp() },
-        { merge: true }
-      );
-
-      isDirty = false;
-      document.getElementById("topbar-save").classList.add("hidden");
-
-      try {
-        await logActivity("UPDATE_AVAILABILITY", {
-          slotCount: availability.length,
-          days:      DAYS.filter(d => editState[d] !== undefined).length,
-        });
-      } catch(_) {}
-
-      showToast(`✓ Availability saved — ${availability.length} slots across ${
-        DAYS.filter(d=>editState[d]!==undefined).length} days.`, "success");
-
-    } catch(e) {
-      console.error("Save error:", e);
-      showToast("Failed to save: " + e.message, "error");
-    } finally {
-      btn.disabled = false;
-      txt.textContent = "Save Availability";
-      spn.classList.add("hidden");
-    }
-  };
-
-  // ── Warn on leave if dirty ─────────────────────────────────────────
-  window.addEventListener("beforeunload", e => {
-    if (isDirty) {
-      e.preventDefault();
-      e.returnValue = "";
-    }
-  });
-
-  // ── Toast ──────────────────────────────────────────────────────────
+  // ── Toast ──────────────────────────────────────────────────────
   window.showToast = function(msg, type = "info") {
     const toast = document.getElementById("toast");
     const icons = {
@@ -924,13 +351,192 @@
     window._tt = setTimeout(() => { toast.className = type; }, 3500);
   };
 
-  // ── Logout ─────────────────────────────────────────────────────────
-  window.doctorLogout = async function() {
-    await signOut(auth);
-    window.location.href = "/auth/staff-login/";
+  // ── Render all days ────────────────────────────────────────────
+  function render() {
+    const container = document.getElementById("days-container");
+    container.innerHTML = DAYS.map(day => {
+      const ds = editState[day];
+      const slotsHTML = ds.enabled ? `
+        <div class="mt-3 space-y-2" id="slots-${day}">
+          ${ds.slots.map((s, i) => `
+            <div class="flex items-center gap-2">
+              <input type="time" value="${s.start}" class="input-field text-xs" style="width:110px"
+                     onchange="updateSlot('${day}',${i},'start',this.value)"/>
+              <span class="text-xs" style="color:var(--color-muted)">to</span>
+              <input type="time" value="${s.end}" class="input-field text-xs" style="width:110px"
+                     onchange="updateSlot('${day}',${i},'end',this.value)"/>
+              <button onclick="removeSlot('${day}',${i})"
+                      class="w-7 h-7 rounded-lg flex items-center justify-center text-xs
+                             transition-colors hover:text-red-500"
+                      style="color:var(--color-muted)">
+                <i class="fa-solid fa-trash-can"></i>
+              </button>
+            </div>
+          `).join('')}
+          <button onclick="addSlot('${day}')"
+                  class="flex items-center gap-1.5 text-xs font-medium mt-1 px-2 py-1.5 rounded-lg
+                         transition-colors hover:bg-blue-50"
+                  style="color:var(--color-primary)">
+            <i class="fa-solid fa-plus text-[10px]"></i> Add slot
+          </button>
+        </div>
+      ` : '';
+
+      return `
+        <div class="day-card ${ds.enabled ? 'enabled' : ''}">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-3">
+              <div class="w-9 h-9 rounded-xl flex items-center justify-center text-xs font-bold
+                          ${ds.enabled ? 'text-white' : ''}"
+                   style="background:${ds.enabled ? 'var(--color-primary)' : 'var(--color-bg)'};
+                          color:${ds.enabled ? '#fff' : 'var(--color-muted)'}">
+                ${day}
+              </div>
+              <div>
+                <p class="text-sm font-semibold">${FULL[day]}</p>
+                <p class="text-xs" style="color:var(--color-muted)">
+                  ${ds.enabled
+                    ? (ds.slots.length > 0 ? ds.slots.length + ' slot' + (ds.slots.length !== 1 ? 's' : '') : 'No slots yet')
+                    : 'Off'}
+                </p>
+              </div>
+            </div>
+            <label class="toggle">
+              <input type="checkbox" ${ds.enabled ? 'checked' : ''}
+                     onchange="toggleDay('${day}', this.checked)"/>
+              <span class="slider"></span>
+            </label>
+          </div>
+          ${slotsHTML}
+        </div>
+      `;
+    }).join('');
+  }
+
+  // ── Day toggle ─────────────────────────────────────────────────
+  window.toggleDay = function(day, on) {
+    editState[day].enabled = on;
+    if (on && editState[day].slots.length === 0) {
+      // Auto-add a default 9–5 slot
+      editState[day].slots.push({ start: "09:00", end: "17:00" });
+    }
+    render();
   };
 
-  // ── Init ───────────────────────────────────────────────────────────
+  // ── Slot CRUD ──────────────────────────────────────────────────
+  window.addSlot = function(day) {
+    editState[day].slots.push({ start: "09:00", end: "17:00" });
+    render();
+  };
+
+  window.removeSlot = function(day, i) {
+    editState[day].slots.splice(i, 1);
+    render();
+  };
+
+  window.updateSlot = function(day, i, field, val) {
+    editState[day].slots[i][field] = val;
+  };
+
+  // ── Adjust max ─────────────────────────────────────────────────
+  window.adjustMax = function(delta) {
+    const el = document.getElementById("global-max");
+    el.value = Math.max(1, Math.min(50, (parseInt(el.value) || 5) + delta));
+  };
+
+  // ── Load from Firestore ────────────────────────────────────────
+  async function loadAvailability() {
+    try {
+      const snap = await getDoc(doc(db, "doctors", doctorUid));
+      if (!snap.exists()) return;
+
+      const data = snap.data();
+      const avail = data.availability || [];
+      const maxPt = data.maxPatients || 5;
+      document.getElementById("global-max").value = maxPt;
+
+      // Reset
+      DAYS.forEach(d => { editState[d] = { enabled: false, slots: [] }; });
+
+      avail.forEach(slot => {
+        const d = slot.day;
+        if (!editState[d]) return;
+        editState[d].enabled = true;
+        editState[d].slots.push({ start: slot.start, end: slot.end });
+      });
+    } catch(e) { console.error("Load error:", e); }
+  }
+
+  // ── Save to Firestore ──────────────────────────────────────────
+  window.saveAvailability = async function() {
+    const btn = document.getElementById("save-btn");
+    const txt = document.getElementById("save-btn-text");
+    const spn = document.getElementById("save-spinner");
+    btn.disabled = true; txt.textContent = "Saving…"; spn.classList.remove("hidden");
+
+    try {
+      const maxPatients = parseInt(document.getElementById("global-max").value) || 5;
+
+      // Validate
+      for (const day of DAYS) {
+        const ds = editState[day];
+        if (!ds.enabled) continue;
+        for (const slot of ds.slots) {
+          if (!slot.start || !slot.end) {
+            showToast(`${FULL[day]}: fill in both start and end time.`, "error");
+            return;
+          }
+          if (slot.start >= slot.end) {
+            showToast(`${FULL[day]}: end time must be after start time.`, "error");
+            return;
+          }
+        }
+      }
+
+      const availability = [];
+      DAYS.forEach(day => {
+        const ds = editState[day];
+        if (!ds.enabled) return;
+        ds.slots.forEach(slot => {
+          availability.push({
+            day,
+            start: slot.start,
+            end: slot.end,
+            maxPatients
+          });
+        });
+      });
+
+      await setDoc(
+        doc(db, "doctors", doctorUid),
+        { availability, maxPatients, updatedAt: serverTimestamp() },
+        { merge: true }
+      );
+
+      const activeDays = DAYS.filter(d => editState[d].enabled).length;
+      logActivity("UPDATE_AVAILABILITY", {
+        slotCount: availability.length, days: activeDays
+      }).catch(() => {});
+
+      showToast(`Saved — ${availability.length} slots across ${activeDays} days`, "success");
+
+    } catch(e) {
+      console.error("Save error:", e);
+      showToast("Failed to save: " + e.message, "error");
+    } finally {
+      btn.disabled = false;
+      txt.textContent = "Save Availability";
+      spn.classList.add("hidden");
+    }
+  };
+
+  // ── Logout ─────────────────────────────────────────────────────
+  window.doctorLogout = async function() {
+    await signOut(auth);
+    window.location.href = "/auth/staff-login/?role=doctor";
+  };
+
+  // ── Init ───────────────────────────────────────────────────────
   guardPage(["doctor"], async (user, userData) => {
     doctorUid = user.uid;
 
@@ -941,16 +547,12 @@
 
     await loadSettings();
     await loadAvailability();
-
-    // Initial render
-    renderWeekPreview();
-    updateSummary();
+    render();
 
     const loader = document.getElementById("page-loader");
     loader.classList.add("hidden");
     setTimeout(() => loader.remove(), 500);
   });
-
 </script>
 </body>
 </html>

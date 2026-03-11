@@ -176,6 +176,14 @@
     .fade-up.d1 { animation-delay:0.1s; }
     .fade-up.d2 { animation-delay:0.2s; }
     @keyframes fadeUp { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:none} }
+
+    /* Modal */
+    .modal-overlay{position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.45);
+      display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .2s}
+    .modal-overlay.show{opacity:1;pointer-events:auto}
+    .modal-box{background:var(--color-bg);border-radius:1rem;padding:1.5rem;width:92%;max-width:420px;
+      box-shadow:0 20px 60px rgba(0,0,0,.25);transform:translateY(20px);transition:transform .25s}
+    .modal-overlay.show .modal-box{transform:none}
   </style>
 </head>
 <body>
@@ -207,6 +215,8 @@
     <a href="/doctor/appointments/" class="nav-link"><i class="fa-solid fa-calendar-check"></i> Appointments</a>
     <a href="/doctor/reports/"      class="nav-link"><i class="fa-solid fa-file-waveform"></i> Lab Reports</a>
     <a href="/doctor/patients/"     class="nav-link active"><i class="fa-solid fa-users"></i> My Patients</a>
+    <a href="/doctor/ai-tools/"      class="nav-link"><i class="fa-solid fa-brain"></i> AI Tools</a>
+    <a href="/doctor/predict/"       class="nav-link"><i class="fa-solid fa-brain"></i> Tumor Predict</a>
     <div class="pt-3 pb-1 px-3">
       <p class="text-[10px] font-semibold uppercase tracking-wider"
          style="color:var(--color-muted)">Account</p>
@@ -285,6 +295,9 @@
     </button>
     <button class="tab-btn" onclick="switchTab('reports',this)">
       <i class="fa-solid fa-file-waveform mr-1.5"></i> Reports
+    </button>
+    <button class="tab-btn" onclick="switchTab('vitals',this)">
+      <i class="fa-solid fa-heart-pulse mr-1.5"></i> Vitals
     </button>
   </div>
 
@@ -369,13 +382,82 @@
   </div>
 </div>
 
+<!-- ═══ Order Test Modal ═══ -->
+<div id="order-test-modal" class="modal-overlay" onclick="if(event.target===this)closeOrderModal()">
+  <div class="modal-box" onclick="event.stopPropagation()">
+    <div class="flex items-center justify-between mb-5">
+      <h3 class="text-base font-bold" style="color:var(--color-text)">
+        <i class="fa-solid fa-flask-vial mr-2" style="color:var(--color-success)"></i>
+        Order Test
+      </h3>
+      <button onclick="closeOrderModal()"
+              class="w-7 h-7 rounded-lg flex items-center justify-center border-0 cursor-pointer"
+              style="background:color-mix(in srgb,var(--color-text) 8%,transparent);color:var(--color-muted)">
+        <i class="fa-solid fa-xmark text-xs"></i>
+      </button>
+    </div>
+
+    <p class="text-xs mb-4" style="color:var(--color-muted)">
+      Patient: <strong id="order-patient-name" style="color:var(--color-text)">—</strong>
+    </p>
+
+    <div class="space-y-3">
+      <div>
+        <label class="block text-xs font-semibold mb-1" style="color:var(--color-text)">Test Name *</label>
+        <input id="order-test-name" type="text" placeholder="e.g. Complete Blood Count"
+               class="w-full px-3 py-2 rounded-lg text-sm border-0 outline-none"
+               style="background:var(--color-card);color:var(--color-text);border:1px solid var(--color-border)"/>
+      </div>
+      <div>
+        <label class="block text-xs font-semibold mb-1" style="color:var(--color-text)">Category *</label>
+        <select id="order-test-category"
+                class="w-full px-3 py-2 rounded-lg text-sm border-0 outline-none"
+                style="background:var(--color-card);color:var(--color-text);border:1px solid var(--color-border)">
+          <option value="">Select category…</option>
+          <option>Haematology</option>
+          <option>Biochemistry</option>
+          <option>Microbiology</option>
+          <option>Pathology</option>
+          <option>Radiology</option>
+          <option>Cardiology</option>
+          <option>Urine Analysis</option>
+          <option>Immunology</option>
+          <option>Other</option>
+        </select>
+      </div>
+      <div>
+        <label class="block text-xs font-semibold mb-1" style="color:var(--color-text)">Priority</label>
+        <select id="order-test-priority"
+                class="w-full px-3 py-2 rounded-lg text-sm border-0 outline-none"
+                style="background:var(--color-card);color:var(--color-text);border:1px solid var(--color-border)">
+          <option value="normal">Normal</option>
+          <option value="urgent">Urgent</option>
+          <option value="critical">Critical</option>
+        </select>
+      </div>
+      <div>
+        <label class="block text-xs font-semibold mb-1" style="color:var(--color-text)">Notes (optional)</label>
+        <textarea id="order-test-notes" rows="2" placeholder="Any clinical notes…"
+                  class="w-full px-3 py-2 rounded-lg text-sm border-0 outline-none resize-none"
+                  style="background:var(--color-card);color:var(--color-text);border:1px solid var(--color-border)"></textarea>
+      </div>
+    </div>
+
+    <button id="order-submit-btn" onclick="submitOrder()"
+            class="w-full mt-5 py-2.5 rounded-xl text-sm font-semibold text-white border-0 cursor-pointer"
+            style="background:var(--color-success)">
+      <i class="fa-solid fa-paper-plane mr-1.5"></i><span>Order Test</span>
+    </button>
+  </div>
+</div>
 
 <script type="module">
   import { auth, db }    from "../../assets/js/firebase-config.js";
   import { guardPage }   from "../../assets/js/auth-guard.js";
+  import { logActivity } from "../../assets/js/activity-logger.js";
   import {
-    collection, query, where, getDocs,
-    doc, getDoc, updateDoc, serverTimestamp
+    collection, query, where, getDocs, orderBy, limit,
+    doc, getDoc, updateDoc, addDoc, serverTimestamp
   } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-firestore.js";
   import { signOut } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-auth.js";
 
@@ -676,9 +758,10 @@
     if (!p) return;
     const content = document.getElementById("panel-content");
 
-    if (activeTab === "overview")      content.innerHTML = renderOverview(p);
+    if (activeTab === "overview")           content.innerHTML = renderOverview(p);
     else if (activeTab === "appointments") content.innerHTML = renderApptHistory(p);
-    else if (activeTab === "reports")  content.innerHTML = renderReportHistory(p);
+    else if (activeTab === "reports")      content.innerHTML = renderReportHistory(p);
+    else if (activeTab === "vitals")       { content.innerHTML = renderVitalsTab(p); loadVitalsHistory(p.id); }
   }
 
   // ── Overview tab ───────────────────────────────────────────────────
@@ -731,19 +814,25 @@
       </div>
 
       <!-- Quick links -->
-      <div class="flex gap-3">
+      <div class="flex gap-2 flex-wrap">
         <a href="/doctor/appointments/?search=${encodeURIComponent(p.name||'')}"
            class="flex-1 py-2.5 rounded-xl text-xs font-semibold text-center
                   text-white transition-colors"
-           style="background:var(--color-primary)">
-          <i class="fa-solid fa-calendar mr-1.5"></i> View Appointments
+           style="background:var(--color-primary);min-width:120px">
+          <i class="fa-solid fa-calendar mr-1.5"></i> Appointments
         </a>
         <a href="/doctor/reports/?patient=${p.id}"
            class="flex-1 py-2.5 rounded-xl text-xs font-semibold text-center
                   transition-colors"
-           style="background:color-mix(in srgb,#8b5cf6 10%,transparent);color:#8b5cf6">
-          <i class="fa-solid fa-file-waveform mr-1.5"></i> View Reports
+           style="background:color-mix(in srgb,#8b5cf6 10%,transparent);color:#8b5cf6;min-width:120px">
+          <i class="fa-solid fa-file-waveform mr-1.5"></i> Reports
         </a>
+        <button onclick="openOrderTest('${p.id}','${(p.name||'').replace(/'/g,"\\'")}')" 
+                class="flex-1 py-2.5 rounded-xl text-xs font-semibold text-center
+                       transition-colors cursor-pointer border-0"
+                style="background:color-mix(in srgb,var(--color-success) 10%,transparent);color:var(--color-success);min-width:120px">
+          <i class="fa-solid fa-flask-vial mr-1.5"></i> Order Test
+        </button>
       </div>
     `;
   }
@@ -855,6 +944,326 @@
     }).join('');
   }
 
+  // ── Vitals tab ──────────────────────────────────────────────────
+  function renderVitalsTab(p) {
+    return `
+      <!-- Record New Vitals -->
+      <div class="card p-4 mb-5">
+        <h4 class="text-xs font-semibold uppercase tracking-wider mb-3"
+            style="color:var(--color-muted)">
+          <i class="fa-solid fa-plus-circle mr-1" style="color:var(--color-success)"></i>
+          Record Vitals
+        </h4>
+
+        <div class="grid grid-cols-2 gap-3 mb-3">
+          <div>
+            <label class="block text-[11px] font-medium mb-1" style="color:var(--color-muted)">
+              Systolic BP <span class="text-[10px]">(mmHg)</span>
+            </label>
+            <input id="v-systolic" type="number" min="60" max="250" placeholder="120"
+                   class="input-field" />
+          </div>
+          <div>
+            <label class="block text-[11px] font-medium mb-1" style="color:var(--color-muted)">
+              Diastolic BP <span class="text-[10px]">(mmHg)</span>
+            </label>
+            <input id="v-diastolic" type="number" min="30" max="150" placeholder="80"
+                   class="input-field" />
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3 mb-3">
+          <div>
+            <label class="block text-[11px] font-medium mb-1" style="color:var(--color-muted)">
+              Heart Rate <span class="text-[10px]">(bpm)</span>
+            </label>
+            <input id="v-heartrate" type="number" min="30" max="250" placeholder="72"
+                   class="input-field" />
+          </div>
+          <div>
+            <label class="block text-[11px] font-medium mb-1" style="color:var(--color-muted)">
+              Temperature <span class="text-[10px]">(\u00b0F)</span>
+            </label>
+            <input id="v-temp" type="number" step="0.1" min="90" max="110" placeholder="98.6"
+                   class="input-field" />
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3 mb-3">
+          <div>
+            <label class="block text-[11px] font-medium mb-1" style="color:var(--color-muted)">
+              SpO2 <span class="text-[10px]">(%)</span>
+            </label>
+            <input id="v-spo2" type="number" min="50" max="100" placeholder="98"
+                   class="input-field" />
+          </div>
+          <div>
+            <label class="block text-[11px] font-medium mb-1" style="color:var(--color-muted)">
+              Resp. Rate <span class="text-[10px]">(breaths/min)</span>
+            </label>
+            <input id="v-resprate" type="number" min="5" max="60" placeholder="16"
+                   class="input-field" />
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3 mb-3">
+          <div>
+            <label class="block text-[11px] font-medium mb-1" style="color:var(--color-muted)">
+              Weight <span class="text-[10px]">(kg)</span>
+            </label>
+            <input id="v-weight" type="number" step="0.1" min="1" max="300" placeholder="70"
+                   class="input-field" />
+          </div>
+          <div>
+            <label class="block text-[11px] font-medium mb-1" style="color:var(--color-muted)">
+              Height <span class="text-[10px]">(cm)</span>
+            </label>
+            <input id="v-height" type="number" min="30" max="250" placeholder="170"
+                   class="input-field" />
+          </div>
+        </div>
+
+        <div class="mb-3">
+          <label class="block text-[11px] font-medium mb-1" style="color:var(--color-muted)">
+            Clinical Notes <span class="text-[10px]">(optional)</span>
+          </label>
+          <textarea id="v-notes" rows="2" placeholder="Any observations\u2026"
+                    class="input-field"></textarea>
+        </div>
+
+        <button id="save-vitals-btn" onclick="saveVitals()"
+                class="w-full py-2.5 rounded-xl text-xs font-semibold text-white border-0 cursor-pointer"
+                style="background:var(--color-success)">
+          <i class="fa-solid fa-heart-pulse mr-1.5"></i> Save Vitals
+        </button>
+      </div>
+
+      <!-- Vitals History -->
+      <div>
+        <h4 class="text-xs font-semibold uppercase tracking-wider mb-3"
+            style="color:var(--color-muted)">
+          <i class="fa-solid fa-clock-rotate-left mr-1"></i> Recent Vitals
+        </h4>
+        <div id="vitals-history">
+          <div class="py-6 text-center">
+            <div class="spinner mx-auto" style="width:24px;height:24px;border-width:2px"></div>
+            <p class="text-xs mt-2" style="color:var(--color-muted)">Loading vitals\u2026</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Mini Trend Chart -->
+      <div id="vitals-trends" class="mt-5" style="display:none">
+        <h4 class="text-xs font-semibold uppercase tracking-wider mb-3"
+            style="color:var(--color-muted)">
+          <i class="fa-solid fa-chart-line mr-1"></i> Trends (Last 10)
+        </h4>
+        <div id="trend-chart-area"></div>
+      </div>
+    `;
+  }
+
+  // ── Save vitals ────────────────────────────────────────────────────
+  window.saveVitals = async function() {
+    if (!selectedPatient) return;
+    const pid = selectedPatient.id;
+
+    const systolic    = parseFloat(document.getElementById("v-systolic").value);
+    const diastolic   = parseFloat(document.getElementById("v-diastolic").value);
+    const heartRate   = parseFloat(document.getElementById("v-heartrate").value);
+    const temperature = parseFloat(document.getElementById("v-temp").value);
+    const spo2        = parseFloat(document.getElementById("v-spo2").value);
+    const respRate    = parseFloat(document.getElementById("v-resprate").value);
+    const weight      = parseFloat(document.getElementById("v-weight").value);
+    const height      = parseFloat(document.getElementById("v-height").value);
+    const notes       = document.getElementById("v-notes").value.trim();
+
+    // At least one vital must be filled
+    const hasAny = [systolic,diastolic,heartRate,temperature,spo2,respRate,weight,height]
+      .some(v => !isNaN(v));
+    if (!hasAny) { showToast("Enter at least one vital sign.", "error"); return; }
+
+    const btn = document.getElementById("save-vitals-btn");
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1.5"></i> Saving\u2026';
+
+    try {
+      const vital = { recordedAt: serverTimestamp(), recordedBy: doctorUid };
+      if (!isNaN(systolic))    vital.systolicBP    = systolic;
+      if (!isNaN(diastolic))   vital.diastolicBP   = diastolic;
+      if (!isNaN(heartRate))   vital.heartRate      = heartRate;
+      if (!isNaN(temperature)) vital.temperature    = temperature;
+      if (!isNaN(spo2))        vital.spo2           = spo2;
+      if (!isNaN(respRate))    vital.respiratoryRate = respRate;
+      if (!isNaN(weight))      vital.weight          = weight;
+      if (!isNaN(height))      vital.height          = height;
+      if (notes)               vital.notes           = notes;
+
+      await addDoc(collection(db, "users", pid, "vitals"), vital);
+
+      logActivity("RECORD_VITALS", { patientId: pid }).catch(()=>{});
+      showToast("Vitals saved!", "success");
+
+      // Clear form & reload history
+      ["v-systolic","v-diastolic","v-heartrate","v-temp","v-spo2","v-resprate","v-weight","v-height","v-notes"]
+        .forEach(id => document.getElementById(id).value = "");
+      loadVitalsHistory(pid);
+
+    } catch(e) {
+      console.error(e);
+      showToast("Failed to save vitals: " + e.message, "error");
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="fa-solid fa-heart-pulse mr-1.5"></i> Save Vitals';
+    }
+  };
+
+  // ── Load vitals history ────────────────────────────────────────────
+  async function loadVitalsHistory(patientId) {
+    const container = document.getElementById("vitals-history");
+    if (!container) return;
+
+    try {
+      const snap = await getDocs(query(
+        collection(db, "users", patientId, "vitals"),
+        orderBy("recordedAt", "desc"),
+        limit(20)
+      ));
+
+      if (snap.empty) {
+        container.innerHTML = emptyState("fa-heart-pulse", "No vitals recorded yet");
+        return;
+      }
+
+      const vitals = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+      container.innerHTML = vitals.map(v => {
+        const date = v.recordedAt?.toDate
+          ? v.recordedAt.toDate().toLocaleDateString("en-IN",{day:"2-digit",month:"short",year:"numeric"})
+          : "\u2014";
+        const time = v.recordedAt?.toDate
+          ? v.recordedAt.toDate().toLocaleTimeString("en-IN",{hour:"2-digit",minute:"2-digit"})
+          : "";
+
+        const pills = [];
+        if (v.systolicBP != null && v.diastolicBP != null)
+          pills.push({ icon:"fa-heart", label:"BP", value:`${v.systolicBP}/${v.diastolicBP}`, color:bpColor(v.systolicBP) });
+        if (v.heartRate != null)
+          pills.push({ icon:"fa-heart-pulse", label:"HR", value:`${v.heartRate} bpm`, color:hrColor(v.heartRate) });
+        if (v.temperature != null)
+          pills.push({ icon:"fa-thermometer-half", label:"Temp", value:`${v.temperature}\u00b0F`, color:tempColor(v.temperature) });
+        if (v.spo2 != null)
+          pills.push({ icon:"fa-lungs", label:"SpO2", value:`${v.spo2}%`, color:spo2Color(v.spo2) });
+        if (v.respiratoryRate != null)
+          pills.push({ icon:"fa-wind", label:"RR", value:`${v.respiratoryRate}/min`, color:"var(--color-primary)" });
+        if (v.weight != null)
+          pills.push({ icon:"fa-weight-scale", label:"Wt", value:`${v.weight} kg`, color:"var(--color-muted)" });
+        if (v.height != null)
+          pills.push({ icon:"fa-ruler-vertical", label:"Ht", value:`${v.height} cm`, color:"var(--color-muted)" });
+
+        return `
+          <div class="py-3" style="border-bottom:1px solid var(--color-border)">
+            <div class="flex items-center justify-between mb-2">
+              <div class="text-xs font-medium">${date} <span style="color:var(--color-muted)">${time}</span></div>
+            </div>
+            <div class="flex flex-wrap gap-1.5">
+              ${pills.map(pill => `
+                <span class="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-medium"
+                      style="background:color-mix(in srgb,${pill.color} 10%,transparent);color:${pill.color}">
+                  <i class="fa-solid ${pill.icon} text-[9px]"></i> ${pill.label}: ${pill.value}
+                </span>
+              `).join('')}
+            </div>
+            ${v.notes ? `<div class="text-xs mt-2 p-2 rounded-lg italic"
+                              style="background:var(--color-bg);color:var(--color-muted)">
+                           <i class="fa-solid fa-note-sticky mr-1"></i>${v.notes}
+                         </div>` : ""}
+          </div>
+        `;
+      }).join('');
+
+      // Render trend charts
+      renderTrends(vitals.slice(0, 10).reverse());
+
+    } catch(e) {
+      console.error(e);
+      container.innerHTML = `<p class="text-xs text-center py-4" style="color:var(--color-error)">
+        Failed to load vitals.</p>`;
+    }
+  }
+
+  // ── Vital color helpers ────────────────────────────────────────────
+  function bpColor(sys) {
+    if (sys < 90)  return "var(--color-error)";
+    if (sys < 120) return "var(--color-success)";
+    if (sys < 140) return "var(--color-warning)";
+    return "var(--color-error)";
+  }
+  function hrColor(hr) {
+    if (hr < 50 || hr > 120) return "var(--color-error)";
+    if (hr < 60 || hr > 100) return "var(--color-warning)";
+    return "var(--color-success)";
+  }
+  function tempColor(t) {
+    if (t < 95 || t > 103) return "var(--color-error)";
+    if (t < 97 || t > 99.5) return "var(--color-warning)";
+    return "var(--color-success)";
+  }
+  function spo2Color(s) {
+    if (s < 90) return "var(--color-error)";
+    if (s < 95) return "var(--color-warning)";
+    return "var(--color-success)";
+  }
+
+  // ── Render trend mini-charts ───────────────────────────────────────
+  function renderTrends(vitals) {
+    const container = document.getElementById("vitals-trends");
+    const area      = document.getElementById("trend-chart-area");
+    if (!container || !area || vitals.length < 2) return;
+
+    container.style.display = "block";
+
+    const metrics = [
+      { key:"systolicBP",  label:"Systolic BP",  unit:"mmHg", color:"#ef4444", min:60, max:200 },
+      { key:"heartRate",   label:"Heart Rate",    unit:"bpm",  color:"#ec4899", min:40, max:160 },
+      { key:"spo2",        label:"SpO2",          unit:"%",    color:"#2563eb", min:80, max:100 },
+      { key:"temperature", label:"Temperature",   unit:"\u00b0F",  color:"#f59e0b", min:95, max:105 },
+    ];
+
+    area.innerHTML = metrics.map(m => {
+      const points = vitals.filter(v => v[m.key] != null).map(v => v[m.key]);
+      if (points.length < 2) return "";
+
+      const lo  = m.min, hi = m.max;
+      const w   = 100 / (points.length - 1);
+      const pts = points.map((val, i) => {
+        const x = i * w;
+        const y = 100 - ((val - lo) / (hi - lo)) * 100;
+        return `${x},${Math.max(2, Math.min(98, y))}`;
+      }).join(' ');
+
+      return `
+        <div class="card p-3 mb-2">
+          <div class="flex items-center justify-between mb-1">
+            <span class="text-[11px] font-semibold">${m.label}</span>
+            <span class="text-[10px] font-medium" style="color:${m.color}">
+              ${points[points.length-1]} ${m.unit}
+            </span>
+          </div>
+          <svg viewBox="0 0 100 50" class="w-full" style="height:40px" preserveAspectRatio="none">
+            <polyline points="${pts}" fill="none" stroke="${m.color}" stroke-width="1.5"
+                      stroke-linecap="round" stroke-linejoin="round"/>
+            ${points.map((val, i) => {
+              const x = i * w;
+              const y = 100 - ((val - lo) / (hi - lo)) * 100;
+              return `<circle cx="${x}" cy="${Math.max(2,Math.min(98,y))}" r="2" fill="${m.color}"/>`;
+            }).join('')}
+          </svg>
+        </div>
+      `;
+    }).join('');
+  }
+
   // ── Helpers ────────────────────────────────────────────────────────
   function infoRow(label, value) {
     return `
@@ -875,6 +1284,67 @@
         <p class="text-sm font-medium">${msg}</p>
       </div>`;
   }
+
+  // ── Order Test ─────────────────────────────────────────────────────
+  let orderPatientId   = "";
+  let orderPatientName = "";
+
+  window.openOrderTest = function(pid, pname) {
+    orderPatientId   = pid;
+    orderPatientName = pname;
+    document.getElementById("order-patient-name").textContent = pname;
+    document.getElementById("order-test-modal").classList.add("show");
+  };
+
+  window.closeOrderModal = function() {
+    document.getElementById("order-test-modal").classList.remove("show");
+    // Reset form
+    document.getElementById("order-test-name").value     = "";
+    document.getElementById("order-test-category").value = "";
+    document.getElementById("order-test-priority").value = "normal";
+    document.getElementById("order-test-notes").value    = "";
+  };
+
+  window.submitOrder = async function() {
+    const testName = document.getElementById("order-test-name").value.trim();
+    const category = document.getElementById("order-test-category").value;
+    const priority = document.getElementById("order-test-priority").value;
+    const notes    = document.getElementById("order-test-notes").value.trim();
+
+    if (!testName) { showToast("Enter test name.", "error"); return; }
+    if (!category) { showToast("Select a category.", "error"); return; }
+
+    const btn = document.getElementById("order-submit-btn");
+    btn.disabled = true;
+    btn.querySelector("span").textContent = "Ordering…";
+
+    try {
+      await addDoc(collection(db, "tests"), {
+        patientId:   orderPatientId,
+        doctorId:    doctorUid,
+        testName,
+        category,
+        priority,
+        notes,
+        status:      "pending",      // pending → in_progress → completed
+        orderedAt:   serverTimestamp(),
+        updatedAt:   serverTimestamp()
+      });
+
+      logActivity("ORDER_TEST", {
+        testName, patientId: orderPatientId, priority
+      }).catch(()=>{});
+
+      showToast(`✓ Test "${testName}" ordered for ${orderPatientName}!`, "success");
+      closeOrderModal();
+    } catch(e) {
+      console.error(e);
+      showToast("Failed to order test: " + e.message, "error");
+    } finally {
+      btn.disabled = false;
+      btn.querySelector("span").textContent = "Order Test";
+    }
+  };
 
   // ── Toast ──────────────────────────────────────────────────────────
   window.showToast = function(msg, type = "info") {
