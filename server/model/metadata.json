@@ -1,0 +1,21 @@
+{
+  "model_type": "EfficientNetV2S (3-phase fine-tune)",
+  "image_size": 260,
+  "classes": [
+    "glioma",
+    "meningioma",
+    "notumor",
+    "pituitary"
+  ],
+  "num_classes": 4,
+  "test_accuracy": null,
+  "test_accuracy_tta": null,
+  "test_loss": null,
+  "label_smoothing": 0.1,
+  "epochs_trained_phase1": 10,
+  "epochs_trained_phase2": 23,
+  "best_val_accuracy_phase2": 0.9869,
+  "training_samples": 4760,
+  "test_samples": 1600,
+  "notes": "Training interrupted after Phase 2 (Ctrl+C). Best checkpoint saved at epoch 15 of Phase 2 with val_accuracy=0.9869. Test set evaluation not yet run — use evaluate_model.py."
+}
