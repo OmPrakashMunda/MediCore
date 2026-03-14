@@ -459,7 +459,8 @@
 
   import { signOut } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-auth.js";
 
-  const FLASK_API = "http://localhost:5000";
+  import { CONFIG } from "../../assets/js/config.js";
+  const FLASK_API = CONFIG.BACKEND_URL;
   let selectedFile = null;
 
   // ── Sidebar / Theme / Toast ──────────────────────────────────────

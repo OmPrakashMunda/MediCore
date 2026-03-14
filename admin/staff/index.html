@@ -673,7 +673,8 @@
     signOut
   } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-auth.js";
 
-  const API_BASE = "http://localhost:3001";
+  import { CONFIG } from "../../assets/js/config.js";
+  const API_BASE = CONFIG.BACKEND_URL;
 
   // Secondary app — for creating staff without affecting admin session
   import { initializeApp, getApps }

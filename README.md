@@ -1,54 +1,53 @@
-# MediCore — Healthcare Management Platform
+# MediCore — Hospital Management System
 
-A full-stack, multi-role healthcare web application built with Firebase, Node.js, Python/Flask, and TensorFlow. MediCore provides separate portals for **Patients**, **Doctors**, **Lab Technicians**, and **Admins** — covering appointment scheduling, lab report management, AI-powered medical assistance, brain tumor detection from MRI scans, and patient vitals tracking.
+A full-stack, multi-role healthcare web application. MediCore provides separate portals for **Patients**, **Doctors**, **Lab Technicians**, and **Admins** — covering appointment scheduling, lab report management, AI-powered medical assistance, brain tumor detection from MRI scans, and patient vitals tracking.
 
 ---
 
 ## Architecture Overview
 
 ```
-┌──────────────────────────────────────────────────────────────────────┐
-│                         CLIENT (Browser)                             │
-│                                                                      │
-│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐            │
-│  │ Patient  │  │  Doctor  │  │   Lab    │  │  Admin   │            │
-│  │  Portal  │  │  Portal  │  │  Portal  │  │  Portal  │            │
-│  └────┬─────┘  └────┬─────┘  └────┬─────┘  └────┬─────┘            │
-│       │              │              │              │                  │
-│       └──────────────┴──────────────┴──────────────┘                  │
-│                          │                                           │
-│        Tailwind CSS · Font Awesome · Inter Font                      │
-│        Firebase JS SDK v11.4.0 (Auth, Firestore, Storage)            │
-└──────────────────────────┬───────────────────────────────────────────┘
-                           │
-           ┌───────────────┼───────────────┐
-           ▼               ▼               ▼
-  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐
-  │  Firebase   │  │  Node.js    │  │  Python     │
-  │  Backend    │  │  Express    │  │  Flask      │
-  │             │  │  (Port 3001)│  │  (Port 5000)│
-  │ • Auth      │  │             │  │             │
-  │ • Firestore │  │ • AI Chat   │  │ • Brain     │
-  │ • Storage   │  │   (Gemini)  │  │   Tumor     │
-  │             │  │ • Email     │  │   Predict   │
-  │             │  │   (SMTP)    │  │   (CNN)     │
-  └─────────────┘  └─────────────┘  └─────────────┘
+┌───────────────────────────────────────────────────────────────┐
+│                        CLIENT (Browser)                       │
+│                                                               │
+│  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐          │
+│  │ Patient  │ │  Doctor  │ │   Lab    │ │  Admin   │          │
+│  │  Portal  │ │  Portal  │ │  Portal  │ │  Portal  │          │
+│  └──────────┘ └──────────┘ └──────────┘ └──────────┘          │
+│        Firebase JS SDK v11.4.0 (Auth · Firestore · Storage)   │
+│        Tailwind CSS CDN · Font Awesome · Inter font           │
+└───────────────────────────┬───────────────────────────────────┘
+                            │ HTTPS
+           ┌────────────────┼──────────────────┐
+           ▼                ▼                  ▼
+  ┌──────────────┐  ┌──────────────┐  ┌──────────────────────┐
+  │   Firebase   │  │  Node.js API │  │  Python Worker       │
+  │   Platform   │  │  Express     │  │  (child process)     │
+  │              │  │  Port 3001   │  │                      │
+  │ • Auth       │  │              │  │  EfficientNetV2S     │
+  │ • Firestore  │  │ • /predict   │  │  Keras model loaded  │
+  │ • Storage    │  │ • AI Chat    │  │  in memory           │
+  │ • Hosting    │  │ • Email      │  │                      │
+  └──────────────┘  │ • RBAC auth  │  │  JSON over stdin/    │
+                    └──────┬───────┘  │  stdout (IPC)        │
+                           └──────────┤                      │
+                            spawns    └──────────────────────┘
 ```
 
 ---
 
 ## Tech Stack
 
-| Layer          | Technology                                                        |
-|----------------|-------------------------------------------------------------------|
-| **Frontend**   | HTML5, Tailwind CSS (CDN), Font Awesome 6.5, Inter font           |
-| **Auth**       | Firebase Authentication (Email/Password + Google OAuth)           |
-| **Database**   | Cloud Firestore (NoSQL, real-time)                                |
-| **Storage**    | Firebase Cloud Storage (logos, report PDFs)                       |
-| **Node API**   | Express.js — AI chat (Google Gemini 2.5 Flash), email (Nodemailer)|
-| **ML API**     | Flask — Brain tumor classification (TensorFlow/Keras, MobileNetV2)|
-| **ML Model**   | MobileNetV2 transfer learning, 4-class MRI classification        |
-| **Hosting**    | Firebase Hosting / any static server + Node + Python backends     |
+| Layer          | Technology                                                               |
+|----------------|--------------------------------------------------------------------------|
+| **Frontend**   | HTML5, Tailwind CSS (CDN), Font Awesome 6.5, Inter font                  |
+| **Auth**       | Firebase Authentication (Email/Password + Google OAuth + Phone OTP)      |
+| **Database**   | Cloud Firestore (NoSQL, real-time)                                       |
+| **Storage**    | Firebase Cloud Storage (logos, report PDFs)                              |
+| **Node API**   | Express.js — AI chat (Gemini 2.5 Flash), email (Nodemailer SMTP), RBAC   |
+| **ML Worker**  | Python child process — EfficientNetV2S, 4-class MRI classification        |
+| **ML Model**   | EfficientNetV2S fine-tuned on Brain Tumor MRI Dataset — 98.69% val acc   |
+| **Hosting**    | Firebase Hosting (frontend) + Node.js server (port 3001)                 |
 
 ---
 
@@ -57,8 +56,7 @@ A full-stack, multi-role healthcare web application built with Firebase, Node.js
 ```
 medicore/
 ├── index.html                    # Landing page (role selection)
-├── setup.html                    # First-time admin bootstrap
-├── firebase.json                 # Firebase project config
+├── firebase.json                 # Firebase Hosting & project config
 ├── firestore.rules               # Firestore security rules (RBAC)
 │
 ├── assets/js/
@@ -101,16 +99,15 @@ medicore/
 │   ├── analytics/                # Activity logs & usage stats
 │   └── settings/                 # Hospital branding, theme, SMTP config
 │
-├── functions/
-│   ├── index.js                  # Express API (AI chat, email)
-│   ├── package.json              # Node.js dependencies
-│   └── .env                      # API keys (Gemini, SMTP)
-│
-└── ml/
-    ├── app.py                    # Flask prediction API
-    ├── train_model.py            # CNN training script (MobileNetV2)
-    ├── download_dataset.py       # Kaggle dataset setup helper
-    └── requirements.txt          # Python dependencies
+└── server/
+    ├── index.js                  # Node.js Express API server
+    ├── python-worker.py          # Persistent Python inference worker (Keras)
+    ├── package.json              # Node.js dependencies
+    ├── .env.example              # Environment variable template
+    └── model/
+        ├── best_phase2.keras     # Original trained model (EfficientNetV2S)
+        ├── best_phase2.fixed.keras # Auto-generated clean copy (worker uses this)
+        └── metadata.json         # Class names & model metadata
 ```
 
 ---
@@ -248,39 +245,35 @@ cp assets/js/firebase-config.example.js assets/js/firebase-config.js
 # Edit firebase-config.js with your Firebase project credentials
 ```
 
-### 2. Node.js Backend
+### 2. Python (for ML Worker)
+
+The Node.js server spawns a persistent Python child process for inference. Python 3.9+ with TensorFlow must be installed:
+
 ```bash
-cd functions
-npm install
+# Verify Python is available
+python3 --version   # Linux/macOS
+c:/python312/python.exe --version  # Windows default
 
-# Create .env file with:
-#   GEMINI_API_KEY=your_gemini_api_key
-#   MAIL_HOST=smtp.gmail.com
-#   MAIL_PORT=587
-#   MAIL_USER=your_email
-#   MAIL_PASS=your_app_password
-#   PORT=3001
-
-# Download serviceAccountKey.json from Firebase Console:
-#   Project Settings → Service Accounts → Generate New Private Key
-#   Save as functions/serviceAccountKey.json
-
-node index.js
+pip install tensorflow
 ```
 
-### 3. ML Backend
+The Python executable path defaults to `c:/python312/python.exe` on Windows or `python3` on Linux/macOS. Override with the `PYTHON_EXECUTABLE` environment variable.
+
+### 3. Node.js Server
 ```bash
-cd ml
-pip install -r requirements.txt
+cd server
+npm install
 
-# Download dataset from Kaggle (Brain Tumor MRI Dataset)
-# Place in ml/dataset/Training/ and ml/dataset/Testing/
+# Copy and populate the environment file
+cp .env.example .env
+# Edit .env with your Gemini API key, SMTP credentials, and PORT
 
-# Train the model
-python train_model.py
+# Place serviceAccountKey.json from Firebase Console:
+#   Project Settings → Service Accounts → Generate New Private Key
+#   Save as server/serviceAccountKey.json
 
-# Start the Flask API
-python app.py
+node index.js
+# Server starts on port 3001; Python worker is spawned automatically
 ```
 
 ### 4. Frontend
@@ -291,29 +284,27 @@ python app.py
 ```
 
 ### 5. First Admin Bootstrap
-1. Open `/setup.html`
-2. Create the first admin account
-3. Delete or restrict `setup.html` after bootstrap
+
+Create the first admin account directly in the Firebase console:
+1. Open Firebase Console → Authentication → Add User
+2. Then in Firestore, create a document at `users/{uid}` with `role: "admin"`
 
 ---
 
 ## API Endpoints
 
-### Node.js Express (Port 3001)
+All inference and auxiliary APIs are served from the Node.js server at port 3001. The Python worker is an internal implementation detail; it is not exposed as a separate HTTP server.
 
-| Method | Endpoint               | Auth     | Description                      |
-|--------|------------------------|----------|----------------------------------|
-| POST   | `/api/aiChat`          | Bearer   | AI medical assistant (Gemini)    |
-| POST   | `/api/sendWelcomeEmail`| Bearer   | Send staff onboarding email      |
-| GET    | `/api/health`          | Public   | Server health check              |
+| Method | Endpoint                | Auth   | Description                           |
+|--------|-------------------------|--------|---------------------------------------|
+| `GET`  | `/health`               | Public | Server + Python worker health check   |
+| `GET`  | `/metadata`             | Public | Model class names from metadata.json  |
+| `POST` | `/predict`              | Public | Upload MRI image → tumor prediction   |
+| `POST` | `/api/sendWelcomeEmail` | Bearer | Send staff onboarding email via SMTP  |
+| `POST` | `/api/aiChat`           | Bearer | AI medical assistant (Gemini 2.5)     |
+| `GET`  | `/api/health`           | Public | Express health check                  |
 
-### Python Flask (Port 5000)
-
-| Method | Endpoint     | Auth   | Description                           |
-|--------|-------------|--------|---------------------------------------|
-| POST   | `/predict`  | Public | Upload MRI image → tumor prediction   |
-| GET    | `/health`   | Public | Model status check                    |
-| GET    | `/metadata` | Public | Model classes & accuracy info         |
+See [docs/api-reference.md](docs/api-reference.md) for full request/response schemas.
 
 ---
 
@@ -390,6 +381,19 @@ Dark mode is toggled via `[data-theme="dark"]` on `<html>`, with all colors rema
 | `/admin/doctors/`           | Admin   | Manage doctors                      |
 | `/admin/analytics/`         | Admin   | Activity logs                       |
 | `/admin/settings/`          | Admin   | Hospital settings & branding        |
+
+---
+
+## Documentation
+
+| Document | Description |
+|----------|-------------|
+| [docs/architecture.md](docs/architecture.md) | System design, data flows, IPC protocol |
+| [docs/api-reference.md](docs/api-reference.md) | Full API endpoint schemas |
+| [docs/deployment.md](docs/deployment.md) | Step-by-step deployment guide |
+| [docs/ai-model.md](docs/ai-model.md) | Brain tumor model details, Python worker internals |
+| [docs/firebase-setup.md](docs/firebase-setup.md) | Firebase project configuration guide |
+| [docs/security.md](docs/security.md) | Security considerations and hardening checklist |
 
 ---
 
